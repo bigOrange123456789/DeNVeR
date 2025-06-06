@@ -21,6 +21,8 @@ import torchvision.transforms as T
 import utils
 # ROOT = "/project/wujh1123/denver"
 ROOT = os.path.abspath("__file__/..")
+# print("ROOT:",ROOT)
+# exit(0)
 def split_dataset_idcs(dset, n_val):
     """
     split the video sequence either at the front or back of the video
@@ -182,16 +184,27 @@ def get_custom_dir(root, subd, seq=None):
 
 def match_custom_seq(root, subd, seq):
     """
-    convenience function for matching long sequence names
+    convenience function for matching long sequence names 用于匹配长序列名称的便利函数
     """
     matches = glob.glob(f"{root}/{subd}/{seq}*")
+    """
+    root: /project/wujh1123/denver/custom_videos
+    subd: PNGImages
+    seq: CVAI-2828RAO2_CRA32
+    f"{root}/{subd}/{seq}*" :"/project/wujh1123/denver/custom_videos/PNGImages/CVAI-2828RAO2_CRA32*"
+    """
     print(f"{root}/{subd}/{seq}")
     print(matches)
-    if len(matches) != 1:
+    if len(matches) != 1:#len(matches)=0,说明没有在当前目录下找到这样的文件
+        print("seq:",seq)
+        print("len(matches):", len(matches))
+        print("root:", root)
+        print("subd:", subd)
         print(
             "sequence name {} has {} matches in {}/{}".format(
                 seq, len(matches), root, subd
-            )
+            )#sequence name CVAI-2828RAO2_CRA32 has 0 matches in /project/wujh1123/denver/custom_videos/PNGImages
+             # {}/{}： /project/wujh1123/denver/custom_videos/PNGImages
         )
         raise ValueError
     match = os.path.basename(matches[0])

@@ -9,8 +9,7 @@ import preprocess
 import subprocess
 import argparse
 
-ROOT = os.path.abspath("__file__/..")
-
+ROOT = os.path.abspath("__file__/..") #ROOT: /home/lzc/桌面/DNVR
 
 def skeltoize(path="CVAI-2829RAO9_CRA37"):
     imfiles = sorted(glob.glob(f"{ROOT}/preprocess/datasets/{path}/binary/*"))
@@ -34,6 +33,7 @@ def skeltoize(path="CVAI-2829RAO9_CRA37"):
 
 def main(args):
     data_name = args.data
+    # data_name: CVAI-2828RAO2_CRA32
     # preprocess
     preprocess.filter_extract(data_name)
     skeltoize(data_name)
@@ -59,3 +59,9 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--data")
     args = parser.parse_args()
     main(args)
+
+'''
+pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2
+export PATH="~/anaconda3/bin:$PATH"
+
+'''

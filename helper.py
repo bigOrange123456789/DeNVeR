@@ -14,8 +14,9 @@ from loss import *
 
 DEVICE = torch.device("cuda")
 
-
+ROOT = os.path.abspath("__file__/..")
 def get_dataset(args):
+    args.root= ROOT+"/custom_videos"#lzc
     rgb_dir, fwd_dir, bck_dir, gt_dir,ske_dir = data.get_data_dirs(
         args.type, args.root, args.seq, args.flow_gap, args.res
     )
