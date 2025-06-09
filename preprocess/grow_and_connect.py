@@ -6,7 +6,7 @@ from tqdm import tqdm
 from PIL import Image
 
 
-def region_grow(img, x, y, visited):
+def region_grow(img, x, y, visited):#img评分图,(x,y)起点,visited结果图
     rows, cols = img.shape
     intensity_sum = 0
     connected_region = []
@@ -15,23 +15,23 @@ def region_grow(img, x, y, visited):
 
     stack = [(x, y)]
     while stack:
-        current_x, current_y = stack.pop()
-        if visited[current_x, current_y]:
+        current_x, current_y = stack.pop()#从数据栈中获取一个点
+        if visited[current_x, current_y]:#如果这个点已经在结果图中就跳过
             continue
-        visited[current_x, current_y] = True
-        intensity_sum += img[current_x, current_y]
+        visited[current_x, current_y] = True#将这个点添加到结果图中
+        intensity_sum += img[current_x, current_y]#更新结果图的总亮度
         connected_region.append((current_x, current_y))
 
         counter = 0
-        for dx, dy in directions:
+        for dx, dy in directions: #遍历四个相邻点
             new_x, new_y = current_x + dx, current_y + dy
             if 0 <= new_x < rows and 0 <= new_y < cols and img[new_x, new_y] > 0 and not visited[new_x, new_y]:
-                stack.append((new_x, new_y))
+                stack.append((new_x, new_y)) #如果该点的分数大于0,就将该点存入数据栈
                 counter += 1
-        if counter == 0:
+        if counter == 0: #如果这个位置没有新的相邻点，说明这个位置是边界
             edge_points.append((current_x, current_y))
 
-    return connected_region, intensity_sum, edge_points
+    return connected_region, intensity_sum, edge_points#这个连通区域，这个连通区域的总亮度，这个区域的边界
 def find_closest_points(index_A, index_B, edge_points_each_region):
     min_distance = float('inf')
     region_A = edge_points_each_region[index_A]

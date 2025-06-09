@@ -183,6 +183,7 @@ def get_custom_dir(root, subd, seq=None):
 
 
 def match_custom_seq(root, subd, seq):
+    print("root, subd, seq",root, subd, seq)
     """
     convenience function for matching long sequence names 用于匹配长序列名称的便利函数
     """

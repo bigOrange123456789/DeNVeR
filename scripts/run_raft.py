@@ -40,16 +40,20 @@ def is_image(path):
 
 
 def run_raft(args):
-    imfiles = sorted(filter(is_image, glob.glob(f"{args.rgb_dir}/*")))
-    if len(imfiles) < 1:
+    imfiles = sorted(filter(is_image, glob.glob(f"{args.rgb_dir}/*"))) # ./custom_videos/PNGImages #图片的输入路径
+    if len(imfiles) < 1: #如果文件数量为0,则返回
         print("NO IMAGES FOUND IN", args.rgb_dir)
         return
 
-    os.makedirs(args.out_dir, exist_ok=True)
-    n_raw = len(os.listdir(args.out_dir))
-    if n_raw == len(imfiles) - abs(args.gap):
+    os.makedirs(args.out_dir, exist_ok=True) #../custom_videos/raw_flows_gap1/CVAI-2828RAO2_CRA32
+    n_raw = len(os.listdir(args.out_dir)) #n_raw=4 #文件数量为4
+    #这里让我猜一下gap的含义：
+    #   如果gap=+1，表示计算视频光流图的时候不考虑原视频起始帧
+    #   如果gap=-1，表示计算视频光流图的时候不考虑原视频末尾帧
+    if n_raw == len(imfiles) - abs(args.gap): #如果有之前处理的缓存数据就不再次进行处理
         print("already {} flows existing in {}".format(n_raw, args.out_dir))
         return
+    exit(0)
 
     print("Running RAFT on", args.rgb_dir)
 

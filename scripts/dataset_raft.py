@@ -12,6 +12,15 @@ from data import get_data_subdir, match_custom_seq
 
 
 def process_sequence(gpu, dtype, root, seq, gap, res="480p", batch_size=4):
+    '''
+        gpu:0
+        dtype:"custom"
+        root:"../custom_videos/"
+        seq:"#CVAI-2828RAO2_CRA32"
+        gap
+        res:"480p"
+        batch_size:4
+    '''
     if dtype == "fbms":
         rgb_name = ""
     elif dtype == "custom":
@@ -22,12 +31,16 @@ def process_sequence(gpu, dtype, root, seq, gap, res="480p", batch_size=4):
     else:
         raise NotImplementedError
 
-    print(rgb_name, seq)
     # gpu = gpu
     subds = [rgb_name, "raw_flows_gap{}".format(gap), "flow_imgs_gap{}".format(gap)]
+    # subds: ['PNGImages', 'raw_flows_gap-1', 'flow_imgs_gap-1']
 
     rgb, out, out_img = [get_data_subdir(dtype, root, sd, seq, res) for sd in subds]
-    print(rgb, out, out_img)
+    print("rgb, out, out_img:",rgb, out, out_img) # 输入, 光流原文件, 光流图片
+    # ../custom_videos/PNGImages/CVAI-2828RAO2_CRA32
+    # ../custom_videos/raw_flows_gap1/CVAI-2828RAO2_CRA32 # 这个路径第二次执行为：raw_flows_gap-1
+    # ../custom_videos/flow_imgs_gap1/CVAI-2828RAO2_CRA32 # out与out_img是相同的
+
     exe = os.path.join(BASE_DIR, "run_raft.py")
     cmd = f"python {exe} {rgb} {out} -I {out_img} --gap {gap} -b {batch_size}"
     # cmd = f"CUDA_VISIBLE_DEVICES={gpu} {cmd}"
@@ -73,21 +86,33 @@ def main(args):
             raise NotImplementedError
 
     i = 0
-    with futures.ProcessPoolExecutor(max_workers=len(args.gpus)) as ex:
-        for seq in args.seqs:
-            for gap in [args.gap, -args.gap]:
-                gpu = args.gpus[i % len(args.gpus)]
+    with futures.ProcessPoolExecutor(max_workers=len(args.gpus)) as ex:#只有一个编号为0的GPU
+        '''
+        concurrent.futures:用于异步执行可调用对象（如函数）。它提供了两种类型的执行器（Executor）：
+            ThreadPoolExecutor：使用线程池执行任务。
+            ProcessPoolExecutor：使用进程池执行任务。
+        futures.ProcessPoolExecutor:
+            是一个用于并行执行任务的类。它通过创建多个进程来并行处理任务，适用于CPU密集型任务（如计算密集型操作）。
+        max_workers：
+            这是ProcessPoolExecutor的参数，指定了进程池中允许的最大工作进程数。
+            在这行代码中，max_workers的值是len(args.gpus)，表示进程池中的工作进程数等于args.gpus的长度。
+        '''
+        for seq in args.seqs: #逐个处理每一段视频
+            for gap in [args.gap, -args.gap]:#这个循环执行两次，一次gap=-1,另一次gap=1
+                gpu = args.gpus[i % len(args.gpus)] #因为只有一个设备，所以这里获取到的编号ID始终为0
                 ex.submit(
-                    process_sequence,
-                    gpu,
-                    args.dtype,
-                    args.root,
-                    seq,
+                    process_sequence, #<function process_sequence at 0x7f9c903f30d0>
+                    gpu, #0
+                    args.dtype, #custom
+                    args.root,  #../custom_videos/
+                    seq, #CVAI-2828RAO2_CRA32
                     gap,
-                    args.dres,
-                    args.batch_size,
+                    args.dres, #480p
+                    args.batch_size, #4
                 )
                 i += 1
+                print("程序中断位置：[./scripts, dataset_raft.py, main(args)]")
+                exit(0)
 
 
 if __name__ == "__main__":
