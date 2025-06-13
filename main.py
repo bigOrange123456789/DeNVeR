@@ -41,19 +41,17 @@ def main(args):
     data_name = args.data
     # data_name: CVAI-2828RAO2_CRA32
     # preprocess
-    preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，存在“preprocess/--/binary”
-    skeltoize(data_name) # 我猜测这个函数的作用应该是获取图片的骨架 skeletonize
+    preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
+    skeltoize(data_name) # 获取图片的骨架，并存入custom_videos/skeltoize
 
-    # run raft
+    # run raft #RAFT是方法简称
     cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
     subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
-    print("程序中止位置: [main.py, main()]")
-    exit(0)
 
     # stage 1
     cmd = f"python nir/booststrap.py --data {data_name}"
     print(cmd)
-    subprocess.call(cmd, shell=True)
+    subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
     # stage 2
     cmd = f"python run_opt.py data=custom data.seq={data_name}"
     print(cmd)

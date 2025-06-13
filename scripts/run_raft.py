@@ -48,12 +48,12 @@ def run_raft(args):
     os.makedirs(args.out_dir, exist_ok=True) #../custom_videos/raw_flows_gap1/CVAI-2828RAO2_CRA32
     n_raw = len(os.listdir(args.out_dir)) #n_raw=4 #文件数量为4
     #这里让我猜一下gap的含义：
-    #   如果gap=+1，表示计算视频光流图的时候不考虑原视频起始帧
-    #   如果gap=-1，表示计算视频光流图的时候不考虑原视频末尾帧
+    #   gap=+1：从前往后计算光流图、间隔为1
+    #   gap=-1：从后往前计算光流图、间隔为1
     if n_raw == len(imfiles) - abs(args.gap): #如果有之前处理的缓存数据就不再次进行处理
         print("already {} flows existing in {}".format(n_raw, args.out_dir))
         return
-    exit(0)
+    #后面的代码还没有阅读
 
     print("Running RAFT on", args.rgb_dir)
 

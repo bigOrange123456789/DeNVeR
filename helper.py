@@ -41,8 +41,21 @@ def get_dataset(args):
         "disocc": disocc_dset,
         "ske": ske_dset,
     }
+
     if gt_dir is not None:
         dsets["gt"] = data.MaskDataset(gt_dir, rgb_dset=rgb_dset)
+        print("dsets[gt]",len(dsets["gt"]))
+    print({
+        "rgb": len(rgb_dset),
+        "fwd": len(fwd_dset),
+        "bck": len(bck_dset),
+        "epi": len(epi_dset),
+        "occ": len(occ_dset),
+        "disocc": len(disocc_dset),
+        "ske": len(ske_dset),
+    })
+    print("data.CompositeDataset(dsets):",len(data.CompositeDataset(dsets)))
+    # exit(0)
 
     return data.CompositeDataset(dsets)
 
@@ -203,7 +216,8 @@ def update_config(cfg, loader):
     we provide a min number of iterations for each phase,
     need to update the config to reflect this
     """
-    N = len(loader) * cfg.batch_size
+    N = len(loader) * cfg.batch_size # len(loader)=0 cfg.batch_size=16
+    print(len(loader) , cfg.batch_size,"len(loader) * cfg.batch_size")
     for phase, epochs in cfg.epochs_per_phase.items():
         n_iters = cfg.iters_per_phase[phase]
         cfg.epochs_per_phase[phase] = max(n_iters // N + 1, epochs)

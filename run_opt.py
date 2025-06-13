@@ -29,14 +29,14 @@ print("Current GPU Device ID:", device_id)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
     dset = get_dataset(cfg.data)
-    N, H, W = len(dset), dset.height, dset.width
+    N, H, W = len(dset), dset.height, dset.width #N, H, W 5 512 512
     can_preload = N < 200 and cfg.data.scale < 0.5
     preloaded = cfg.preload and can_preload
 
     loader = data.get_random_ordered_batch_loader(
         dset,
-        cfg.batch_size,
-        preloaded,
+        cfg.batch_size,#cfg.batch_size 16
+        preloaded, #False
     )
     val_loader = data.get_ordered_loader(
         dset,

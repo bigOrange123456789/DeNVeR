@@ -11,14 +11,14 @@ from util import get_mgrid, jacobian, VideoFitting
 
 def train_fence(path, total_steps, lambda_interf=0.5, lambda_flow=0.5, verbose=True, steps_til_summary=100):
     g = Siren(in_features=3, out_features=2, hidden_features=256,
-              hidden_layers=4, outermost_linear=True)
+              hidden_layers=4, outermost_linear=True)#in:(x,y,t) out:(dx,dy)
     g.cuda()
     f1 = Siren(in_features=2, out_features=3, hidden_features=256,
                hidden_layers=4, outermost_linear=True, first_omega_0=90.)
-    f1.cuda()
+    f1.cuda()#in:(x+dx,y+dy) out:(r,g,b) #场景计算
     f2 = Siren(in_features=3, out_features=4, hidden_features=256, 
                hidden_layers=4, outermost_linear=True)
-    f2.cuda()
+    f2.cuda() #in:(x,y,t) out:(a,b,c,d)干扰计算
 
     optim = torch.optim.Adam(lr=1e-4, params=chain(g.parameters(), f1.parameters(), f2.parameters()))
 
@@ -34,10 +34,10 @@ def train_fence(path, total_steps, lambda_interf=0.5, lambda_flow=0.5, verbose=T
 
         xyt = model_input[start:end].requires_grad_()
         xy, t = xyt[:, :-1], xyt[:, [-1]]
-        h = g(xyt)
-        xy_ = xy + h
-        o_scene = torch.sigmoid(f1(xy_))
-        o_obst = torch.sigmoid(f2(xyt))
+        h = g(xyt)#in:(x,y,t) out:(dx,dy)
+        xy_ = xy + h #(x2,y2)=(x1,y1)+(dx,dy)
+        o_scene = torch.sigmoid(f1(xy_))#场景
+        o_obst = torch.sigmoid(f2(xyt))#干扰
         o_obst, alpha = o_obst[:, :-1], o_obst[:, [-1]]
         o = (1 - alpha) * o_scene + alpha * o_obst
         loss_recon = ((o - ground_truth[start:end]) ** 2).mean()
@@ -71,16 +71,20 @@ def channel_stack(data):
 def main(args):
     data = args.data
     base_path = "nir/nir_image"
-    path = os.path.join(base_path,data)
+    path = os.path.join(base_path,data)#这应该是输入数据路径
     print(path)
     os.makedirs(path,exist_ok=True)
     stack_flag = channel_stack(data)
-    g, f1, f2, orig = train_fence(path, 3000)
+    # g, f1, f2, orig = train_fence(path, 3000) #解耦的MLP模型训练3000step
+    g, f1, f2, orig = train_fence(path, 100)
+    print("nir/booststrap.py mian():训练step3000->100")
+    #g:相机运动记录, f1:场景获取器, f2:干扰获取器, orig:原输入视频
     with torch.no_grad():
-        N, _, H, W = orig.size()
-        xyt = get_mgrid([H, W, N]).cuda()
-        h = g(xyt)
+        N, _, H, W = orig.size()#512*512*5，包含5帧图片的视频
+        xyt = get_mgrid([H, W, N]).cuda()#shape=[1310720=512*512*5, 3] 整个视频所有点的三维坐标(x,y,t)
+        h = g(xyt) #torch.Size([1310720, 2]) 给出每个像素的(dx,dy)
         o_scene = torch.sigmoid(f1(xyt[:, :-1] + h))
+        # xyt[:, :-1].shape = [1310720, 2]
         o_obst = torch.sigmoid(f2(xyt))
         o_obst = o_obst[:, :-1] * o_obst[:, [-1]]
         o_scene = o_scene.view(H, W, N, 3).permute(2, 0, 1, 3).cpu().detach().numpy()
@@ -88,14 +92,16 @@ def main(args):
         o_scene = (o_scene * 255).astype(np.uint8)
         o_obst = (o_obst * 255).astype(np.uint8)
         o_scene = [o_scene[i] for i in range(len(o_scene))]
-        o_obst = [o_obst[i] for i in range(len(o_obst))]
+        o_obst = [o_obst[i] for i in range(len(o_obst))]#干扰数据没使用
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
-        orig = [orig[i] for i in range(len(orig))]
+        orig = [orig[i] for i in range(len(orig))]#原视频数据没使用
     p = os.path.join("nirs",data)
     os.makedirs(p,exist_ok=True)
     name =os.path.join(p,"scene.png")
-    cv2.imwrite(name,o_scene[-1])
+    # o_scene是一个包含5张图片的list
+    # o_scene[-1].shape=(512, 512, 3)
+    cv2.imwrite(name,o_scene[-1])#应该是只使用了最后一帧的场景图片
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

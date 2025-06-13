@@ -99,6 +99,7 @@ def main(args):
         '''
         for seq in args.seqs: #逐个处理每一段视频
             for gap in [args.gap, -args.gap]:#这个循环执行两次，一次gap=-1,另一次gap=1
+                # gap是间隔，一次是正方向、另外一次是反方向
                 gpu = args.gpus[i % len(args.gpus)] #因为只有一个设备，所以这里获取到的编号ID始终为0
                 ex.submit(
                     process_sequence, #<function process_sequence at 0x7f9c903f30d0>
@@ -111,8 +112,8 @@ def main(args):
                     args.batch_size, #4
                 )
                 i += 1
-                print("程序中断位置：[./scripts, dataset_raft.py, main(args)]")
-                exit(0)
+                # print("程序中断位置：[./scripts, dataset_raft.py, main(args)]")
+                # exit(0)
 
 
 if __name__ == "__main__":
