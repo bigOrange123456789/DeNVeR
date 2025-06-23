@@ -76,8 +76,8 @@ def main(args):
     os.makedirs(path,exist_ok=True)
     stack_flag = channel_stack(data)
     # g, f1, f2, orig = train_fence(path, 3000) #解耦的MLP模型训练3000step
-    g, f1, f2, orig = train_fence(path, 100)
-    print("nir/booststrap.py mian():训练step3000->100")
+    g, f1, f2, orig = train_fence(path, 3000)
+    print("nir/booststrap.py mian():训练step3000->3000")#100
     #g:相机运动记录, f1:场景获取器, f2:干扰获取器, orig:原输入视频
     with torch.no_grad():
         N, _, H, W = orig.size()#512*512*5，包含5帧图片的视频

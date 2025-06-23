@@ -8,6 +8,18 @@ from skimage import color, data, filters, graph, measure, morphology
 import preprocess
 import subprocess
 import argparse
+import time
+# 记录开始时间
+time_log = {
+    "time_pre" : time.time()/60 ,
+    "起始时刻":time.time()/60 
+}
+def saveTime(tag):
+    time_log[tag]=time.time()/60
+    print(time_log)
+    print(tag,time_log[tag]-time_log["time_pre"])
+    time_log["time_pre"]=time_log[tag]
+
 
 ROOT = os.path.abspath("__file__/..") #ROOT: /home/lzc/桌面/DNVR
 
@@ -42,23 +54,29 @@ def main(args):
     # data_name: CVAI-2828RAO2_CRA32
     # preprocess
     preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
+    saveTime("黑塞矩阵+区域生长")
     skeltoize(data_name) # 获取图片的骨架，并存入custom_videos/skeltoize
+    saveTime("获取骨架")
 
     # run raft #RAFT是方法简称
     cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
     subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
+    saveTime("计算光流")
 
     # stage 1
     cmd = f"python nir/booststrap.py --data {data_name}"
     print(cmd)
     subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
+    saveTime("NIR前/背景分离")
     # stage 2
     cmd = f"python run_opt.py data=custom data.seq={data_name}"
     print(cmd)
     subprocess.call(cmd, shell=True)
+    saveTime("执行完毕")
 
 
 if __name__ == "__main__":
+    print("version:2025.06.14 15:46")
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--data")
     args = parser.parse_args()
