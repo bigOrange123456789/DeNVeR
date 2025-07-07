@@ -23,9 +23,17 @@ device_id = torch.cuda.current_device()
 
 print("Current GPU Device ID:", device_id)
 
+script_path = os.path.abspath(__file__)
+ROOT = os.path.dirname(script_path)
 @hydra.main(config_path="confs", config_name="config")
 def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构的三个分支都在哪里
-    #  会加载 confs 文件夹中的 config.yaml 文件作为默认配置。
+    # print("cfg.hydra.run.dir:",cfg.hydra.run.dir)
+    # exit(0)
+    # cfg.data.root='/home/lzc/桌面/DeNVeR/custom_videos'
+    # print("ROOT",ROOT)
+    cfg.data.root = os.path.join(ROOT,cfg.my.filePathRoot,"custom_videos") #"../DeNVeR_dataset"
+
+    # 会加载 confs 文件夹中的 config.yaml 文件作为默认配置。
     # 我都没有看到这段代码的训练过程是在哪里执行的
     # 一个项目里面最重要的有三部分：数据集的加载、模型的推理、损失函数
     '''
@@ -105,6 +113,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     }
     '''
     print(OmegaConf.to_yaml(cfg))
+    # print("cfg.data",cfg.data)
     dset = get_dataset(cfg.data)
     N, H, W = len(dset), dset.height, dset.width #N, H, W 5 512 512
     can_preload = N < 200 and cfg.data.scale < 0.5
@@ -322,6 +331,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     step_ct, val_dict = opt_infer_helper(n_epochs, start=step_ct, label=label)
 
 if __name__ == "__main__":
+    # exit(0)
     main()
 
 '''
@@ -348,7 +358,7 @@ if __name__ == "__main__":
         2.1 样条光流(训练UV参数、分割器)   {tform:FlowWarpLoss}
         2.2 重构损失(训练逐帧纹理)(包含全局纹理、UV训练)   {recon:ReconLoss}
         2.3 纹理对比(训练逐帧纹理)(包含全局纹理、UV训练)   {contr:ContrastiveTexLoss}
-        init_planar_motion 始化整体运动
+        init_planar_motion 初始化整体运动
             if(!ok):-*-*-*- 初始化整体运动失败(init_planar_motion) -*-*-*-
                 tform.detach_mask = False # 2.1样条光流优化分割器
                 训练

@@ -23,7 +23,7 @@ def saveTime(tag):
 
 ROOT = os.path.abspath("__file__/..") #ROOT: /home/lzc/桌面/DNVR
 
-def skeltoize(path="CVAI-2829RAO9_CRA37",ROOT=""):
+def skeltoize(path="CVAI-2829RAO9_CRA37"):
     imfiles = sorted(glob.glob(f"{ROOT}/preprocess/datasets/{path}/binary/*"))#获取binary中全部图片的路径
     # glob.glob函数的作用是根据提供的路径模式，返回一个包含所有匹配文件路径的列表。
     os.makedirs(f"{ROOT}/custom_videos/skeltoize/{path}", exist_ok=True)#生成一个文件夹
@@ -49,80 +49,51 @@ def skeltoize(path="CVAI-2829RAO9_CRA37",ROOT=""):
     print(f"{path} done!")
     # exit(0)
 
-
-
-
-
-import yaml
-# 指定 YAML 文件路径
-script_path = os.path.abspath(__file__)
-ROOT1 = os.path.dirname(script_path)
-file_path = os.path.join(ROOT1,'./confs/newConfig.yaml')
-# 打开并读取 YAML 文件
-with open(file_path, 'r', encoding='utf-8') as file:
-    config = yaml.safe_load(file)
-
-def main():
-    data_name = config["my"]["videoId"]#args.data
+def main(args):
+    data_name = args.data
     # data_name: CVAI-2828RAO2_CRA32
     # preprocess
-    preprocess.filter_extract(data_name,
-                              filePathRoot=config["my"]["filePathRoot"],
-                              inPath=config["my"]["datasetPath"]
-                              )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
+    preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
     saveTime("黑塞矩阵+区域生长")
-    skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
+    skeltoize(data_name) # 获取图片的骨架，并存入custom_videos/skeltoize
     saveTime("获取骨架")
-    # exit(0)
 
     # run raft #RAFT是方法简称
-    # print(ROOT)
-    # cmd = f"python {ROOT}/scripts/dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    custom_videos_path = os.path.join("../", config["my"]["filePathRoot"],"custom_videos")
-    cmd = f"cd {ROOT}/scripts && python dataset_raft.py --root { custom_videos_path } --dtype custom --seqs {data_name}"
-    # cmd = f"python {ROOT}/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
-    # cmd = f"cd {ROOT} python ./scripts/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root { custom_videos_path } --dtype custom --seqs {data_name}"
+    cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
     print(cmd) # cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
     subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
-    # exit(0)
     saveTime("计算光流")
 
     # stage 1                     # 获取背景的静态全景图
-    nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
-    print("nirs_path:",nirs_path)
-    filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
-    cmd = f"python {ROOT}/nir/booststrap.py --filePathRoot {filePathRoot2} --data {data_name} --outpath {nirs_path}"
+    cmd = f"python nir/booststrap.py --data {data_name}"
     print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
     subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
-    # exit(0)
     saveTime("NIR前/背景分离")
+    exit(0)
     # stage 2
-    cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
+    cmd = f"python run_opt.py data=custom data.seq={data_name}"
     print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
     subprocess.call(cmd, shell=True)
     saveTime("执行完毕")
 
+
 if __name__ == "__main__":
     print("version:2025.06.14 15:46")
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-d", "--data")
-    # args = parser.parse_args()
-    # main(args)
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--data")
+    args = parser.parse_args()
+    main(args)
+
 
 '''
 
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2
 export PATH="~/anaconda3/bin:$PATH"
 source activate DNVR
-python main.py -d CVAI-2828RAO2_CRA32
-python main.py -d CVAI-2828RAO11_CRA11
+python main_old.py -d CVAI-2828RAO11_CRA11
 
 获取光流图
-cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO11_CRA11
+cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
 
 获取背景的静态全景图
 python nir/booststrap.py --data CVAI-2828RAO2_CRA32

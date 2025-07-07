@@ -1,13 +1,15 @@
 defaults:
-    - data: davis
+    - data: custom
     - model: deform
     - train
     - _self_
+    - newConfig
 
 n_layers: 2
 resume: True
 preload: True
-log_root: outputs
+log_root: ../DeNVeR_out/outputs
+log_root_old: outputs
 exp_name: init_model 
 
 hydra:

@@ -1,0 +1,6 @@
+my:
+    videoId: "CVAI-2828RAO11_CRA11"
+    filePathRoot: "../DeNVeR_out"
+    datasetPath:  "../DeNVeR_in/xca_dataset"
+    raftConfig: "../DeNVeR_in/models_config"
+

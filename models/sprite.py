@@ -44,19 +44,19 @@ class SpriteModel(nn.Module):#这应该是那个三分支模型本身
             args = cfg.transform
             self.local = args.local
             self.active_local = False
-            self.tforms = init_trajectory(#背景的运动参数
+            self.tforms = init_trajectory( #背景的运动参数
                 dset,
                 1,
                 active_local=self.active_local,
                 **dict(args),
             )
             optims.append({"params": self.tforms.parameters(), "lr": args.lr})
-            self.fg_tforms = FG_init_trajectory(#这是血管的运动参数么？
+            self.fg_tforms = FG_init_trajectory( #这是血管的运动参数么？
                 dset,
                 1,
                 active_local=self.active_local,
                 **dict(args),
-            ) # 目前fg_tforms和tforms内部使用的方法是一样的
+            ) #目前fg_tforms和tforms内部使用的方法是一样的
             optims.append({"params": self.fg_tforms.parameters(), "lr": args.lr})
             view_grid = utils.get_uv_grid(H, W, homo=True)  # (H, W, 3)
             self.register_buffer("view_grid", view_grid.view(1, 1, H, W, 3))
@@ -144,6 +144,10 @@ class SpriteModel(nn.Module):#这应该是那个三分支模型本身
         if ret_tex:#True #纹理计算
             # get the canonical textures and warped appearances #获得规范纹理和扭曲外观
             # texs (M, 3, H, W) and apprs (B, M, 3, H, W)
+            # print("out[coords]",out["coords"])
+            # print("vis",vis)
+            # print("self.tex_gen",self.tex_gen)
+            # exit(0)
             tex_dict = self.tex_gen(out["coords"], vis=vis)
             out.update(tex_dict) # [texs, raw_apprs, apprs] #in:UV out:[全局纹理,加噪单帧纹理,单帧纹理]
 

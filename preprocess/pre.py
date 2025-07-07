@@ -21,17 +21,22 @@ def extract_images(input_folder, output_folder, index):
     for image_path in selected_images:
         shutil.copy(image_path, output_folder) #复制图片
 
-
-def filter_extract(dir_name="CVAI-2828RAO2_CRA32", base_path="datasets"):
+def filter_extract(dir_name="CVAI-2828RAO2_CRA32", filePathRoot="", inPath=""):
+    ROOT2 = os.path.join(ROOT, filePathRoot)
+    base_path="datasets"
     parent_folder = dir_name[:9]#获取前9个字符：CVAI-2828
-    base_path = os.path.join(f"{ROOT}/preprocess", base_path)#/home/lzc/桌面/DNVR/preprocess/datasets
+    base_path = os.path.join(f"{ROOT2}/preprocess", base_path)#/home/lzc/桌面/DNVR/preprocess/datasets
+    # base_path = os.path.join(ROOT,"./preprocess", base_path)
     output_folder_filter = os.path.join(base_path, dir_name, "filter")#filter输出路径
     output_folder_mask = os.path.join(base_path, dir_name, "binary")#binary输出路径
     new_input_folder = os.path.join(base_path, dir_name, dir_name)#输入数据缓存路径
     deforamble_sprite_folder = os.path.join(#扭曲图存储路径
-        f"{ROOT}/custom_videos/PNGImages", dir_name)
+        f"{ROOT2}/custom_videos/PNGImages", dir_name)
     input_folder = os.path.join(#原始输入数据路径
-        f"{ROOT}/xca_dataset/{parent_folder}/images/{dir_name}")
+        f"{ROOT2}/xca_dataset/{parent_folder}/images/{dir_name}")
+    input_folder = os.path.join(  ROOT,inPath,f"{parent_folder}/images/{dir_name}")
+    print(input_folder,"input_folder",input_folder)
+    # exit(0)
     process_images(input_folder, output_folder_filter)#获取黑塞矩阵处理后的图像，存入filter文件夹
     thresholds, cut_position, maximum_position = find_cut_position(
         output_folder_filter) #每张图的相对暗度，最后一张图的索引，最亮的图的索引

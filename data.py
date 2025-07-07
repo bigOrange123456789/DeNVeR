@@ -19,10 +19,26 @@ from torch.utils.data import (
 import torchvision.transforms as T
 
 import utils
+
 # ROOT = "/project/wujh1123/denver"
-ROOT = os.path.abspath("__file__/..")
+# ROOT = os.path.abspath("__file__/..")
 # print("ROOT:",ROOT)
-# exit(0)
+
+import yaml
+# 指定 YAML 文件路径
+# ROOT1=os.path.abspath("__file__/..")
+script_path = os.path.abspath(__file__)
+ROOT1 = os.path.dirname(script_path)
+file_path = os.path.join(ROOT1,'./confs/newConfig.yaml')
+# 打开并读取 YAML 文件
+with open(file_path, 'r', encoding='utf-8') as file:
+    c0 = yaml.safe_load(file)
+    # print("c0",c0)
+    # print(c0["my"])
+    # print(c0["my"]["filePathRoot"])
+    ROOT2=c0["my"]["filePathRoot"]
+    ROOT=os.path.join(ROOT1,ROOT2)
+
 def split_dataset_idcs(dset, n_val):
     """
     split the video sequence either at the front or back of the video
@@ -157,7 +173,6 @@ def get_random_ordered_batch_loader(dset, batch_size, preloaded, min_batch_size=
     # print("len(my2)",len(my2))
     # print("batch_sampler",dir(batch_sampler))
     # print("batch_size:",batch_sampler.batch_size)
-    # exit(0)
 
     return DataLoader(
         dset,
@@ -618,11 +633,22 @@ class OcclusionDataset(Dataset):
         )
         return occ_map[0], occ_locs[0], occ_map.sum()
 
+# from omegaconf import DictConfig, OmegaConf
+# import hydra
+# @hydra.main(config_path="confs", config_name="config")
+# def main(config: DictConfig):
+#     return config
+# #     # print("config", config)
+# main()
+# # print(c0)
 
 def get_masks(i, scale, seq_name):
+    # print("config", config)
     path = f"{ROOT}/preprocess/datasets"
     path = os.path.join(path, seq_name, "binary", '*')
+    # print("path", path)
     imfiles = sorted(glob.glob(path)) # 获取path
+    # print("imfiles[i]",imfiles[i])
     im = Image.open(imfiles[i]) # 加载图像
     if scale != 1: # 如果缩放比例不为1,则按照比例缩放图像
         W, H = im.size

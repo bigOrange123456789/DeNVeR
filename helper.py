@@ -17,6 +17,12 @@ DEVICE = torch.device("cuda")
 ROOT = os.path.abspath("__file__/..")
 def get_dataset(args):#必须先弄清楚输入的数据是什么
     # args.root= ROOT+"/custom_videos"#lzc
+    # print("args.type", args.type)
+    # print("args.root", args.root)
+    # print("args.seq",args.seq)
+    # print("args.flow_gap", args.flow_gap)
+    # print("args.res", args.res)
+    # exit(0)
     rgb_dir, fwd_dir, bck_dir, gt_dir,ske_dir = data.get_data_dirs(
         args.type, args.root, args.seq, args.flow_gap, args.res
     )
@@ -207,7 +213,9 @@ def infer_model(
         if "coords" in out_dict:
             torch.save(out_dict["coords"], f"{out_name}/coords.pth")
         save_metric(out_name, out_dict, "ious")
-    # print(out_dict)
+    # print("out_dict", out_dict.keys() )
+    # print("out_name",out_name)
+    # exit(0)
     return out_dict, out_name
 
 

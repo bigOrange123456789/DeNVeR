@@ -25,6 +25,18 @@ from data import write_flo
 
 DEVICE = torch.device("cuda")
 
+##############################################################
+import yaml
+# 指定 YAML 文件路径
+script_path = os.path.abspath(__file__)
+ROOT1 = os.path.dirname(script_path)
+file_path = os.path.join(ROOT1,'../','./confs/newConfig.yaml')
+# 打开并读取 YAML 文件
+with open(file_path, 'r', encoding='utf-8') as file:
+    c0 = yaml.safe_load(file)
+    ROOT2=c0["my"]["raftConfig"]
+    ROOT=os.path.join(ROOT1,"../",ROOT2)
+##############################################################
 
 def load_image(imfile):
     img = np.array(Image.open(imfile).convert("RGB")).astype(np.uint8)
@@ -63,6 +75,7 @@ def run_raft(args):
 
     model = torch.nn.DataParallel(RAFT(args))
     model_path = os.path.join(RAFT_BASE, "models", args.ckpt)
+    model_path = os.path.join(ROOT, args.ckpt)
     model.load_state_dict(torch.load(model_path))
 
     model = model.module

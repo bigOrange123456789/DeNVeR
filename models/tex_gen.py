@@ -11,9 +11,28 @@ import os
 sys.path.append("..")
 DEVICE = torch.device("cuda")
 
-ROOT = os.path.abspath("__file__/..")
+# ROOT = os.path.abspath("__file__/..")
 # ROOT = os.path.dirname(BASE_DIR)
-print("test_ROOT",ROOT)
+# print("test_ROOT",ROOT)
+##############################################################
+import yaml
+# 指定 YAML 文件路径
+script_path = os.path.abspath(__file__)
+ROOT1 = os.path.dirname(script_path)
+file_path = os.path.join(ROOT1,'../','./confs/newConfig.yaml')
+# 打开并读取 YAML 文件
+with open(file_path, 'r', encoding='utf-8') as file:
+    c0 = yaml.safe_load(file)
+    # print("c0",c0)
+    # print(c0["my"])
+    # print(c0["my"]["filePathRoot"])
+    # ROOT1=os.path.abspath("__file__/..")
+    ROOT2=c0["my"]["filePathRoot"]
+    ROOT=os.path.join(ROOT1,"../",ROOT2)
+    # print("c0",c0)
+    # print("ROOT",ROOT)
+##############################################################
+# exit(0)
 # ROOT = "/project/wujh1123/denver"
 
 def resample_textures(texs, coords, random_comp=False):#从全局纹理图中根据给定的坐标重新采样获取每个时刻的纹理
@@ -150,6 +169,8 @@ class TexUNet(nn.Module):
         '''
         texs_clone = texs.clone() #这里难道不会影响前面的那些参数的学习么？
         with torch.no_grad():
+            # print("back:",ROOT+"/nirs/{self.data_path}/scene.png")
+            # exit(0)
             back_ground = cv2.imread(
                 f"{ROOT}/nirs/{self.data_path}/scene.png").astype(np.float32) / 255
             width, height, _ = back_ground.shape

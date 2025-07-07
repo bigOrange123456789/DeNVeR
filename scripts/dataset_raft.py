@@ -10,7 +10,6 @@ import sys
 sys.path.append(ROOT_DIR)
 from data import get_data_subdir, match_custom_seq
 
-
 def process_sequence(gpu, dtype, root, seq, gap, res="480p", batch_size=4):
     '''
         gpu:0
@@ -130,5 +129,7 @@ if __name__ == "__main__":
     parser.add_argument("--dres", default="480p")
     parser.add_argument("--batch_size", type=int, default=4)
     args = parser.parse_args()
+
+    print("args.root:", args.root)
 
     main(args)

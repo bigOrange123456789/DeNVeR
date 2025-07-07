@@ -9,6 +9,15 @@ import argparse
 from model import Siren
 from util import get_mgrid, jacobian, VideoFitting
 
+import yaml
+# 指定 YAML 文件路径
+script_path = os.path.abspath(__file__)
+ROOT1 = os.path.dirname(script_path)
+file_path = os.path.join(ROOT1,'../','./confs/newConfig.yaml')
+# 打开并读取 YAML 文件
+with open(file_path, 'r', encoding='utf-8') as file:
+    config = yaml.safe_load(file)
+
 def train_fence(path, total_steps, lambda_interf=0.5, lambda_flow=0.5, verbose=True, steps_til_summary=100):
     g = Siren(in_features=3, out_features=2, hidden_features=256,
               hidden_layers=4, outermost_linear=True)#in:(x,y,t) out:(dx,dy)
@@ -52,13 +61,20 @@ def train_fence(path, total_steps, lambda_interf=0.5, lambda_flow=0.5, verbose=T
         optim.step()
 
     return g, f1, f2, v.video
-def channel_stack(data):
+def channel_stack(data,filePathRoot):
     parent_path = data[:9]
-    print(parent_path)
-    folder_path = os.path.join("xca_dataset",parent_path,'images',data)
+    # print(parent_path)
+    # print("filePathRoot",filePathRoot)
+    folder_path = os.path.join("xca_dataset", parent_path, 'images', data)
+    folder_path = os.path.join(filePathRoot,"xca_dataset",parent_path,'images',data)
+    folder_path = os.path.join(ROOT1, "../", config["my"]["datasetPath"],parent_path,'images',data)
+    # print(folder_path,"folder_path")
+    # print("datasetPath:",config["my"]["datasetPath"])
+    # exit(0)
     count = 0
     for filename in sorted(os.listdir(folder_path)):
         f = os.path.join(folder_path,filename)
+        # print("f",f)
         gray_image = cv2.imread(f, cv2.IMREAD_GRAYSCALE)
         # print(sorted(os.listdir(folder_path)))
         rgb_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2RGB)
@@ -74,10 +90,10 @@ def main(args):
     path = os.path.join(base_path,data)#这应该是输入数据路径
     print(path)
     os.makedirs(path,exist_ok=True)
-    stack_flag = channel_stack(data)
+    stack_flag = channel_stack(data,args.filePathRoot)
     # g, f1, f2, orig = train_fence(path, 3000) #解耦的MLP模型训练3000step
-    g, f1, f2, orig = train_fence(path, 3000)
-    print("nir/booststrap.py mian():训练step3000->3000")#100
+    g, f1, f2, orig = train_fence(path, 3)
+    print("nir/booststrap.py mian():训练step3000->3")#100
     #g:相机运动记录, f1:场景获取器, f2:干扰获取器, orig:原输入视频
     with torch.no_grad():
         N, _, H, W = orig.size()#512*512*5，包含5帧图片的视频
@@ -96,7 +112,9 @@ def main(args):
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
         orig = [orig[i] for i in range(len(orig))]#原视频数据没使用
-    p = os.path.join("nirs",data)
+    print("outpath",args.outpath)
+    p = os.path.join(args.outpath, data)
+    # p = os.path.join("nirs",data)
     os.makedirs(p,exist_ok=True)
     name =os.path.join(p,"scene.png")
     # o_scene是一个包含5张图片的list
@@ -106,5 +124,9 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--data")
+    parser.add_argument("--outpath")
+    parser.add_argument("--filePathRoot")
     args = parser.parse_args()
+    # args.filePathRoot=""
+    # args.outpath="nirs"
     main(args)
