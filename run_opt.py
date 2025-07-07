@@ -236,4 +236,10 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    # print("test")
+    # exit(0)
     main()
+
+
+# print("test123")
+

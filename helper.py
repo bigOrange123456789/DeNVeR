@@ -77,6 +77,8 @@ def optimize_model(
     out_name = None if label is None else f"tr_{label}"
     save_vis = vis_every > 0 and out_name is not None
     for _ in tqdm(range(n_epochs)):
+        print("程序中断位置:helper.py -- optimize_model()")
+        exit(0)
         for batch in loader:
             model.optim.zero_grad()
             batch = utils.move_to(batch, DEVICE)

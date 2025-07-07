@@ -55,6 +55,8 @@ def main(args):
     # preprocess
     preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
     saveTime("黑塞矩阵+区域生长")
+    # print("test58")
+    # exit(0)
     skeltoize(data_name) # 获取图片的骨架，并存入custom_videos/skeltoize
     saveTime("获取骨架")
 

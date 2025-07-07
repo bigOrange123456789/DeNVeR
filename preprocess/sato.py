@@ -48,7 +48,7 @@ def process_images(input_folder, output_folder, border_thickness=3):
                 if x < border_thickness or x >= h - border_thickness or y < border_thickness or y >= w - border_thickness:
                     sato_result[x, y] = 0 # 将MASK图片的边缘置零：前面滤波过程中对边缘进行了镜像扩充，因此边缘检测可能出错。
 
-        output_filename = file_name#f"{i:05d}.png"
+        output_filename = f"{i:05d}.png"#file_name#f"{i:05d}.png"
         io.imsave(os.path.join(output_folder, output_filename), sato_result)
         # /home/lzc/桌面/DNVR/preprocess/datasets/CVAI-2828RAO2_CRA32/filter/00000.png
 
