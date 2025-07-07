@@ -25,11 +25,21 @@ specificities = []
 # 遍历每一对图像
 for binary_file, gt_file in zip(binary_files, ground_truth_files):
     # 读取二元图像和对应的地面真值（ground truth）图像
+    # binary_image = cv2.imread(os.path.join(
+    #     binary_folder, binary_file), cv2.IMREAD_GRAYSCALE)
     binary_image = cv2.imread(os.path.join(
-        binary_folder, binary_file), cv2.IMREAD_GRAYSCALE)
+        binary_file), cv2.IMREAD_GRAYSCALE)
+    # print("binary_file, gt_file:",binary_file, gt_file)
+    # print(
+    #     "os.path.join(binary_folder,binary_file):",
+    #     os.path.join(binary_folder, binary_file)
+    # )
+    # print("binary_image:", binary_image)
 
+    # ground_truth = cv2.imread(os.path.join(
+    #     ground_truth_folder, gt_file), cv2.IMREAD_GRAYSCALE)
     ground_truth = cv2.imread(os.path.join(
-        ground_truth_folder, gt_file), cv2.IMREAD_GRAYSCALE)
+        gt_file), cv2.IMREAD_GRAYSCALE)
     x, y = binary_image.shape
     g_x, g_y = ground_truth.shape
     if x != g_x and y != g_y:

@@ -52,14 +52,14 @@ def get_flow_coords(flow, align_corners=False):
 
 def inverse_flow_warp(I2, F_12, O_12=None):
     """
-    Given image I2 and the flow field from I1 to I2, sample I1 from I2,
-    except at points that are disoccluded
+    Given image I2 and the flow field from I1 to I2, sample I1 from I2, #给定图像I2和从I1到I2的流场，
+    except at points that are disoccluded #除了那些被忽视的点
     :param I2 (B, C, H, W)
     :param F_12 flow field from I1 to I2 in uv coords (B, H, W, 2)
     :param O_12 (optional) mask of disocclusions (B, 1, H, W)
     """
-    C_12 = get_flow_coords(F_12, align_corners=False)
-    I1 = F.grid_sample(I2, C_12, align_corners=False)
+    C_12 = get_flow_coords(F_12, align_corners=False)#根据光流图，获取每个像素下一帧的位置
+    I1 = F.grid_sample(I2, C_12, align_corners=False)#根据光流图，获取下一帧的图片
     if O_12 is not None:
         mask = ~(O_12 == 1)
         I1 = mask * I1
@@ -69,6 +69,7 @@ def inverse_flow_warp(I2, F_12, O_12=None):
 def compute_occlusion_locs(fwd, bck, gap, method="brox", thresh=1.5, ret_locs=False):
     """
     compute the locations of the occluding pixels using round-trip flow
+    使用往返流计算遮挡像素的位置（计算方法大致为：在经过像素移动的往返计算后、如果距离出发点较远则被遮挡）
     :param fwd (N, 2, H, W) flow from 1->2, 2->3, etc
     :param bck (N, 2, H, W) flow from 2->1, 3->2, etc
     :param method (str) brox implementation taken from
@@ -77,10 +78,22 @@ def compute_occlusion_locs(fwd, bck, gap, method="brox", thresh=1.5, ret_locs=Fa
     :param thresh (float) if not using the brox method, the fb distance threshold to use
     :return occ_map (N, 1, H, W) bool binary mask of pixels that get occluded
             occ_locs (N, H, W, 2) O[i,j] location of the pixel that occludes the pixel at i, j
+    ---------------------------------------------------------------------------
+    输入：
+       - fwd: 前向光流，形状为(N, 2, H, W)，表示从第1帧到第2帧、第2帧到第3帧等的光流。
+       - bck: 反向光流，形状为(N, 2, H, W)，表示从第2帧到第1帧、第3帧到第2帧等的光流。
+       - gap: 这个参数在函数中未使用，可能是预留的或者在其他版本中有用，这里忽略。
+       - method: 计算遮挡的方法，默认是"brox"，或者使用一个简单的阈值方法。
+       - thresh: 当不使用brox方法时，使用这个阈值来判断遮挡。
+       - ret_locs: 是否返回遮挡位置，如果为True，则返回遮挡像素的位置。
+    输出：
+       - occ_map: 一个二值掩码，形状为(N, 1, H, W)，表示哪些像素被遮挡（True表示遮挡）。
+       - 如果`ret_locs`为True，还会返回`occ_locs`，形状为(N, H, W, 2)，表示在(i, j)位置的像素被哪个位置的像素遮挡（即遮挡者的位置）。
     """
     N, _, H, W = fwd.shape
 
     ## get the backward flow at the points the forward flow maps points to
+    ## 在正向流映射指向的点处获取反向流
     fwd_vec = fwd.permute(0, 2, 3, 1)
     inv_flo = inverse_flow_warp(bck, fwd_vec)  # (N, 2, H, W)
     fb_sq_diff = torch.square(fwd + inv_flo).sum(dim=1, keepdim=True)
@@ -93,6 +106,7 @@ def compute_occlusion_locs(fwd, bck, gap, method="brox", thresh=1.5, ret_locs=Fa
         occ_map = fb_sq_diff > sq_thresh
 
     # get the mask of points that don't go out of frame
+    # 获取未超出框架的点的掩码
     uv_fwd = get_flow_coords(fwd_vec, align_corners=False)  # (N, H, W, 2)
     valid = ((uv_fwd < 0.99) & (uv_fwd > -0.99)).all(dim=-1)  # (N, H, W)
     occ_map = valid[:, None] & occ_map
@@ -101,6 +115,7 @@ def compute_occlusion_locs(fwd, bck, gap, method="brox", thresh=1.5, ret_locs=Fa
 
     if ret_locs:
         # the inverse warped locs in the original image
+        # 原始图像中的逆扭曲位置
         occ_locs = uv_fwd + inv_flo.permute(0, 2, 3, 1)
         out.append(occ_locs)
     return out

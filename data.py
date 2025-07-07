@@ -39,16 +39,26 @@ def split_dataset_idcs(dset, n_val):
 
 
 def get_ordered_loader(dset, batch_size, preloaded):
-    num_workers = batch_size if not preloaded else 0
+    num_workers = batch_size if not preloaded else 0 #16
     print("DATALOADER NUM WORKERS", num_workers)
-    persistent_workers = True if num_workers > 0 else False
+    persistent_workers = True if num_workers > 0 else False #True
+    '''
+    get_ordered_loader:DataLoader(
+        dset,
+        batch_size=16,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
+        persistent_workers=True
+    )
+    '''
     return DataLoader(
         dset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=persistent_workers,
-        shuffle=False,
-        persistent_workers=persistent_workers,
+        batch_size=batch_size, #指定每个批次的样本数量
+        num_workers=num_workers, #指定加载数据时使用的子进程数量
+        pin_memory=persistent_workers, #是否将数据加载到 GPU 的 Pin Memory 中
+        shuffle=False, #是否在每个 epoch 开始时随机打乱数据
+        persistent_workers=persistent_workers, #是否在 DataLoader 的生命周期内保持子进程的活动状态
     )
 
 
@@ -100,11 +110,55 @@ def get_random_ordered_batch_loader(dset, batch_size, preloaded, min_batch_size=
     if min_batch_size is None:
         min_batch_size = batch_size // 2
     idcs = list(range(total_size - min_batch_size))
-    sampler = SubsetRandomSampler(idcs)  # sample randomly without replacement
+    sampler = SubsetRandomSampler(idcs)  # sample randomly without replacement #随机取样，不更换
     batch_sampler = OrderedBatchSampler(sampler, total_size, batch_size)
     num_workers = batch_size if not preloaded else 0
     print("DATALOADER NUM WORKERS", num_workers)
     persistent_workers = True if num_workers > 0 else False
+    # print({
+    #     "num_workers" : num_workers,
+    #     "batch_sampler" : batch_sampler,
+    #     "pin_memory" : persistent_workers,
+    #     "persistent_workers" : persistent_workers,
+    # })
+    '''
+    get_ordered_loader:DataLoader(
+        dset,
+        batch_size=16,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
+        persistent_workers=True
+    )
+    get_random_ordered_batch_loader:{
+        'batch_sampler': <data.OrderedBatchSampler object at 0x7fcd517fe4c0>, 
+        num_workers=16, 
+        pin_memory=True, 
+        persistent_workers=True
+    }
+    '''
+    # my1=DataLoader(
+    #     dset,
+    #     batch_size=16,
+    #     num_workers=16,
+    #     pin_memory=True,
+    #     # shuffle=False,#不进行随机打乱
+    #     persistent_workers=True
+    # )
+    # print("len(my1)",len(my1))
+    # my2=DataLoader(
+    #     dset,
+    #     # batch_size=16,
+    #     num_workers=16,
+    #     batch_sampler=batch_sampler,
+    #     pin_memory=True,
+    #     persistent_workers=True,
+    # )
+    # print("len(my2)",len(my2))
+    # print("batch_sampler",dir(batch_sampler))
+    # print("batch_size:",batch_sampler.batch_size)
+    # exit(0)
+
     return DataLoader(
         dset,
         num_workers=num_workers,
@@ -127,7 +181,7 @@ class OrderedBatchSampler(BatchSampler):
 
     def __iter__(self):
         """
-        returns an iterator returning batch indices
+        returns an iterator returning batch indices #返回一个迭代器，返回批索引
         """
         for idx in self.sampler:
             n_batch = min(self.batch_size, self.total_size - idx)
@@ -501,41 +555,43 @@ class FlowDataset(Dataset):
 
 class OcclusionDataset(Dataset):
     def __init__(self, fwd_dset, bck_dset):
-        assert abs(fwd_dset.gap) == abs(bck_dset.gap)
-        assert len(fwd_dset) == len(bck_dset)
-        assert fwd_dset.height == bck_dset.height
+        #disocc_dset = data.OcclusionDataset(bck_dset, fwd_dset) #遮挡
+        assert abs(fwd_dset.gap) == abs(bck_dset.gap) #前向步长==后向步长
+        assert len(fwd_dset) == len(bck_dset)         #前向光流图数量==后向光流图数量
+        assert fwd_dset.height == bck_dset.height     #前/后向光流图的尺寸保持一致
         assert fwd_dset.width == bck_dset.width
 
         self.fwd = fwd_dset
         self.bck = bck_dset
         self.gap = self.fwd.gap
 
-        self.names = fwd_dset.names
-        self.height, self.width = self.fwd.height, self.fwd.width
-        self.valid_fwd_range = fwd_dset.valid_idx_range
-        self.valid_bck_range = bck_dset.valid_idx_range
+        self.names = fwd_dset.names#10张图片的文件名
+        self.height, self.width = self.fwd.height, self.fwd.width#尺寸
+        self.valid_fwd_range = fwd_dset.valid_idx_range # 前向光流的索引范围:(0, 8)
+        self.valid_bck_range = bck_dset.valid_idx_range # 后向光流的索引范围:(1, 9)
         print("VALID FWD RANGE", self.valid_fwd_range)
         print("VALID BCK RANGE", self.valid_bck_range)
 
     def __len__(self):
-        return len(self.fwd)
+        return len(self.fwd)#遮挡视频的帧数和光流视频相同
 
-    def _check_valid(self, idx):
-        fwd_min, fwd_max = self.valid_fwd_range
-        bck_min, bck_max = self.valid_bck_range
-        bck_idx = idx + self.gap
+    def _check_valid(self, idx): #(当gap为1的时候)判断是否不是第一个或最后一个
+        fwd_min, fwd_max = self.valid_fwd_range #前向光流图的范围
+        bck_min, bck_max = self.valid_bck_range #前向光流图的范围
+        bck_idx = idx + self.gap # 这个ID+偏移
 
-        inval_fwd = idx < fwd_min or idx > fwd_max  # no valid forward
-        inval_bck = bck_idx < bck_min or bck_idx > bck_max  # no valid backward
+        inval_fwd = idx < fwd_min or idx > fwd_max  # no valid forward #不在前向的范围内
+        inval_bck = bck_idx < bck_min or bck_idx > bck_max  # no valid backward #不在后向的范围内
         if inval_fwd or inval_bck:  # just return zeros (or ones??)
             return False
         return True
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx):#获取一张遮挡图
         """
         return occlusion map, occluding pixel locs, and number of occluded pixels
+        返回遮挡图、遮挡像素位置和遮挡像素数
         """
-        if not self._check_valid(idx):
+        if not self._check_valid(idx): #对于第一帧或最后一帧，返回全零
             occ_map = torch.zeros(1, self.height, self.width, dtype=torch.bool)
             occ_locs = torch.zeros(
                 self.height, self.width, 2, dtype=torch.float32)
@@ -544,13 +600,19 @@ class OcclusionDataset(Dataset):
         bck_idx = idx + self.gap
         f_ok, fwd = self.fwd[idx]  # (2, H, W)
         b_ok, bck = self.bck[bck_idx]
-        if not f_ok or not b_ok:
+        if not f_ok or not b_ok:#这个是否OK我猜是RAFT给出的可靠性指标 #光流不可靠仍然返回全零
             occ_map = torch.zeros(1, self.height, self.width, dtype=torch.bool)
             occ_locs = torch.zeros(
                 self.height, self.width, 2, dtype=torch.float32)
             return occ_map, occ_locs, torch.tensor(0)
 
         # occ_map (1, 1, H, W), occ_locs (1, H, W, 2)
+        # print("fwd",type(fwd), fwd.shape)
+        # print("bck",type(bck), bck.shape)
+        # print("fwd[None]", type(fwd[None]), fwd[None].shape)
+        # print("bck[None]", type(bck[None]), bck[None].shape)
+        # fwd.shape=bck.shape=[2, 128, 128]
+        # fwd[None].shape=bck[None].shape=[1, 2, 128, 128]
         occ_map, occ_locs = utils.compute_occlusion_locs(
             fwd[None], bck[None], self.gap, ret_locs=True
         )
@@ -560,9 +622,9 @@ class OcclusionDataset(Dataset):
 def get_masks(i, scale, seq_name):
     path = f"{ROOT}/preprocess/datasets"
     path = os.path.join(path, seq_name, "binary", '*')
-    imfiles = sorted(glob.glob(path))
-    im = Image.open(imfiles[i])
-    if scale != 1:
+    imfiles = sorted(glob.glob(path)) # 获取path
+    im = Image.open(imfiles[i]) # 加载图像
+    if scale != 1: # 如果缩放比例不为1,则按照比例缩放图像
         W, H = im.size
         w, h = int(scale * W), int(scale * H)
         im = im.resize((w, h), Image.Resampling.LANCZOS)
@@ -573,7 +635,7 @@ def get_masks(i, scale, seq_name):
     return masks
 
 
-class EpipolarDataset(Dataset):
+class EpipolarDataset(Dataset): # epipolar的意思是极线
     def __init__(self, flow_dset, seq_name, scale, clip=True, reject=0.5):
         self.flow_dset = flow_dset
         self.names = flow_dset.names
@@ -581,6 +643,7 @@ class EpipolarDataset(Dataset):
         self.valid_idx_range = flow_dset.valid_idx_range
         self.scale = scale
         self.height, self.width = flow_dset.height, flow_dset.width
+        # 预先计算一个UV网格（图像上每个像素的坐标），并将其展平为(H*W, 2)的形状。
         uv = utils.get_uv_grid(self.height, self.width, align_corners=False)
         self.x1 = uv.reshape(-1, 2)  # (H*W, 2)
         self.clip = clip
@@ -592,18 +655,18 @@ class EpipolarDataset(Dataset):
         return len(self.names)
 
     def __getitem__(self, i):
-        if self.cache[i] is None:
-            self.cache[i] = self.compute_sampson_error(i)
+        if self.cache[i] is None: #再次读取时可直接从缓存中获取。
+            self.cache[i] = self.compute_sampson_error(i) #读取黑塞MASK。
         return self.cache[i]
 
     def compute_sampson_error(self, i):
-        err = get_masks(i, self.scale, self.seq_name).to(torch.float32)
+        err = get_masks(i, self.scale, self.seq_name).to(torch.float32) # 加载通过黑塞矩阵获取到的MASK图片。
         max_val = err.max()
         min_val = err.min()
-        err = (err - min_val) / (max_val - min_val + 1e-6)
+        err = (err - min_val) / (max_val - min_val + 1e-6) #对图片进行归一化处理。
         ok = torch.tensor(True)
         F = 1
-        return ok, err, F
+        return ok, err, F #返回True,Mask,1
 
     def save_to(self, out_dir):
         """

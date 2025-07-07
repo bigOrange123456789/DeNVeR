@@ -19,9 +19,9 @@ def composite_rgba_checkers(masks, rgbs, n_rows=24, fac=0.2):
 
 
 def get_rainbow_checkerboard(H, W, n_rows, fac=0.2, device=None):
-    checkers = get_checkerboard(H, W, n_rows, device=device)
-    rainbow = get_rainbow(H, W, device=device)
-    return fac * checkers + (1 - fac) * rainbow
+    checkers = get_checkerboard(H, W, n_rows, device=device) # 棋盘 #每个通道的数据都一样
+    rainbow = get_rainbow(H, W, device=device) # 彩虹 #三个通道的彩虹数据不一样
+    return fac * checkers + (1 - fac) * rainbow # 将棋盘和彩虹混合
 
 
 def get_gray_checkerboard(H, W, n_rows, fac=0.2, shade=0.7, device=None):

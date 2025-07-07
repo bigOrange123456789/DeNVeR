@@ -65,7 +65,7 @@ def init_normal(m, mean=0, std=1):
     if isinstance(m, nn.Conv2d):
         nn.init.normal_(m.weight, mean=mean, std=std)
         nn.init.normal_(m.bias, mean=mean, std=std)
-
+        # nn.init.normal_ 是 PyTorch 提供的一个初始化函数，用于将张量的值初始化为正态分布的随机数。
 
 def pad_diff(x1, x2):
     diffY = x2.size()[-2] - x1.size()[-2]
@@ -91,18 +91,18 @@ class ConvBlock(nn.Module):
     ):
         super().__init__()
         self.norm_fn = norm_fn
-        self.in_planes = in_planes
-        self.planes = planes
+        self.in_planes = in_planes #3
+        self.planes = planes       #24
 
         num_groups = planes // 8
         norm_cls = get_norm_cls(norm_fn, num_groups=num_groups)
-        self.conv = nn.Conv2d(
-            in_planes,
-            planes,
-            kernel_size=kernel_size,
-            padding=padding,
-            stride=stride,
-            bias=use_bias,
+        self.conv = nn.Conv2d(#卷积函数的参数与输入图片的尺寸无关
+            in_planes,  #输入的通道数量
+            planes,     #输出的通道数量
+            kernel_size=kernel_size,#卷积尺寸
+            padding=padding,#边缘扩展
+            stride=stride,  #步长
+            bias=use_bias,  #是否偏移
         )
         self.norm = norm_cls(planes)
         self.act = get_nl(nl_fn)

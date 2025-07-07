@@ -32,7 +32,6 @@ def filter_extract(dir_name="CVAI-2828RAO2_CRA32", base_path="datasets"):
         f"{ROOT}/custom_videos/PNGImages", dir_name)
     input_folder = os.path.join(#原始输入数据路径
         f"{ROOT}/xca_dataset/{parent_folder}/images/{dir_name}")
-    # print("output_folder_filter",output_folder_filter)
     process_images(input_folder, output_folder_filter)#获取黑塞矩阵处理后的图像，存入filter文件夹
     thresholds, cut_position, maximum_position = find_cut_position(
         output_folder_filter) #每张图的相对暗度，最后一张图的索引，最亮的图的索引

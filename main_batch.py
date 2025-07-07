@@ -69,27 +69,32 @@ def main(args):
     print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
     subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
     saveTime("NIR前/背景分离")
-    # stage 2
-    cmd = f"python run_opt.py data=custom data.seq={data_name}"
-    print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True)
-    saveTime("执行完毕")
+
+    # # stage 2
+    # cmd = f"python run_opt.py data=custom data.seq={data_name}"
+    # print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
+    # subprocess.call(cmd, shell=True)
+    # saveTime("执行完毕")
 
 
 if __name__ == "__main__":
-    print("version:2025.06.14 15:46")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--data")
     args = parser.parse_args()
-    main(args)
-
+    with open('job_specs/vessel.txt', 'r') as file:
+        lines = file.readlines()
+        # 去掉每行的换行符
+        lines = [line.strip() for line in lines]
+    for i in range(len(lines)):
+        args.data = lines[i]
+        main(args)
+        print(str(i+1)+"/"+str(len(lines)),args.data,"/n")
 
 '''
-
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2
 export PATH="~/anaconda3/bin:$PATH"
 source activate DNVR
 python main.py -d CVAI-2828RAO2_CRA32
+python main_batch.py -d CVAI-2828RAO2_CRA32
 
 获取光流图
 cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
@@ -100,5 +105,4 @@ python nir/booststrap.py --data CVAI-2828RAO2_CRA32
 三分支的视频分割框架
 python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
 python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
-
 '''
