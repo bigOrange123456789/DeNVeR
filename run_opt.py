@@ -17,6 +17,7 @@ import utils
 from loss import *
 from helper import *
 from eval.eval import Evaluate
+import time
 DEVICE = torch.device("cuda")
 
 device_id = torch.cuda.current_device()
@@ -25,6 +26,7 @@ print("Current GPU Device ID:", device_id)
 
 script_path = os.path.abspath(__file__)
 ROOT = os.path.dirname(script_path)
+time_pre = -99999999999999
 @hydra.main(config_path="confs", config_name="config")
 def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构的三个分支都在哪里
     evaluate=Evaluate()
@@ -147,6 +149,11 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     '''
 
     # 这几次不同的训练应该只是损失函数的不同
+    time_pre=time.time()
+    def getTime(time_pre):
+        time_gap=(time.time()-time_pre)/60
+        time_pre=time.time()
+        return time_gap
     # 一、warmstart the masks 通过masks进行热开始 #优化MASK几何分割器
     label = "masks"
     model_kwargs = dict(ret_tex=False, ret_tform=False)
@@ -169,7 +176,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         step_ct, val_dict, result_seg = opt_infer_helper( #这句代码执行了masks训练过程
             n_epochs, model_kwargs=model_kwargs, label=label
         ) #为啥第二阶段必须要有val_dict
-        evaluate.analysis("1.masks",cfg.data.seq,result_seg) #tag,id,imgs
+        evaluate.analysis("1.masks",cfg.data.seq,result_seg,getTime(time_pre)) #tag,id,imgs
         print("step_ct",step_ct)
     # else:step_ct=0
     # exit(0)
@@ -205,7 +212,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         loss_fncs["tform"].detach_mask = False #进行分割器的优化
         step_ct, val_dict, result_seg = opt_infer_helper(n_warm, start=step_ct, label=label) #进行训练
         # re-init scale of textures with rough planar motion    # 重新初始化粗糙平面运动纹理的尺度
-        evaluate.analysis("2.1.planar", cfg.data.seq, result_seg)
+        evaluate.analysis("2.1.planar", cfg.data.seq, result_seg,getTime(time_pre))
         ok = model.init_planar_motion(val_dict["masks"].to(DEVICE))
         # 前面不OK，这里也不会OK，不知道对后续操作是否有影响
         # 感觉没啥太大影响，因为不OK就是没有初始化前景关键点的平移，但是后面应该能够自动学习优化
@@ -219,7 +226,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
 
     # (2.2)
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label) # 这里执行了planar平面训练过程
-    evaluate.analysis("2.2.planar", cfg.data.seq, result_seg)
+    evaluate.analysis("2.2.planar", cfg.data.seq, result_seg,getTime(time_pre))
 
     # 三、parallel
     label = "parallel"
@@ -231,7 +238,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         loss_fncs["parallel"] = Parallelloss()#平行损失
     print(f"{label} n_epochs",n_epochs)
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
-    evaluate.analysis("3.parallel", cfg.data.seq, result_seg)
+    evaluate.analysis("3.parallel", cfg.data.seq, result_seg,getTime(time_pre))
        
     # 四、deform
     # add deformations
@@ -245,7 +252,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         print("!!!!!这里注释掉了第四阶段的训练过程!!!!!")
     print(f"{label} n_epochs",n_epochs)
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
-    evaluate.analysis("4.deform", cfg.data.seq, result_seg)
+    evaluate.analysis("4.deform", cfg.data.seq, result_seg,getTime(time_pre))
     # print("程序中断位置 ---- run_opt.py ---- main() --- 294")
     # exit(0)
 
@@ -263,7 +270,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         return
 
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
-    evaluate.analysis("5.refine", cfg.data.seq, result_seg)
+    evaluate.analysis("5.refine", cfg.data.seq, result_seg,getTime(time_pre))
 
 if __name__ == "__main__":
     # exit(0)

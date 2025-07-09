@@ -30,8 +30,10 @@ def getVideoId(folder_path):
     return my_list
 
 from main import Main
+import time
 import yaml
 if __name__ == "__main__":
+    time_start = time.time()
     # 指定 YAML 文件路径
     script_path = os.path.abspath(__file__)
     ROOT1 = os.path.dirname(script_path)
@@ -51,6 +53,8 @@ if __name__ == "__main__":
         ##################   二.分析结果   ##################
         from eval.eval import Evaluate
         Evaluate().get() # subprocess.call(f"python ./eval/eval.py", shell=True)
+    time_end = time.time()
+    print("运行时长为",(time_end-time_start)/60,"分钟")
 
 '''
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2

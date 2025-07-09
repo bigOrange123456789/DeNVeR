@@ -251,18 +251,18 @@ class Evaluate():
             "specificity": specificity
         }
 
-    def analysis(self,tag,id,imgs):
+    def analysis(self,tag,id,imgs,time_gap):
 
         def initCSV():
             self.csv_file_path = os.path.join(ROOT1, "../", self.PredictRootPath, "experiment_results.csv")
-            self.csv_header=["tag","id","frameId","accuracy","recall","precision","f1","iou","specificity"]
+            self.csv_header=["tag","id","frameId","accuracy","recall","precision","f1","iou","specificity","time_gap"]
             # 写入 CSV 文件
             # with open(self.csv_file_path, mode="w", newline="", encoding="utf-8") as file:
             if not os.path.exists(self.csv_file_path,):#如果不存在这个文件就创建一个
              with open(self.csv_file_path, mode="a+", newline="", encoding="utf-8") as file:
                 writer = csv.DictWriter(file,self.csv_header)
                 writer.writeheader()  # 写入表头
-        def save2CVS(config0,frameId):
+        def save2CVS(config0,frameId,time_gap):
             if not hasattr(self, 'csv_header'): initCSV()
             with open(self.csv_file_path, 'a+', newline='', encoding="utf-8") as file:
                 csv_writer = csv.writer(file)
@@ -271,6 +271,7 @@ class Evaluate():
                     if i=="tag":arr.append(tag)
                     elif i=="id":arr.append(id)
                     elif i=="frameId":arr.append(frameId)
+                    elif i=="time_gap":arr.append(time_gap)
                     else: arr.append(config0[i])
                 csv_writer.writerow(arr)
 
@@ -300,7 +301,7 @@ class Evaluate():
                 )
                 binary_image = images_tensor[frameId].numpy()
                 ind = self.getIndicators(binary_image, ground_truth)
-                save2CVS(ind,frameId)
+                save2CVS(ind,frameId,time_gap)
 
 
 if __name__ == "__main__":
