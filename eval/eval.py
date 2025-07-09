@@ -304,7 +304,7 @@ class Evaluate():
                 ind = self.getIndicators(image_predict, ground_truth)
                 save2CVS(ind,frameId,time_gap,False)
                 # image_binary = torch.where(image_predict >= 0.5, 1, 0)
-                image_binary = (image_predict >= 0.5).astype(int)
+                image_binary = (image_predict >= 255*0.5).astype(int)
                 ind2 = self.getIndicators(image_binary, ground_truth)
                 save2CVS(ind2, frameId, time_gap, True)
 
