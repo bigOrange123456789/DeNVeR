@@ -255,14 +255,14 @@ class Evaluate():
 
         def initCSV():
             self.csv_file_path = os.path.join(ROOT1, "../", self.PredictRootPath, "experiment_results.csv")
-            self.csv_header=["tag","id","frameId","accuracy","recall","precision","f1","iou","specificity","time_gap"]
+            self.csv_header=["binary_mask_flag","tag","id","frameId","accuracy","recall","precision","f1","iou","specificity","time_gap"]
             # 写入 CSV 文件
             # with open(self.csv_file_path, mode="w", newline="", encoding="utf-8") as file:
             if not os.path.exists(self.csv_file_path,):#如果不存在这个文件就创建一个
              with open(self.csv_file_path, mode="a+", newline="", encoding="utf-8") as file:
                 writer = csv.DictWriter(file,self.csv_header)
                 writer.writeheader()  # 写入表头
-        def save2CVS(config0,frameId,time_gap):
+        def save2CVS(config0,frameId,time_gap,binary_mask_flag):
             if not hasattr(self, 'csv_header'): initCSV()
             with open(self.csv_file_path, 'a+', newline='', encoding="utf-8") as file:
                 csv_writer = csv.writer(file)
@@ -272,6 +272,7 @@ class Evaluate():
                     elif i=="id":arr.append(id)
                     elif i=="frameId":arr.append(frameId)
                     elif i=="time_gap":arr.append(time_gap)
+                    elif i=="binary_mask_flag":arr.append(binary_mask_flag)
                     else: arr.append(config0[i])
                 csv_writer.writerow(arr)
 
@@ -299,9 +300,13 @@ class Evaluate():
                     os.path.join(gt),
                     cv2.IMREAD_GRAYSCALE
                 )
-                binary_image = images_tensor[frameId].numpy()
-                ind = self.getIndicators(binary_image, ground_truth)
-                save2CVS(ind,frameId,time_gap)
+                image_predict = images_tensor[frameId].numpy()
+                ind = self.getIndicators(image_predict, ground_truth)
+                save2CVS(ind,frameId,time_gap,False)
+                # image_binary = torch.where(image_predict >= 0.5, 1, 0)
+                image_binary = (image_predict >= 0.5).astype(int)
+                ind2 = self.getIndicators(image_binary, ground_truth)
+                save2CVS(ind2, frameId, time_gap, True)
 
 
 if __name__ == "__main__":
