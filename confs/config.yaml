@@ -8,7 +8,8 @@ defaults:
 n_layers: 2
 resume: True
 preload: True
-log_root: ../DeNVeR_out/outputs
+log_root: log/outputs
+log_root_old2: ../DeNVeR_out/outputs
 log_root_old: outputs
 exp_name: init_model 
 

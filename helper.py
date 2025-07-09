@@ -188,6 +188,7 @@ def infer_model(
     """
     run the model on all data points
     """
+    # exit(0)
     out_name = None if label is None else f"{step_ct:08d}_val_{label}"
     print("val step {:08d} saving to {}".format(step_ct, out_name))
     out_dicts = []
@@ -208,15 +209,14 @@ def infer_model(
     if out_name is not None:
         if "texs" in out_dict:
             out_dict["texs"] = out_dict["texs"][:1]  # (n_batches, *) -> (1, *)
-        utils.save_vis_dict(out_name, out_dict)
+        utils.save_vis_dict(out_name, out_dict) # 保存分割结果
         # save the per-frame texture coords
         if "coords" in out_dict:
             torch.save(out_dict["coords"], f"{out_name}/coords.pth")
-        save_metric(out_name, out_dict, "ious")
-    # print("out_dict", out_dict.keys() )
-    # print("out_name",out_name)
-    # exit(0)
-    return out_dict, out_name
+        # print("out_name, out_dict:",out_name, out_dict)
+        save_metric(out_name, out_dict, "ious")#保存ious指标，但是由于没有计算所以没有保存
+    result_seg = out_dict["masks"].detach()[:,0,0]*255
+    return out_dict, out_name, result_seg
 
 
 def opt_infer_step(
@@ -262,8 +262,7 @@ def opt_infer_step(
     {
         label masks
         model_kwargs {'ret_tex': False, 'ret_tform': False}
-    }
-    {
+        ###################################################
         label planar
         model_kwargs {}
     }    
@@ -284,21 +283,22 @@ def opt_infer_step(
         # ckpt masks_latest_ckpt.pth
         # step 3572
        
-        val_dict, val_out_dir = infer_model(# 使用模型进行推理验证
+        val_dict, val_out_dir,result_seg = infer_model(# 使用模型进行推理验证
             step, val_loader, model, model_kwargs, loss_fncs, label=label
         )
+        # print("result_seg2",result_seg.shape)
         # print("程序中断位置: helper.py -- opt_infer_step()")
         # exit(0)
         print("label",label) # label=masks
         if label == 'refine': #在细化的时候存储生成视频的每帧图片
             save_res_img_dirs(val_out_dir, val_dict, ["masks"])
-            print("val_out_dir",val_out_dir)
+            # print("val_out_dir",val_out_dir)
             # print("val_dict", val_dict)
 
         # if save_grid:
         #     save_grid_vis(val_out_dir, val_dict)
 
-    return step, val_dict
+    return step, val_dict, result_seg
 
 
 def update_config(cfg, loader):
@@ -327,20 +327,32 @@ def update_config(cfg, loader):
 
 
 def save_metric(out_dir, out_dict, name="ious"):
+    # print("out_dir",out_dir)
+    # 1.确保输出目录存在
     os.makedirs(out_dir, exist_ok=True)
+
+    # 2.检查目标数据是否存在
+    # print("name",name)
+    # print(name not in out_dict)
+    # print(dir(out_dict),"out_dict")
+    # print(out_dict.keys(), "out_dict")
     if name not in out_dict:
         return
 
+    # 3.处理并过滤向量数据
     vec = out_dict[name].detach().cpu()
     if len(vec.shape) > 2:
         return
 
+    # 4.保存原始数据和统计结果
     ok = (vec >= 0).all(dim=-1)
     vec = vec[ok]
     np.savetxt(os.path.join(out_dir, f"frame_{name}.txt"), vec)
     np.savetxt(os.path.join(out_dir, f"mean_{name}.txt"), vec.mean(dim=0))
-    print(name, vec.mean(dim=0))
 
+    # 5.打印统计信息
+    print(name, vec.mean(dim=0))
+    # exit(0)
 
 def compute_multiple_iou(batch_in, batch_out):
     """

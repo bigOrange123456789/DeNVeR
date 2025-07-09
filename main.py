@@ -47,71 +47,71 @@ def skeltoize(path="CVAI-2829RAO9_CRA37",ROOT=""):
         name = os.path.join(f"{ROOT}/custom_videos/skeltoize/{path}", file_namge)
         cv2.imwrite(name, distance_transform)
     print(f"{path} done!")
-    # exit(0)
 
 
+class Main():
+    def __init__(self, config,data_name):
+        if not os.path.exists(config["my"]["filePathRoot"]):
+            os.mkdir(config["my"]["filePathRoot"])
+        self.run(config,data_name)
+    def run(self, config,data_name):
+        # data_name = config["my"]["videoId"]#args.data
+        # data_name: CVAI-2828RAO2_CRA32
+        # preprocess
+        preprocess.filter_extract(data_name,
+                                  filePathRoot=config["my"]["filePathRoot"],
+                                  inPath=config["my"]["datasetPath"]
+                                  )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
+        saveTime("黑塞矩阵+区域生长")
+        skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
+        saveTime("获取骨架")
+        # exit(0)
 
+        # run raft #RAFT是方法简称
+        # print(ROOT)
+        # cmd = f"python {ROOT}/scripts/dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
+        # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
+        # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
+        custom_videos_path = os.path.join("../", config["my"]["filePathRoot"],"custom_videos")
+        cmd = f"cd {ROOT}/scripts && python dataset_raft.py --root { custom_videos_path } --dtype custom --seqs {data_name}"
+        # cmd = f"python {ROOT}/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
+        # cmd = f"cd {ROOT} python ./scripts/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
+        # cmd = f"cd scripts && python dataset_raft.py  --root { custom_videos_path } --dtype custom --seqs {data_name}"
+        print(cmd) # cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
+        subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
+        # exit(0)
+        saveTime("计算光流")
 
+        # stage 1                     # 获取背景的静态全景图
+        nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
+        print("nirs_path:",nirs_path)
+        filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
+        cmd = f"python {ROOT}/nir/booststrap.py --filePathRoot {filePathRoot2} --data {data_name} --outpath {nirs_path}"
+        print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
+        subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
+        saveTime("NIR前/背景分离")
+        # stage 2
+        cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
+        print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
+        subprocess.call(cmd, shell=True)
+        saveTime("执行完毕")
 
 import yaml
-# 指定 YAML 文件路径
-script_path = os.path.abspath(__file__)
-ROOT1 = os.path.dirname(script_path)
-file_path = os.path.join(ROOT1,'./confs/newConfig.yaml')
-# 打开并读取 YAML 文件
-with open(file_path, 'r', encoding='utf-8') as file:
-    config = yaml.safe_load(file)
-
-def main():
-    data_name = config["my"]["videoId"]#args.data
-    # data_name: CVAI-2828RAO2_CRA32
-    # preprocess
-    preprocess.filter_extract(data_name,
-                              filePathRoot=config["my"]["filePathRoot"],
-                              inPath=config["my"]["datasetPath"]
-                              )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
-    saveTime("黑塞矩阵+区域生长")
-    skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
-    saveTime("获取骨架")
-    # exit(0)
-
-    # run raft #RAFT是方法简称
-    # print(ROOT)
-    # cmd = f"python {ROOT}/scripts/dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    custom_videos_path = os.path.join("../", config["my"]["filePathRoot"],"custom_videos")
-    cmd = f"cd {ROOT}/scripts && python dataset_raft.py --root { custom_videos_path } --dtype custom --seqs {data_name}"
-    # cmd = f"python {ROOT}/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
-    # cmd = f"cd {ROOT} python ./scripts/dataset_raft.py  --root {custom_videos_path} --dtype custom --seqs {data_name}"
-    # cmd = f"cd scripts && python dataset_raft.py  --root { custom_videos_path } --dtype custom --seqs {data_name}"
-    print(cmd) # cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
-    # exit(0)
-    saveTime("计算光流")
-
-    # stage 1                     # 获取背景的静态全景图
-    nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
-    print("nirs_path:",nirs_path)
-    filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
-    cmd = f"python {ROOT}/nir/booststrap.py --filePathRoot {filePathRoot2} --data {data_name} --outpath {nirs_path}"
-    print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
-    # exit(0)
-    saveTime("NIR前/背景分离")
-    # stage 2
-    cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
-    print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True)
-    saveTime("执行完毕")
-
 if __name__ == "__main__":
     print("version:2025.06.14 15:46")
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-d", "--data")
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--data")
+    args = parser.parse_args()
+    # 指定 YAML 文件路径
+    script_path = os.path.abspath(__file__)
+    ROOT1 = os.path.dirname(script_path)
+    file_path = os.path.join(ROOT1, './confs/newConfig.yaml')
+    # 打开并读取 YAML 文件
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+        Main(config,args.data)
     # main(args)
-    main()
+    # main()
 
 '''
 

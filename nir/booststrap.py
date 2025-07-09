@@ -17,6 +17,7 @@ file_path = os.path.join(ROOT1,'../','./confs/newConfig.yaml')
 # 打开并读取 YAML 文件
 with open(file_path, 'r', encoding='utf-8') as file:
     config = yaml.safe_load(file)
+nir_image_path = os.path.join(config["my"]["filePathRoot"],config["my"]["subPath"]["nirIn"])
 
 def train_fence(path, total_steps, lambda_interf=0.5, lambda_flow=0.5, verbose=True, steps_til_summary=100):
     g = Siren(in_features=3, out_features=2, hidden_features=256,
@@ -78,7 +79,7 @@ def channel_stack(data,filePathRoot):
         gray_image = cv2.imread(f, cv2.IMREAD_GRAYSCALE)
         # print(sorted(os.listdir(folder_path)))
         rgb_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2RGB)
-        path = os.path.join("nir/nir_image",data,filename)
+        path = os.path.join(nir_image_path,data,filename)
         cv2.imwrite(path,rgb_image)
         count +=1
         if count > 13:
@@ -86,13 +87,17 @@ def channel_stack(data,filePathRoot):
     return True
 def main(args):
     data = args.data
-    base_path = "nir/nir_image"
+    # base_path = os.path.join(config["my"]["filePathRoot"],"nir_image")#
+    base_path = nir_image_path
+    if not os.path.exists( base_path ): os.mkdir( base_path )
     path = os.path.join(base_path,data)#这应该是输入数据路径
-    print(path)
+    # print(path)
     os.makedirs(path,exist_ok=True)
     stack_flag = channel_stack(data,args.filePathRoot)
     # g, f1, f2, orig = train_fence(path, 3000) #解耦的MLP模型训练3000step
-    g, f1, f2, orig = train_fence(path, 3)
+    total_steps=3 if config["my"]["TestFlag"] else 3000
+    print("total_steps",total_steps)
+    g, f1, f2, orig = train_fence(path, total_steps)
     print("nir/booststrap.py mian():训练step3000->3")#100
     #g:相机运动记录, f1:场景获取器, f2:干扰获取器, orig:原输入视频
     with torch.no_grad():
@@ -112,7 +117,6 @@ def main(args):
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
         orig = [orig[i] for i in range(len(orig))]#原视频数据没使用
-    print("outpath",args.outpath)
     p = os.path.join(args.outpath, data)
     # p = os.path.join("nirs",data)
     os.makedirs(p,exist_ok=True)

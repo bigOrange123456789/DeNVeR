@@ -8,101 +8,53 @@ from skimage import color, data, filters, graph, measure, morphology
 import preprocess
 import subprocess
 import argparse
-import time
-# 记录开始时间
-time_log = {
-    "time_pre" : time.time()/60 ,
-    "起始时刻":time.time()/60 
-}
-def saveTime(tag):
-    time_log[tag]=time.time()/60
-    print(time_log)
-    print(tag,time_log[tag]-time_log["time_pre"])
-    time_log["time_pre"]=time_log[tag]
 
+def getVideoId(folder_path):
+    print("folder_path",folder_path)
+    NUMBER_video = 0
+    NUMBER_gt = 0
+    my_list = []
+    for item in os.listdir(folder_path): #遍历所有患者
+        if item==".gitkeep":
+            continue
+        path = folder_path + "/" + item + "/ground_truth"  # /CVAI-1207LAO44_CRA29"
+        gts = os.listdir(path)
+        for gts0 in gts: #遍历所有视频的标注
+            if len(gts0.split("CATH")) == 1: #只看二分类标注的结果
+                NUMBER_video = NUMBER_video + 1 #视频数量
+                source_path = os.path.join(folder_path + "/" + item + "/images", gts0)
+                NUMBER_gt = NUMBER_gt + len(os.listdir(source_path)) #有标注图像数量
+                my_list.append(gts0)
+    print("视频总个数:",NUMBER_video)
+    print("有标注视频的总帧数:", NUMBER_gt)
+    return my_list
 
-ROOT = os.path.abspath("__file__/..") #ROOT: /home/lzc/桌面/DNVR
-
-def skeltoize(path="CVAI-2829RAO9_CRA37"):
-    imfiles = sorted(glob.glob(f"{ROOT}/preprocess/datasets/{path}/binary/*"))#获取binary中全部图片的路径
-    # glob.glob函数的作用是根据提供的路径模式，返回一个包含所有匹配文件路径的列表。
-    os.makedirs(f"{ROOT}/custom_videos/skeltoize/{path}", exist_ok=True)#生成一个文件夹
-    for image_file in imfiles:#逐个文件进行读取
-        file_namge = image_file.split("/")[-1]#获取文件名
-        binary_image_ori = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE) #读取MASK文件
-        skeletonized_image = morphology.skeletonize(binary_image_ori)#输入和输出都是(512, 512)的numpy
-        '''
-            morphology.skeletonize函数:
-                将二值图像中的连通区域转换为单像素宽的骨架。它是一种形态学操作，通常用于图像分析和特征提取。
-        '''
-        binary_image = np.array(skeletonized_image, dtype=np.uint8)
-        binary_image = 1 - binary_image #二值MASK图像
-        # distance_transform = binary_image*255
-        distance_transform = distance_transform_edt(binary_image)#计算每个像素到最近骨架像素的距离。
-        distance_transform = np.clip(distance_transform, 0, 65.0)
-        distance_transform = 255 - distance_transform
-        distance_transform = cv2.normalize(
-            distance_transform, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        #将其缩放到指定的范围(0到255)，同时将数据类型转换为8位无符号整数（uint8）
-        name = os.path.join(f"{ROOT}/custom_videos/skeltoize/{path}", file_namge)
-        cv2.imwrite(name, distance_transform)
-    print(f"{path} done!")
-    # exit(0)
-
-def main(args):
-    data_name = args.data
-    # data_name: CVAI-2828RAO2_CRA32
-    # preprocess
-    preprocess.filter_extract(data_name)#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
-    saveTime("黑塞矩阵+区域生长")
-    skeltoize(data_name) # 获取图片的骨架，并存入custom_videos/skeltoize
-    saveTime("获取骨架")
-
-    # run raft #RAFT是方法简称
-    cmd = f"cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs {data_name}"
-    print(cmd) # cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
-    saveTime("计算光流")
-
-    # stage 1                     # 获取背景的静态全景图
-    cmd = f"python nir/booststrap.py --data {data_name}"
-    print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
-    subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
-    saveTime("NIR前/背景分离")
-
-    # # stage 2
-    # cmd = f"python run_opt.py data=custom data.seq={data_name}"
-    # print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
-    # subprocess.call(cmd, shell=True)
-    # saveTime("执行完毕")
-
-
+from main import Main
+import yaml
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    args = parser.parse_args()
-    with open('job_specs/vessel.txt', 'r') as file:
-        lines = file.readlines()
-        # 去掉每行的换行符
-        lines = [line.strip() for line in lines]
-    for i in range(len(lines)):
-        args.data = lines[i]
-        main(args)
-        print(str(i+1)+"/"+str(len(lines)),args.data,"/n")
+    # 指定 YAML 文件路径
+    script_path = os.path.abspath(__file__)
+    ROOT1 = os.path.dirname(script_path)
+    file_path = os.path.join(ROOT1, './confs/newConfig.yaml')
+    # 打开并读取 YAML 文件
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+        lines=getVideoId(config["my"]["datasetPath"])#'job_specs/vessel.txt'
+        ##################   预.删除文件   ##################
+        file_path= os.path.join(ROOT1, config['my']['filePathRoot'], "experiment_results.csv")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        ##################   一.分割处理   ##################
+        for i in range(len(lines)):
+            Main(config,lines[i])
+            print("处理进度:"+str(i+1)+"/"+str(len(lines)),lines[i],"/n")
+        ##################   二.分析结果   ##################
+        from eval.eval import Evaluate
+        Evaluate().get() # subprocess.call(f"python ./eval/eval.py", shell=True)
 
 '''
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2
 export PATH="~/anaconda3/bin:$PATH"
 source activate DNVR
-python main.py -d CVAI-2828RAO2_CRA32
-python main_batch.py -d CVAI-2828RAO2_CRA32
-
-获取光流图
-cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
-
-获取背景的静态全景图
-python nir/booststrap.py --data CVAI-2828RAO2_CRA32
-
-三分支的视频分割框架
-python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
-python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
+python main_batch.py
 '''

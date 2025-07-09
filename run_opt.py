@@ -16,7 +16,7 @@ import models
 import utils
 from loss import *
 from helper import *
-
+from eval.eval import Evaluate
 DEVICE = torch.device("cuda")
 
 device_id = torch.cuda.current_device()
@@ -27,6 +27,9 @@ script_path = os.path.abspath(__file__)
 ROOT = os.path.dirname(script_path)
 @hydra.main(config_path="confs", config_name="config")
 def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构的三个分支都在哪里
+    evaluate=Evaluate()
+    cfg.log_root=os.path.join(cfg.my.filePathRoot,cfg.my.subPath.outputs)
+    # print("cfg.test01",cfg.test01)
     # print("cfg.hydra.run.dir:",cfg.hydra.run.dir)
     # exit(0)
     # cfg.data.root='/home/lzc/桌面/DeNVeR/custom_videos'
@@ -36,84 +39,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     # 会加载 confs 文件夹中的 config.yaml 文件作为默认配置。
     # 我都没有看到这段代码的训练过程是在哪里执行的
     # 一个项目里面最重要的有三部分：数据集的加载、模型的推理、损失函数
-    '''
-    cfg={
-        data:
-        root: /liuzhicheng2/DNVR/custom_videos
-        type: custom
-        res: 512p
-        seq: CVAI-2828RAO2_CRA3test5
-        scale: 1
-        flow_gap: 1
-        model:
-        transform:
-            init_bg: true
-            fg_scale: 2
-            t_step: 2
-            local: true
-            bg_local: true
-            lr: 0.001
-            xy_step: 4
-            max_step: 0.1
-            final_nl: tanh
-        alpha_pred:
-            net_args:
-            n_levels: 2
-            d_hidden: 24
-            fac: 2
-            norm_fn: batch
-            init_std: 0.1
-            lr: 0.0005
-            gamma: 0.99
-        use_tex: true
-        tex_gen:
-            n_channels: 3
-            n_levels: 4
-            d_hidden: 16
-            scale_fac: 2
-            random_comp: true
-            lr: 0.0005
-        batch_size: 16
-        vis_epochs: 2
-        val_epochs: 4
-        vis_every: 3000
-        val_every: 6000
-        vis_grad: true
-        save_grid: false
-        iters_per_phase:
-        epi: 6000
-        parallel: 6000
-        kmeans: 12000
-        planar: 10000
-        deform: 18000
-        refine: 1000
-        epochs_per_phase:
-        epi: 6
-        parallel: 6
-        kmeans: 12
-        planar: 10
-        deform: 9
-        refine: 1
-        w_epi: 0.5
-        neg_ratio: 0.15
-        w_kmeans: 0.05
-        w_sparse: 0.001
-        w_warp: 0.1
-        w_tform: 1
-        w_recon: 0.5
-        l_recon: 1
-        lap_ratio: 0.001
-        lap_levels: 3
-        w_contr: 0.0005
-        n_layers: 2
-        resume: true
-        preload: true
-        log_root: outputs
-        exp_name: init_model
-    }
-    '''
-    print(OmegaConf.to_yaml(cfg))
-    # print("cfg.data",cfg.data)
+    # print(OmegaConf.to_yaml(cfg))
     dset = get_dataset(cfg.data)
     N, H, W = len(dset), dset.height, dset.width #N, H, W 5 512 512
     can_preload = N < 200 and cfg.data.scale < 0.5
@@ -158,7 +84,6 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
             以确保结果的一致性和可重复性。
     '''
     model = models.SpriteModel(dset,cfg.data.seq ,cfg.n_layers, cfg.model)
-    # exit(0)
     model.to(DEVICE) # cuda
     '''
         dset: 数据加载器 <data.CompositeDataset object at 0x7f7c6428ddf0>
@@ -217,8 +142,7 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
             model 参数被绑定为 model。
             loss_fncs 参数被绑定为 loss_fncs。
             **save_args 是一个字典，它的键值对被展开并作为关键字参数传递给 opt_infer_step。
-    2.3 opt_infer_helper 是什么？
-        opt_infer_helper 是通过 partial 创建的新函数。它本质上是 opt_infer_step 的一个“简化版”，
+    2.3 opt_infer_helper 是通过 partial 创建的新函数。它本质上是 opt_infer_step 的一个“简化版”，
         它的部分参数已经被固定，调用时只需要提供 opt_infer_step 中未被绑定的参数即可。
     '''
 
@@ -236,14 +160,16 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         # 第一阶段的三个损失函数，都可以简单理解为不正确像素的个数。
     cfg.epochs_per_phase["kmeans"] = 0
     n_epochs = cfg.epochs_per_phase["epi"] + cfg.epochs_per_phase["kmeans"]
-    n_epochs = 1 #在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
-    print("!!!!!这里注释掉了第一阶段的训练过程!!!!!")
+    if cfg.my.TestFlag:
+        n_epochs = 1 #在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第一阶段的训练过程!!!!!")
     if n_epochs > 0:
         print("epi>0")
         print("model_kwargs:",model_kwargs)
-        step_ct, val_dict = opt_infer_helper( #这句代码执行了masks训练过程
+        step_ct, val_dict, result_seg = opt_infer_helper( #这句代码执行了masks训练过程
             n_epochs, model_kwargs=model_kwargs, label=label
         ) #为啥第二阶段必须要有val_dict
+        evaluate.analysis("1.masks",cfg.data.seq,result_seg) #tag,id,imgs
         print("step_ct",step_ct)
     # else:step_ct=0
     # exit(0)
@@ -255,8 +181,9 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     # 二、warmstart planar transforms # 热开始平面变换（planar平面）[不知道为啥要训练两遍]
     label = "planar"
     n_epochs = cfg.epochs_per_phase[label]
-    n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
-    print("!!!!!这里注释掉了第二阶段的训练过程!!!!!")
+    if cfg.my.TestFlag:
+        n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第二阶段的训练过程!!!!!")
     print("planar n_epochs",n_epochs)
 
     loss_fncs["tform"] = FlowWarpLoss(cfg.w_tform, model.tforms,model.fg_tforms ,flow_gap) #光流运动和插值运动结果一致
@@ -276,8 +203,9 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
         # warmstart before estimating scale of textures 在估计纹理比例之前进行热启动
         n_warm = n_epochs // 2
         loss_fncs["tform"].detach_mask = False #进行分割器的优化
-        step_ct, val_dict = opt_infer_helper(n_warm, start=step_ct, label=label) #进行训练
+        step_ct, val_dict, result_seg = opt_infer_helper(n_warm, start=step_ct, label=label) #进行训练
         # re-init scale of textures with rough planar motion    # 重新初始化粗糙平面运动纹理的尺度
+        evaluate.analysis("2.1.planar", cfg.data.seq, result_seg)
         ok = model.init_planar_motion(val_dict["masks"].to(DEVICE))
         # 前面不OK，这里也不会OK，不知道对后续操作是否有影响
         # 感觉没啥太大影响，因为不OK就是没有初始化前景关键点的平移，但是后面应该能够自动学习优化
@@ -290,17 +218,20 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     # exit(0)
 
     # (2.2)
-    step_ct, val_dict = opt_infer_helper(n_epochs, start=step_ct, label=label) # 这里执行了planar平面训练过程
+    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label) # 这里执行了planar平面训练过程
+    evaluate.analysis("2.2.planar", cfg.data.seq, result_seg)
 
     # 三、parallel
     label = "parallel"
     n_epochs = cfg.epochs_per_phase["parallel"]
-    n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
-    print("!!!!!这里注释掉了第三阶段的训练过程!!!!!")
+    if cfg.my.TestFlag:
+        n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第三阶段的训练过程!!!!!")
     if cfg.epochs_per_phase["parallel"] > 0:
         loss_fncs["parallel"] = Parallelloss()#平行损失
     print(f"{label} n_epochs",n_epochs)
-    step_ct, val_dict = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    evaluate.analysis("3.parallel", cfg.data.seq, result_seg)
        
     # 四、deform
     # add deformations
@@ -309,10 +240,12 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     loss_fncs["tform"].unscaled = True # 每帧每图层使用不同的权重
 
     n_epochs = cfg.epochs_per_phase[label]
-    n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
-    print("!!!!!这里注释掉了第四阶段的训练过程!!!!!")
+    if cfg.my.TestFlag:
+        n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第四阶段的训练过程!!!!!")
     print(f"{label} n_epochs",n_epochs)
-    step_ct, val_dict = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    evaluate.analysis("4.deform", cfg.data.seq, result_seg)
     # print("程序中断位置 ---- run_opt.py ---- main() --- 294")
     # exit(0)
 
@@ -321,14 +254,16 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     # very easy to cheat with these gradients, not recommended # 用这些梯度容易造成欺骗、因此不推荐
     label = "refine"
     n_epochs = cfg.epochs_per_phase[label]
-    n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
-    print("!!!!!这里注释掉了第五阶段的训练过程!!!!!")
+    if cfg.my.TestFlag:
+        n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第五阶段的训练过程!!!!!")
     print(f"{label} n_epochs",n_epochs)
     loss_fncs["recon"].detach_mask = False
     if n_epochs < 1:
         return
 
-    step_ct, val_dict = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    evaluate.analysis("5.refine", cfg.data.seq, result_seg)
 
 if __name__ == "__main__":
     # exit(0)
