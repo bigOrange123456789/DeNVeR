@@ -228,6 +228,9 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label) # 这里执行了planar平面训练过程
     evaluate.analysis("2.2.planar", cfg.data.seq, result_seg,getTime(time_pre))
 
+
+    exit(0)
+
     # 三、parallel
     label = "parallel"
     n_epochs = cfg.epochs_per_phase["parallel"]
@@ -313,6 +316,10 @@ if __name__ == "__main__":
         loss[tform].unscaled # 2.1样条光流加权，每帧每图层使用不同权重。
     五、refine阶段
         recon.detach_mask = False # 2.2重构损失优化分割器
+
+-------------------------------------------------------------
+
+!!!核心在于第二阶段的样条光流和重构损失。
 
 -------------------------------------------------------------
 

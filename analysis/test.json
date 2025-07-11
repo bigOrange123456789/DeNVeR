@@ -1,0 +1,24 @@
+{
+    "folder_paths-old" : [
+        "./log/CVAI-2828RAO2_CRA32/src",
+        "./log/CVAI-2828RAO2_CRA32/1.masks",
+        "./log/CVAI-2828RAO2_CRA32/2.2.planar",
+        "./log/CVAI-2828RAO2_CRA32/3.parallel",
+        "./log/CVAI-2828RAO2_CRA32/4.deform",
+        "./log/CVAI-2828RAO2_CRA32/5.refine",
+        "./log/CVAI-2828RAO2_CRA32/gt",
+
+        "./log/nirs/my_test/obstruct_r",
+        "./log/nirs/my_test/recon_r",
+        "./log/nirs/my_test/scene_b",
+        "./log/nirs/my_test/orig_g"
+    ],
+    "folder_paths" : [
+        "./log/nirs/my_test/origin",
+        "./log/nirs/my_test/recon_r",
+        "./log/nirs/my_test/scene_b",
+        "./log/nirs/my_test/orig_g"
+    ],
+    "num_images": 10,
+    "num_start": 0
+}

@@ -53,20 +53,16 @@ def display_images(all_images):
 
     root.mainloop()
 
+import json
 if __name__ == "__main__":
+    with open("./analysis/test.json", 'r', encoding='utf-8') as file: # 指定 JSON 文件的路径
+        data = json.load(file)  # 将 JSON 文件内容加载为 Python 对象
     # 设置文件夹路径和图片文件名
-    folder_paths = [
-        # "./log/CVAI-2828RAO2_CRA32/src",
-        "./log/CVAI-2828RAO2_CRA32/1.masks",
-        # "./log/CVAI-2828RAO2_CRA32/2.2.planar",
-        "./log/CVAI-2828RAO2_CRA32/3.parallel",
-        # "./log/CVAI-2828RAO2_CRA32/4.deform",
-        "./log/CVAI-2828RAO2_CRA32/5.refine",
-        "./log/CVAI-2828RAO2_CRA32/gt",
-    ]
+    folder_paths = data["folder_paths"]
     image_names = []
-    for i in range(10):
-        fileName=f"{(i+56):05}" + ".png"
+    for i in range(data["num_images"]):
+        num_start=data["num_start"]
+        fileName=f"{(i+num_start):05}" + ".png"
         image_names.append(fileName)
 
     # 加载图片

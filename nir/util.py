@@ -53,6 +53,8 @@ class VideoFitting(Dataset):
 
         self.video = self.get_video_tensor()
         self.num_frames, _, self.H, self.W = self.video.size()
+        if self.video.shape[1]==1:#将灰度图扩充为彩图的格式
+            self.video = torch.cat([self.video] * 3, dim=1)
         self.pixels = self.video.permute(2, 3, 0, 1).contiguous().view(-1, 3)
         self.coords = get_mgrid([self.H, self.W, self.num_frames])
 

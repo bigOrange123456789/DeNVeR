@@ -90,6 +90,7 @@ class Main():
         print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
         subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
         saveTime("NIR前/背景分离")
+        # exit(0)
         # stage 2
         cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
         print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
@@ -118,17 +119,18 @@ if __name__ == "__main__":
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2
 export PATH="~/anaconda3/bin:$PATH"
 source activate DNVR
-python main.py -d CVAI-2828RAO2_CRA32
+python main.py -d CVAI-2855LAO26_CRA31
 python main.py -d CVAI-2828RAO11_CRA11
 
 获取光流图
 cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO11_CRA11
 
 获取背景的静态全景图
-python nir/booststrap.py --data CVAI-2828RAO2_CRA32
+python nir/booststrap.py --filePathRoot log --data CVAI-2828RAO11_CRA11 --outpath log/nirs
 
 三分支的视频分割框架
 python run_opt.py data=custom data.seq=CVAI-2828RAO2_CRA32
+python run_opt.py data=custom data.seq=CVAI-2855LAO26_CRA31
 python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
 
 '''

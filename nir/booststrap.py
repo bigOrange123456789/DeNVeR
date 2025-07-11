@@ -85,20 +85,26 @@ def channel_stack(data,filePathRoot):
         if count > 13:
             break
     return True
+
+from PIL import Image
+def save2img(imgs,path):
+    if not os.path.exists(path):os.makedirs(path)
+    for i in range(imgs.shape[0]):
+        image_array = imgs[i]
+        image = Image.fromarray(image_array, mode='L')
+        image.save(os.path.join(path, str(i).zfill(5) + '.png'))
+
 def main(args):
     data = args.data
     # base_path = os.path.join(config["my"]["filePathRoot"],"nir_image")#
     base_path = nir_image_path
     if not os.path.exists( base_path ): os.mkdir( base_path )
     path = os.path.join(base_path,data)#这应该是输入数据路径
-    # print(path)
     os.makedirs(path,exist_ok=True)
     stack_flag = channel_stack(data,args.filePathRoot)
-    # g, f1, f2, orig = train_fence(path, 3000) #解耦的MLP模型训练3000step
     total_steps=3 if config["my"]["TestFlag"] else 3000
     print("total_steps",total_steps)
     g, f1, f2, orig = train_fence(path, total_steps)
-    print("nir/booststrap.py mian():训练step3000->3")#100
     #g:相机运动记录, f1:场景获取器, f2:干扰获取器, orig:原输入视频
     with torch.no_grad():
         N, _, H, W = orig.size()#512*512*5，包含5帧图片的视频
@@ -111,10 +117,23 @@ def main(args):
         o_scene = o_scene.view(H, W, N, 3).permute(2, 0, 1, 3).cpu().detach().numpy()
         o_obst = o_obst.view(H, W, N, 3).permute(2, 0, 1, 3).cpu().detach().numpy()
         o_scene = (o_scene * 255).astype(np.uint8)
+        save2img(o_scene[:, :, :, 0], os.path.join(args.outpath, "my_test", 'scene_r'))
+        save2img(o_scene[:, :, :, 1], os.path.join(args.outpath, "my_test", 'scene_g'))
+        save2img(o_scene[:, :, :, 2], os.path.join(args.outpath, "my_test", 'scene_b'))
         o_obst = (o_obst * 255).astype(np.uint8)
+        save2img(o_obst[:, :, :, 0], os.path.join(args.outpath, "my_test", 'obstruct_r'))
+        save2img(o_obst[:, :, :, 1], os.path.join(args.outpath, "my_test", 'obstruct_g'))
+        save2img(o_obst[:, :, :, 2], os.path.join(args.outpath, "my_test", 'obstruct_b'))
+        o_recon=o_scene+o_obst
+        save2img(o_recon[:, :, :, 0], os.path.join(args.outpath, "my_test", 'recon_r'))
+        save2img(o_recon[:, :, :, 1], os.path.join(args.outpath, "my_test", 'recon_g'))
+        save2img(o_recon[:, :, :, 2], os.path.join(args.outpath, "my_test", 'recon_b'))
         o_scene = [o_scene[i] for i in range(len(o_scene))]
         o_obst = [o_obst[i] for i in range(len(o_obst))]#干扰数据没使用
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
+        save2img(orig[:, :, :, 0], os.path.join(args.outpath, "my_test", 'orig_r'))
+        save2img(orig[:, :, :, 1], os.path.join(args.outpath, "my_test", 'orig_g'))
+        save2img(orig[:, :, :, 2], os.path.join(args.outpath, "my_test", 'orig_b'))
         orig = (orig * 255).astype(np.uint8)
         orig = [orig[i] for i in range(len(orig))]#原视频数据没使用
     p = os.path.join(args.outpath, data)
@@ -124,6 +143,7 @@ def main(args):
     # o_scene是一个包含5张图片的list
     # o_scene[-1].shape=(512, 512, 3)
     cv2.imwrite(name,o_scene[-1])#应该是只使用了最后一帧的场景图片
+    # print("o_scene(2):",type(o_scene),len(o_scene))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -134,3 +154,12 @@ if __name__ == '__main__':
     # args.filePathRoot=""
     # args.outpath="nirs"
     main(args)
+
+'''
+
+export PATH="~/anaconda3/bin:$PATH"
+source activate DNVR
+python nir/booststrap.py --filePathRoot log --data CVAI-2828RAO11_CRA11 --outpath log/nirs
+python nir/booststrap.py --filePathRoot log --data CVAI-2855LAO26_CRA31 --outpath log/nirs
+
+'''
