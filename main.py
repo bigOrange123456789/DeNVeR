@@ -58,7 +58,8 @@ class Main():
         # data_name = config["my"]["videoId"]#args.data
         # data_name: CVAI-2828RAO2_CRA32
         # preprocess
-        preprocess.filter_extract(data_name,
+        if True: #需要将下面这个操作替换为FreeCOS方法
+            preprocess.filter_extract(data_name,
                                   filePathRoot=config["my"]["filePathRoot"],
                                   inPath=config["my"]["datasetPath"]
                                   )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”

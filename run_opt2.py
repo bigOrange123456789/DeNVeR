@@ -28,7 +28,10 @@ print("Current GPU Device ID:", device_id)
 script_path = os.path.abspath(__file__)
 ROOT = os.path.dirname(script_path)
 time_pre = -99999999999999
-
+print("01:测试train1+2+4的效果(B样条软体背景)")
+print("02:测试train1+(2、4)的效果","背景重构效果有下降")
+print("03:测试不基于NIR纹理的效果(修改了./models/tex_gen.py)","出乎意料、重构效果似乎更好了")
+TestID="03"
 
 @hydra.main(config_path="confs", config_name="config")
 def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架构的三个分支都在哪里
@@ -42,7 +45,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
     cfg.data.root = os.path.join(ROOT, cfg.my.filePathRoot, "custom_videos")  # "../DeNVeR_dataset"
     def save2img(imgs, tag):
         from PIL import Image
-        path = os.path.join(cfg.data.root,"my",tag)
+        path = os.path.join(ROOT,"log","my"+TestID,tag)
         imgs = imgs.cpu().detach().numpy()
         imgs = (imgs * 255).astype(np.uint8)
         if not os.path.exists(path): os.makedirs(path)
@@ -233,9 +236,23 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
         # 感觉没啥太大影响，因为不OK就是没有初始化前景关键点的平移，但是后面应该能够自动学习优化
 
     # (2.2)
-    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)  # 这里执行了planar平面训练过程
-    evaluate.analysis("2.2.planar", cfg.data.seq, result_seg, getTime(time_pre))
+    if False: #第2阶段不进行训练，在第四阶段统一进行训练。#这样做可以节省时间、虽然会降低软体动态效果
+        step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)  # 这里执行了planar平面训练过程
+        evaluate.analysis("2.2.planar", cfg.data.seq, result_seg, getTime(time_pre))
 
+    # 四、deform
+    # add deformations
+    label = "deform"
+    model.init_local_motion()
+    loss_fncs["tform"].unscaled = True  # 每帧每图层使用不同的权重
+
+    n_epochs = cfg.epochs_per_phase[label]
+    if cfg.my.TestFlag:
+        n_epochs = 1  # 在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
+        print("!!!!!这里注释掉了第四阶段的训练过程!!!!!")
+    print(f"{label} n_epochs", n_epochs)
+    step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label)
+    evaluate.analysis("4.deform", cfg.data.seq, result_seg, getTime(time_pre))
     # print("final!","DEVICE",DEVICE)
     # exit(0)
     with torch.no_grad():
@@ -278,7 +295,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
     
     '''
 
-print("tag:val_loader")
+
 if __name__ == "__main__":
     # exit(0)
     main()
@@ -342,6 +359,7 @@ if __name__ == "__main__":
 
 export PATH="~/anaconda3/bin:$PATH"
 source activate DNVR
+python run_opt2.py data=custom data.seq=CVAI-2828RAO11_CRA11
 python run_opt2.py data=custom data.seq=CVAI-2855LAO26_CRA31
 
 

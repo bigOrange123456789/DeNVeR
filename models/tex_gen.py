@@ -167,19 +167,29 @@ class TexUNet(nn.Module):
             输入两个8通道的编码图片
             输出两个3通道的全景纹理图
         '''
-        texs_clone = texs.clone() #这里难道不会影响前面的那些参数的学习么？
-        with torch.no_grad():
-            # print("back:",ROOT+"/nirs/{self.data_path}/scene.png")
-            # exit(0)
-            back_ground = cv2.imread(
-                f"{ROOT}/nirs/{self.data_path}/scene.png").astype(np.float32) / 255
-            width, height, _ = back_ground.shape
-            back_ground = cv2.resize(back_ground, (width*2, height*2))
-            back_ground = cv2.cvtColor(back_ground, cv2.COLOR_BGR2RGB)
-            back_ground = torch.from_numpy(back_ground).permute(2, 0, 1)
-        texs_clone[1] = back_ground
+        if False:
+            texs_clone = texs.clone()
+            '''
+                这里难道不会影响血管纹理的学习么？
+                    不影响。因为学习使用的是texs，而texs_clone只是用于输出
+                    实际上背景层的全局纹理是有进行生成学习的，只是没有进行输出。
+                    (为什么没有输出？八成是因为生成的效果不好)
+            '''
+            with torch.no_grad():
+                # print("back:",ROOT+"/nirs/{self.data_path}/scene.png")
+                # exit(0)
+                back_ground = cv2.imread(
+                    f"{ROOT}/nirs/{self.data_path}/scene.png").astype(np.float32) / 255
+                width, height, _ = back_ground.shape
+                back_ground = cv2.resize(back_ground, (width*2, height*2))
+                back_ground = cv2.cvtColor(back_ground, cv2.COLOR_BGR2RGB)
+                back_ground = torch.from_numpy(back_ground).permute(2, 0, 1)
+            texs_clone[1] = back_ground
+        else:
+            texs_clone = texs
         # texs = texs.detach()
         out = {"texs": texs_clone[None]}  # (1, M, 3, H, W) #[1, 2, 3, 256, 256]#两张全局纹理图
+        # [2, 3, 256, 256] -> [1, 2, 3, 256, 256] :“[None]”的作用是添加一个新的维度
 
         if coords is not None:
             random_comp = self.random_comp and not vis
