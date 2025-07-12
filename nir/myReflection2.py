@@ -9,7 +9,7 @@ from model import Siren
 from util import get_mgrid, jacobian, VideoFitting
 
 from PIL import Image
-outpath = './data/myReflection2_global34'
+outpath = './data/myReflection2_global37'
 print("01:多个刚体(1个)-效果应该和之前一致","成功：效果一致")
 print("02:多个软体(1个)-效果应该和01一致","成功：效果一致")
 print("03:测试多个刚体(2个)的效果","失败：忘记将参数修改为2")
@@ -43,10 +43,15 @@ print("30:放松对刚体的约束,集中精力区分刚体和软体【0.1**2,10
 print("31:测试3个软体层的效果","软体太多、流体太少、无法自动解决")
 print("32:软体0.1、流体1","流体太多、软体太少、出现误判")
 print("33:修改评判标准RSF[0.5,10->100,400->200]","感觉基本上这已经到极限了")
-print("34:测试整段视频的效果","")
+print("34:测试整段视频的效果","失败、无法推理整段大视频")
+print("35:推理测试的时候逐帧处理","成功、但重建效果很差")
+print("36:提高重构损失【10**5->10**6】","R3 S2 F4 刚体应该更少一点、流体应该更多一点；算法似乎还没有收敛；")
+print("37:计划target[0.5,100,200]->[0.25,100,400]；","")
 print("未实现内容: 03_01:刚体层能够描述放缩和旋转")
-RSF_Weight_List=[0.5,100,200]#RSF
-EpochNum =5000
+weight_target = [0.25,100,400]#RSF #信息量比例的目标
+weight_init = [10**2, 0.1, 1] #RSF
+# 初始约束权重
+EpochNum =6000 #5000 #3000
 def save2img(imgs,path):
     if not os.path.exists(path):os.makedirs(path)
     for i in range(imgs.shape[0]):
@@ -216,9 +221,9 @@ class Main():
             # ws = (1-i_s)*fun0((1-i_r)*(1-i_f))
             # wf = (1-i_f)*fun0((1-i_r)*(1-i_s))
             temp=[
-                i_r0 / RSF_Weight_List[0],
-                i_s0 / RSF_Weight_List[1],
-                i_f0 / RSF_Weight_List[2]
+                i_r0 / weight_target[0],
+                i_s0 / weight_target[1],
+                i_f0 / weight_target[2]
             ]
             i_r = temp[0] / sum(temp)
             i_s = temp[1] / sum(temp)
@@ -232,7 +237,7 @@ class Main():
             ws = ws ** k001
             wf = wf ** k001
 
-        loss_recon = ((o - ground_truth[start:end]) ** 2).mean() * (10**5)
+        loss_recon = ((o - ground_truth[start:end]) ** 2).mean() * (10**6)
         if False:# 不对血管区域进行重建监督
             loss_recon = (((1.0-o_fluid)*(o - ground_truth[start:end])) ** 2).mean()*10.
         # if False:
@@ -242,15 +247,15 @@ class Main():
         for i in range(self.NUM_figid):
             # loss_rigid = loss_rigid+1.20 * p["h_local"][i].abs().mean() # 减少刚体的信息量
             loss_rigid = loss_rigid + p["h_local"][i].abs().mean()  # 减少刚体的信息量
-        loss_rigid = loss_rigid * (10**2)
+        loss_rigid = loss_rigid * weight_init[0] #(10**2)
         # 二、软体
         # loss_soft = (10**-5) * (1. - p["o_soft_all"]).abs().mean() # 减少软体的信息量
-        loss_soft = (0.1) * (1. - p["o_soft_all"]).abs().mean()  # 减少软体的信息量
+        loss_soft = (1. - p["o_soft_all"]).abs().mean() * weight_init[1] #(0.1) # 减少软体的信息量
         # 三、流体 # 减少流体的信息量
         # loss_fluid = 0.02 * o_fluid.abs().mean() # 减少流体的信息量
         # loss_fluid = loss_fluid + 0.01 * (o_fluid*(1-o_fluid)).abs().mean() # 二值化约束
         # loss_fluid = (10**5) * fluidInf(o_fluid.abs()) # 减少流体的信息量
-        loss_fluid = 1 * fluidInf(o_fluid.abs())  # 减少流体的信息量
+        loss_fluid = fluidInf(o_fluid.abs()) * weight_init[2] #1 # 减少流体的信息量
         # 刚体:1.2->1;软体:0.1**5->0.1;流体:10**5->10
 
         loss_rigid = loss_rigid * wr
@@ -301,22 +306,117 @@ def save0(o_scene,tag):
     o_scene = o_scene.view(H, W, N, 1).permute(2, 0, 1, 3).cpu().detach().numpy()
     o_scene = (o_scene * 255).astype(np.uint8)
     save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
+# if False:
 with torch.no_grad():
-    N, _, H, W = orig.size()
-    xyt = get_mgrid([H, W, N]).cuda()
-    o, layers, p=myMain.synthesis(xyt) # h = g(xyt)
-    save0(o, "recon")
-    save0(p["o_rigid_all"], "rigid")
-    save0(p["o_soft_all"], "soft")
-
-    for i in range(len(layers["r"])):
-        save0(layers["r"][i], "rigid"+str(i))
-    for i in range(len(layers["s"])):
-        save0(layers["s"][i], "soft"+str(i))
-    # save0(layers[1], "soft")
-    save0(layers["f"], "fluid")
-
     orig = orig.permute(0, 2, 3, 1).detach().numpy()
     orig = (orig * 255).astype(np.uint8)
     save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
+    if False:
+        N, _, H, W = orig.size()
+        xyt = get_mgrid([H, W, N]).cuda()
+        o, layers, p=myMain.synthesis(xyt) # h = g(xyt)
+        save0(o, "recon")
+        save0(p["o_rigid_all"], "rigid")
+        save0(p["o_soft_all"], "soft")
+
+        for i in range(len(layers["r"])):
+            save0(layers["r"][i], "rigid"+str(i))
+        for i in range(len(layers["s"])):
+            save0(layers["s"][i], "soft"+str(i))
+        # save0(layers[1], "soft")
+        save0(layers["f"], "fluid")
+
+
+###########################################################################################3
+orig = myMain.v.video
+N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+
+# 创建空列表存储每帧预测结果
+pred_frames = []
+layers_frames = {
+    "r": [],
+    "s": [],
+    "f": []
+}
+p_frames = {
+    "o_rigid_all":[],
+    "o_soft_all":[]
+}
+
+# 生成时间轴的归一化值（-1到1）
+if N > 1:
+    t_vals = torch.linspace(-1, 1, steps=N).cuda()
+else:
+    t_vals = torch.zeros(1).cuda()
+N, _, H, W = orig.size()
+def save1(o_scene,tag):
+    # N, _, H, W = orig.size()
+    # o_scene = o_scene.view(H, W, N, 1).permute(2, 0, 1, 3).cpu().detach().numpy()
+    # [H, W, N, 1] => [N, H, W, 1]
+    o_scene = o_scene.cpu().detach().numpy()
+    o_scene = (o_scene * 255).astype(np.uint8)
+    save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
+# 逐帧推理
+with torch.no_grad():
+    for i in range(N):
+        # 生成当前帧的空间网格 (H*W, 2)
+        spatial_grid = get_mgrid([H, W]).cuda()
+
+        # 为所有空间点添加当前时间值
+        t_val = t_vals[i]
+        t_column = torch.full((spatial_grid.shape[0], 1), t_val).cuda()
+        coords = torch.cat([spatial_grid, t_column], dim=1)
+
+        # 模型推理并激活
+        # frame_output = torch.sigmoid(myModel(coords))
+        frame_output, layers, p = myMain.synthesis(coords)
+
+        # # 处理输出通道数（匹配原始视频的3通道）
+        # if frame_output.shape[1] == 1:  # 灰度输出转RGB
+        #     frame_output = frame_output.repeat(1, 3)
+
+        # 调整形状为图像格式 (C, H, W)
+        frame_image = frame_output.view(H, W, 1)#.permute(2, 0, 1)
+        # print("frame_image",frame_image.shape)
+
+        pred_frames.append(frame_image)
+        for id in layers_frames:
+            if id=="f":
+                layers_frames[id].append(layers[id].view(H, W, 1))
+            else:
+                layers_frames[id].append(layers[id])
+        for id in p_frames:
+            p_frames[id].append(p[id].view(H, W, 1))
+# exit(0)
+# 组合所有帧 (N, C, H, W)
+video_pre = torch.stack(pred_frames, dim=0)
+o_rigid_list=[]
+o_soft_list=[]
+def p01(original_list):
+    l = list(map(list, zip(*original_list))) #交换列表的前两层
+    for i in range(len(l)):
+        for j in range(len(l[i])):
+            l[i][j] = l[i][j].view(H, W, 1)
+            # print(type(l[i][j]),l[i][j].shape)
+            # exit(0)
+        l[i] = torch.stack(l[i], dim=0)
+    return l
+layers = {
+    "r": p01(layers_frames["r"]),
+    "s": p01(layers_frames["s"]),
+    "f": torch.stack(layers_frames["f"], dim=0)
+}
+p = {
+    "o_rigid_all":torch.stack(p_frames["o_rigid_all"], dim=0),
+    "o_soft_all":torch.stack(p_frames["o_soft_all"], dim=0)
+}
+save1(video_pre, "recon")
+save1(p["o_rigid_all"], "rigid")
+save1(p["o_soft_all"], "soft")
+
+for i in range(len(layers["r"])):
+    save1(layers["r"][i], "rigid" + str(i))
+for i in range(len(layers["s"])):
+    save1(layers["s"][i], "soft" + str(i))
+save1(layers["f"], "fluid")
