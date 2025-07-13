@@ -58,15 +58,23 @@ class Main():
         # data_name = config["my"]["videoId"]#args.data
         # data_name: CVAI-2828RAO2_CRA32
         # preprocess
-        if True: #需要将下面这个操作替换为FreeCOS方法
-            preprocess.filter_extract(data_name,
+        needHessian = False#True# #将黑塞矩阵方法替换为FreeCOS方法
+        myP0=preprocess.filter_extract(data_name,
                                   filePathRoot=config["my"]["filePathRoot"],
-                                  inPath=config["my"]["datasetPath"]
+                                  inPath=config["my"]["datasetPath"],
+                                  needHessian=needHessian
                                   )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
+        if not needHessian:
+            paramPath = os.path.join(ROOT,config["my"]["raftConfig"],"freecos_Seg.pt")
+            pathIn = os.path.join(ROOT,myP0["inpath"])
+            pathOut = os.path.join(ROOT,myP0["outpath"])
+            cmd = (f"cd {ROOT}/FreeCOS && python main.py --pathParam {paramPath} --pathIn {pathIn} --pathOut {pathOut}")
+            print(cmd) #pip install easydict
+            subprocess.call(cmd, shell=True)
         saveTime("黑塞矩阵+区域生长")
         skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
         saveTime("获取骨架")
-        # exit(0)
+        exit(0)
 
         # run raft #RAFT是方法简称
         # print(ROOT)

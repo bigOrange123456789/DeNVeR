@@ -21,7 +21,7 @@ def extract_images(input_folder, output_folder, index):
     for image_path in selected_images:
         shutil.copy(image_path, output_folder) #复制图片
 
-def filter_extract(dir_name="CVAI-2828RAO2_CRA32", filePathRoot="", inPath=""):
+def filter_extract(dir_name="CVAI-2828RAO2_CRA32", filePathRoot="", inPath="",needHessian=False):
     ROOT2 = os.path.join(ROOT, filePathRoot)
     base_path="datasets"
     parent_folder = dir_name[:9]#获取前9个字符：CVAI-2828
@@ -35,8 +35,20 @@ def filter_extract(dir_name="CVAI-2828RAO2_CRA32", filePathRoot="", inPath=""):
     input_folder = os.path.join(#原始输入数据路径
         f"{ROOT2}/xca_dataset/{parent_folder}/images/{dir_name}")
     input_folder = os.path.join(  ROOT,inPath,f"{parent_folder}/images/{dir_name}")
-    print(input_folder,"input_folder",input_folder)
+    print("input_folder:",input_folder)
+    # /home/lzc/桌面/DeNVeR/log/preprocess/datasets/filter/00022.png
+    # /home/lzc/桌面/DeNVeR/../DeNVeR_in/xca_dataset/CVAI-2828/images/CVAI-2828RAO11_CRA12
     # exit(0)
+    if not needHessian:
+        # exit(0)
+        cut_position = len(os.listdir(input_folder))-1
+        extract_images(input_folder, new_input_folder, cut_position)  # preprocess/--/CVAI-2828RAO2_CRA32
+        extract_images(input_folder, deforamble_sprite_folder, cut_position)  # custom_videos/--/CVAI-2828RAO2_CRA32
+        return {
+            "inpath":input_folder,
+            "outpath":os.path.join(f"{filePathRoot}/preprocess","datasets"),
+            # "dir_name":dir_name
+        }
     process_images(input_folder, output_folder_filter)#获取黑塞矩阵处理后的图像，存入filter文件夹
     thresholds, cut_position, maximum_position = find_cut_position(
         output_folder_filter) #每张图的相对暗度，最后一张图的索引，最亮的图的索引
