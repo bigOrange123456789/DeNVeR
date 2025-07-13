@@ -46,7 +46,7 @@ def filter_extract(dir_name="CVAI-2828RAO2_CRA32", filePathRoot="", inPath="",ne
         extract_images(input_folder, deforamble_sprite_folder, cut_position)  # custom_videos/--/CVAI-2828RAO2_CRA32
         return {
             "inpath":input_folder,
-            "outpath":os.path.join(f"{filePathRoot}/preprocess","datasets"),
+            "outpath":os.path.join(f"{filePathRoot}/preprocess","datasets", dir_name),
             # "dir_name":dir_name
         }
     process_images(input_folder, output_folder_filter)#获取黑塞矩阵处理后的图像，存入filter文件夹

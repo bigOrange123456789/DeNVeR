@@ -40,7 +40,9 @@ def main(args):
     os.makedirs(pathOut, exist_ok=True)
     os.makedirs(os.path.join(pathOut, "filter"), exist_ok=True)
     os.makedirs(os.path.join(pathOut, "binary"), exist_ok=True)
-    os.makedirs(os.path.join(pathOut, "connect"), exist_ok=True)
+    if False:
+        os.makedirs(os.path.join(pathOut, "connect"), exist_ok=True)
+        os.makedirs(os.path.join(pathOut, "connect_maxbox"), exist_ok=True)
     Segment_model.eval()
 
     from torchvision import transforms
@@ -64,20 +66,12 @@ def main(args):
         images_np = val_pred_sup_l.cpu().numpy().squeeze(axis=1).astype(np.uint8)
         # print("1images_np", images_np.shape)
         images_np = images_np[0]
-        image = Image.fromarray(images_np.copy(), mode='L')
-        # image.save(os.path.join(pathOut, filename))
-        image.save(os.path.join(pathOut, "filter", filename))
-        img2=images_np.copy()
-        img2[img2>0]=255
-        image2 = Image.fromarray(img2, mode='L')
-        image2.save(os.path.join(pathOut, "binary", filename))
 
      # if False:
         # 查找连通区域
         binary_image = images_np.copy()
         binary_image[binary_image>0] = 255
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_image, connectivity=8)
-
         # 创建一个与原图同样大小的彩色图像
         colored_image = np.zeros((binary_image.shape[0], binary_image.shape[1], 3), dtype=np.uint8)
         # 为每个连通区域分配不同的颜色
@@ -87,13 +81,35 @@ def main(args):
         # 保存标注后的图像
         cv2.imwrite(os.path.join(pathOut, "connect", filename), colored_image)
 
-        # 跳过背景（标签0），从第1个开始找最大面积
-        max_label = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
-        max_area = stats[max_label, cv2.CC_STAT_AREA]
-        # 创建一个全黑的图像，只保留最大连通区域
-        max_region_mask = (labels == max_label).astype(np.uint8) * 255
-        # 保存最大连通区域的掩码图像
-        cv2.imwrite(os.path.join(pathOut, "max_region", filename), max_region_mask)
+        # 初始化最大包围框面积和对应标签
+        max_bbox_area = -1
+        max_label = -1
+        # 跳过背景(0)，从1开始遍历
+        for label in range(1, num_labels):
+            # stats结构: [x0, y0, width, height, area]
+            w = stats[label, cv2.CC_STAT_WIDTH]
+            h = stats[label, cv2.CC_STAT_HEIGHT]
+            bbox_area = w * h  # 计算包围框面积
+            if bbox_area > max_bbox_area:# 更新最大区域
+                max_bbox_area = bbox_area
+                max_label = label
+        # 创建只包含最大连通区域的图像
+        result_image = np.zeros_like(binary_image)
+        if max_label != -1:  # 确保找到有效区域
+            result_image[labels == max_label] = 255
+        # 保存结果
+        cv2.imwrite(os.path.join(pathOut, "connect_maxbox", filename), result_image)
+        result_image[result_image>0]=1
+        maxRegion = result_image
+
+        images_np = images_np*maxRegion
+        image = Image.fromarray(images_np.copy(), mode='L')
+        image.save(os.path.join(pathOut, "filter", filename))
+        img2=images_np.copy()
+        img2[img2>=0.5]=255
+        img2[img2<0.5]=0
+        image2 = Image.fromarray(img2, mode='L')
+        image2.save(os.path.join(pathOut, "binary", filename))
 
 
 

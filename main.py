@@ -74,7 +74,7 @@ class Main():
         saveTime("黑塞矩阵+区域生长")
         skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
         saveTime("获取骨架")
-        exit(0)
+        # exit(0)
 
         # run raft #RAFT是方法简称
         # print(ROOT)
