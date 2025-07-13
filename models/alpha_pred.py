@@ -12,7 +12,10 @@ import utils
 
 
 class AlphaModel(nn.Module):#进行视频分割的UNet模型，输入视频，输出每个对象的MASK。
-    def __init__(self, n_layers, net_args, d_in=3, fg_prob=0.1, **kwargs):
+    def __init__(self, n_layers, net_args, d_in=3, fg_prob=0.1,
+                 pathParam="/home/lzc/桌面/DeNVeR/../DeNVeR_in/models_config/freecos_Seg.pt",
+                 useFreeCOS=True,
+                 **kwargs):
         super().__init__()
         '''
             n_layers: 2
@@ -60,16 +63,32 @@ class AlphaModel(nn.Module):#进行视频分割的UNet模型，输入视频，�
             我猜这是一个多分类的UNet网络，其中n_outputs表示除了背景之外的类别数量。
             只有生成精灵图的时候才需要固定编码。
         '''
-        self.backbone = UNet(d_in, self.n_outputs, **net_args) #这是一个UNet网络
-        # 一个关键的问题：这个UNet能否直接分析前后帧之间的关系？不能，这只是并行处理了一批图片。应该将这10张3通道图片变为1张10通道图片。
+        ###################### 这里加载FreeCOS的分割模型 ######################
+        # print("self.shift",self.shift)
+        self.useFreeCOS=useFreeCOS #True
+        if self.useFreeCOS:
+            from free_cos.ModelSegment import ModelSegment
+            n_channels = 1
+            num_classes = 1
+            self.Segment_model = ModelSegment(n_channels, num_classes).cuda()
+            checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
+            self.Segment_model.load_state_dict(checkpoint['state_dict'])
+        else:
+            self.backbone = UNet(d_in, self.n_outputs, **net_args) #这是一个UNet网络
+            # 一个关键的问题：这个UNet能否直接分析前后帧之间的关系？不能，这只是并行处理了一批图片。应该将这10张3通道图片变为1张10通道图片。
 
     def forward(self, x, **kwargs):
         """
         :param x (N, C, H, W)
         """
-        pred = self.backbone(x, **kwargs)  # (N, M-1, H, W)
-        # x: [10, 3, 128, 128]    #应该是10张3通道的图像
-        # pred: [10, 1, 128, 128] #应该是MASK图片
+        if self.useFreeCOS:
+            x = (x[:,0:1]+x[:,1:2]+x[:,2:3])/2
+            x = (x - torch.mean(x)) / torch.std(x)
+            pred = self.Segment_model(x)["pred"]
+        else:
+            pred = self.backbone(x, **kwargs)  # (N, M-1, H, W)
+        # # x: [10, 3, 128, 128]    #应该是10张3通道的图像
+        # # pred: [10, 1, 128, 128] #应该是MASK图片
         return self._pred_to_output(pred)
 
     def _pred_to_output(self, x): #这个函数的主要作用是考虑层间遮挡，但对单层数据来说用处不大
@@ -78,7 +97,8 @@ class AlphaModel(nn.Module):#进行视频分割的UNet模型，输入视频，�
         :param x (B, M-1, H, W)      #x.shape=[10,1,128**2] #x是单通道
         """
         ## predict occupancies 预测占用率
-        x = x - self.shift #预测结果-偏移值
+        if not self.useFreeCOS:
+            x = x - self.shift #预测结果-偏移值
         '''
             shift.shape = [1, 1, 1, 1]
             x.shape = [10, 1, 128**2]

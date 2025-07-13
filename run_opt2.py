@@ -31,7 +31,9 @@ time_pre = -99999999999999
 print("01:测试train1+2+4的效果(B样条软体背景)")
 print("02:测试train1+(2、4)的效果","背景重构效果有下降")
 print("03:测试不基于NIR纹理的效果(修改了./models/tex_gen.py)","出乎意料、重构效果似乎更好了")
-TestID="03"
+#####将黑塞矩阵替换为了FreeCOS:查全率有90，但是查准率一般、另外有很多碎片。#####
+TestID="04"
+print("计划:测试不基于FreeCOS的BinaryMASK、而是基于FreeCOS的PredictMask","")
 
 @hydra.main(config_path="confs", config_name="config")
 def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架构的三个分支都在哪里
@@ -101,7 +103,10 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
             这种加载方式通常用于验证（validation）或测试阶段，因为验证和测试阶段通常需要按照固定的顺序处理数据，
             以确保结果的一致性和可重复性。
     '''
-    model = models.SpriteModel(dset, cfg.data.seq, cfg.n_layers, cfg.model)
+    model = models.SpriteModel(dset, cfg.data.seq, cfg.n_layers, cfg.model,
+                               # pathParam="/home/lzc/桌面/DeNVeR/../DeNVeR_in/models_config/freecos_Seg.pt",
+                               pathParam=os.path.join(ROOT, cfg.my.raftConfig, "freecos_Seg.pt"),
+                               useFreeCOS=cfg.my.useFreeCOS)
     model.to(DEVICE)  # cuda
     '''
         dset: 数据加载器 <data.CompositeDataset object at 0x7f7c6428ddf0>
@@ -166,11 +171,20 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
 
     # 这几次不同的训练应该只是损失函数的不同
     time_pre = time.time()
-
     def getTime(time_pre):
         time_gap = (time.time() - time_pre) / 60
         time_pre = time.time()
         return time_gap
+    y_list = []
+    for batch in val_loader:
+        batch = utils.move_to(batch, DEVICE)
+        with torch.no_grad():
+            print(dir(batch))
+            print(batch.keys())
+            print(batch["rgb"].shape)
+            y = model.alpha_pred(batch["rgb"])["masks"].detach()[:,0,0]*255
+            y_list.append(y)
+    evaluate.analysis("0.init", cfg.data.seq, torch.cat(y_list, dim=0), getTime(time_pre))
 
     # 一、warmstart the masks 通过masks进行热开始 #优化MASK几何分割器
     label = "masks"
@@ -195,6 +209,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
             n_epochs, model_kwargs=model_kwargs, label=label
         )  # 为啥第二阶段必须要有val_dict
         evaluate.analysis("1.masks", cfg.data.seq, result_seg, getTime(time_pre))  # tag,id,imgs
+        print("result_seg",type(result_seg),result_seg.shape)
         print("step_ct", step_ct)
     # else:step_ct=0
     # exit(0)

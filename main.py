@@ -70,7 +70,9 @@ class Main():
             pathOut = os.path.join(ROOT,myP0["outpath"])
             cmd = (f"cd {ROOT}/FreeCOS && python main.py --pathParam {paramPath} --pathIn {pathIn} --pathOut {pathOut}")
             print(cmd) #pip install easydict
-            subprocess.call(cmd, shell=True)
+            # subprocess.call(cmd, shell=True)
+            from free_cos.main import mainFreeCOS
+            mainFreeCOS(paramPath,pathIn,pathOut)
         saveTime("黑塞矩阵+区域生长")
         skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
         saveTime("获取骨架")
@@ -91,17 +93,17 @@ class Main():
         # exit(0)
         saveTime("计算光流")
 
-        # stage 1                     # 获取背景的静态全景图
-        nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
-        print("nirs_path:",nirs_path)
-        filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
-        cmd = f"python {ROOT}/nir/booststrap.py --filePathRoot {filePathRoot2} --data {data_name} --outpath {nirs_path}"
-        print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
-        subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
-        saveTime("NIR前/背景分离")
-        # exit(0)
+        if False:# stage 1                     # 获取背景的静态全景图
+            nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
+            print("nirs_path:",nirs_path)
+            filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
+            cmd = f"python {ROOT}/nir/booststrap.py --filePathRoot {filePathRoot2} --data {data_name} --outpath {nirs_path}"
+            print(cmd) # python nir/booststrap.py --data CVAI-2828RAO2_CRA32
+            subprocess.call(cmd, shell=True) # 计算背景图片，并存入nirs中
+            saveTime("NIR前/背景分离")
+            # exit(0)
         # stage 2
-        cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
+        cmd = f"python {ROOT}/run_opt2.py data=custom data.seq={data_name}"
         print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
         subprocess.call(cmd, shell=True)
         saveTime("执行完毕")

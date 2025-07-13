@@ -17,7 +17,9 @@ class SpriteModel(nn.Module):#这应该是那个三分支模型本身
     cfg loaded from src/confs/models
     """
 
-    def __init__(self, dset, data_path, n_layers, cfg):
+    def __init__(self, dset, data_path, n_layers, cfg,
+                 pathParam="/home/lzc/桌面/DeNVeR/../DeNVeR_in/models_config/freecos_Seg.pt",
+                 useFreeCOS=True):
         super().__init__()
 
         self.dset = dset
@@ -27,7 +29,7 @@ class SpriteModel(nn.Module):#这应该是那个三分支模型本身
 
         # 一、initialize mask prediction 初始化掩码预测
         args = cfg.alpha_pred
-        self.alpha_pred = AlphaModel(n_layers, **dict(args))#几何生成器
+        self.alpha_pred = AlphaModel(n_layers, pathParam=pathParam,useFreeCOS=True,**dict(args))#几何生成器
         optims = [{"params": self.alpha_pred.parameters(), "lr": args.lr}]
 
         self.has_tex = cfg.use_tex #使用纹理

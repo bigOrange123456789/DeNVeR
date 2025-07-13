@@ -6,4 +6,5 @@ my:
     datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: True
+    useFreeCOS: True
 

@@ -645,7 +645,8 @@ class OcclusionDataset(Dataset):
 def get_masks(i, scale, seq_name):
     # print("config", config)
     path = f"{ROOT}/preprocess/datasets"
-    path = os.path.join(path, seq_name, "binary", '*')
+    # path = os.path.join(path, seq_name, "binary", '*') #这是旧的版本
+    path = os.path.join(path, seq_name, "binary", '*')#这是我的修改
     # print("path", path)
     imfiles = sorted(glob.glob(path)) # 获取path
     # print("imfiles[i]",imfiles[i])

@@ -5,13 +5,12 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 
 
-from lib.ModelSegment import ModelSegment
+from free_cos.ModelSegment import ModelSegment
 import cv2
-def main(args):
+def mainFreeCOS(pathParam,pathIn,pathOut):
     os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
-    # args = parser.parse_args()
     cudnn.benchmark = True #benchmark的意思是基准
 
 
@@ -26,9 +25,9 @@ def main(args):
 
 
     ##############################   predictor.lastInference()   ##############################
-    pathParam = args.pathParam#"./logs/FreeCOS48.log/best_Segment.pt"#os.path.join('logs', "FreeCOS48.log", "best_Segment.pt")
-    pathOut = args.pathOut#"./logs/FreeCOS48.log/inference" #os.path.join('logs', "FreeCOS48.log", "inference")
-    pathIn = args.pathIn#"./DataSet-images/test/img"
+    pathParam = pathParam#"./logs/FreeCOS48.log/best_Segment.pt"#os.path.join('logs', "FreeCOS48.log", "best_Segment.pt")
+    pathOut = pathOut#"./logs/FreeCOS48.log/inference" #os.path.join('logs', "FreeCOS48.log", "inference")
+    pathIn = pathIn#"./DataSet-images/test/img"
     print("pathOut",pathOut)
     print("pathParam",pathParam)
     print("pathIn",pathIn)
@@ -106,8 +105,8 @@ def main(args):
         image = Image.fromarray(images_np.copy(), mode='L')
         image.save(os.path.join(pathOut, "filter", filename))
         img2=images_np.copy()
-        img2[img2>=0.5]=255
-        img2[img2<0.5]=0
+        img2[img2>=255*0.5]=255
+        img2[img2<255*0.5]=0
         image2 = Image.fromarray(img2, mode='L')
         image2.save(os.path.join(pathOut, "binary", filename))
 
@@ -120,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument("--pathIn")
     parser.add_argument("--pathOut")
     args = parser.parse_args()
-    main(args)
+    mainFreeCOS(args.pathParam,args.pathIn,args.pathOut)
 
 '''
     export PATH="~/anaconda3/bin:$PATH"
@@ -139,4 +138,8 @@ if __name__ == '__main__':
     --pathIn ./DataSet-images/test/img 
     --pathOut ./pathOut
     
+    python main.py --pathParam ../../DeNVeR_in/models_config/freecos_Seg.pt --pathIn ../../DeNVeR_in/xca_dataset/CVAI-2828/images/CVAI-2828RAO11_CRA11 --pathOut ../log/preprocess/datasets/CVAI-2828RAO11_CRA11
+    python ./FreeCOS/main.py --pathParam ../DeNVeR_in/models_config/freecos_Seg.pt --pathIn ../DeNVeR_in/xca_dataset/CVAI-2828/images/CVAI-2828RAO11_CRA11 --pathOut ./log/preprocess/datasets/CVAI-2828RAO11_CRA11
+
+
 '''
