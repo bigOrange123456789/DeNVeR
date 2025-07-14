@@ -32,6 +32,7 @@ print("01:测试train1+2+4的效果(B样条软体背景)")
 print("02:测试train1+(2、4)的效果","背景重构效果有下降")
 print("03:测试不基于NIR纹理的效果(修改了./models/tex_gen.py)","出乎意料、重构效果似乎更好了")
 #####将黑塞矩阵替换为了FreeCOS:查全率有90，但是查准率一般、另外有很多碎片。#####
+print("04:直接用FreeCOS作为分割器","1.训练太慢了，感觉应该只作为静态编码器和目标监督器。2.可视化更好、但指标下降。")
 TestID="04"
 print("计划:测试不基于FreeCOS的BinaryMASK、而是基于FreeCOS的PredictMask","")
 
@@ -179,9 +180,9 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
     for batch in val_loader:
         batch = utils.move_to(batch, DEVICE)
         with torch.no_grad():
-            print(dir(batch))
-            print(batch.keys())
-            print(batch["rgb"].shape)
+            # print(dir(batch))
+            # print(batch.keys())
+            # print(batch["rgb"].shape)
             y = model.alpha_pred(batch["rgb"])["masks"].detach()[:,0,0]*255
             y_list.append(y)
     evaluate.analysis("0.init", cfg.data.seq, torch.cat(y_list, dim=0), getTime(time_pre))
