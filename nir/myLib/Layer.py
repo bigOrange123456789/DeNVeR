@@ -8,12 +8,12 @@ import torchvision.transforms as T
 import re
 
 from nir.model import Siren
-from nir.util import get_mgrid, jacobian#, VideoFitting
+from nir.util import get_mgrid, jacobian
 from nir.util import Dataset,ToTensor
 
 import torch.nn as nn
 class Layer(nn.Module):
-    def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,deformationSize=8):
+    def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,deformationSize=8,hidden_features=128):
         super().__init__()
         self.useGlobal=useGlobal
         self.useLocal=useLocal
@@ -21,7 +21,7 @@ class Layer(nn.Module):
         self.useDeformation=useDeformation
         self.deformationSize=deformationSize
         self.f_2D = Siren(in_features=2, out_features=1,
-                          hidden_features=128, hidden_layers=4,
+                          hidden_features=hidden_features, hidden_layers=4,
                           outermost_linear=True)
         self.f_2D.cuda()
         self.parameters = [self.f_2D.parameters()]
@@ -33,7 +33,7 @@ class Layer(nn.Module):
             self.g_global.cuda()
         if self.useLocal:
             self.g_local = Siren(in_features=3, out_features=2,
-                                 hidden_features=128, hidden_layers=4,
+                                 hidden_features=hidden_features, hidden_layers=4,
                                  outermost_linear=True)
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())

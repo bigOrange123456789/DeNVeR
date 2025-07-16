@@ -511,7 +511,7 @@ class MaskWarpLoss(nn.Module):#根据光流图预测的下一帧要与真实的�
             return torch.zeros(1, dtype=torch.float32, device=masks.device)
 
         if gap > 0: #正向光流
-            ok, flow = batch_in["fwd"] # (B, 2, H, W) #不ok的那张图片为全0
+            ok, flow = batch_in["fwd"] # (B, 2, H, W) #没有找到对应的文件才会不OK
             # ok=[ True,  True,  True,  True,  True,  True,  True,  True, False]
             # flow.shape=[9, 2, 128, 128] 光流图是双通道
             occ_map = batch_in["occ"][0] #occ.shape=[9, 1, 128, 128] #前向遮挡图

@@ -32,7 +32,6 @@ def check(predictPath,video_id,tag):
     ])
     y_list=[]
     for name in sorted(os.listdir(os.path.join(predictPath,"filter")),key=natural_sort_key):
-        print("name",name)
         img0 = Image.open(os.path.join(predictPath,"filter",name))  # PIL Image
         t0 = transform(img0)  # (1, H, W)
         # t0[t0>=0.5]=1

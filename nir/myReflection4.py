@@ -24,37 +24,48 @@ from nir.myLib.mySave import check,save2img,save0
 videoId="CVAI-2855LAO26_CRA31"
 paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
 pathIn = 'nir/data/in2'
+maskPath="./nir/data/mask/filter"
 pathLable = "nir/data/in2_gt"
 pathMaskOut = "./nir/data/mask"
-print("04_01:对原视频去噪、对合成血管去噪声","")
+print("04_01:对原视频去噪、对合成血管去噪声", "拟合效果非常差、拟合后的视频无法分割出正确的结果")
+print("04_02:尝试只拟合血管区域", "效果依然不佳")
+print("04_03:将隐含层特征由128修改为256", "")
+print("04_04:", "")
+
+# 计算FreeCOS的准确性
 if False:
     mainFreeCOS(paramPath,pathIn,pathMaskOut)
-check(pathMaskOut,videoId,"nir.0.origin")
+    check(pathMaskOut,videoId,"nir.0.origin")
 
+# 计算
 if False:
     outpath = './nir/data/myReflection4_10'
     mainFreeCOS(paramPath,os.path.join(outpath, "recon_non2"),os.path.join(outpath, "mask2"))
     check(os.path.join(outpath, "mask2"),videoId,"nir.1.recon_non2")
     exit(0)
 
-# 局部解耦
-outpath = './nir/data/myReflection4_01'
-# 初始约束权重
-EpochNum =6000 #5000 #3000
-myMain=Decouple(pathIn)
-myMain.train(EpochNum) #EpochNum =5000
+outpath = './nir/data/myReflection4_03'
+EpochNum =3 #5000 #3000
+
+# 解耦出血管层
+if True:
+    myMain=Decouple(pathIn,maskPath=maskPath,hidden_features=256)
+    myMain.train(EpochNum) #EpochNum =5000
 
 def save1(o_scene, tag):
     o_scene = o_scene.cpu().detach().numpy()
     o_scene = (o_scene * 255).astype(np.uint8)
     save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
 
-from nir.myLib.SimModel import SimModel
-mySim0=SimModel(pathIn)
-mySim0.train(EpochNum) #EpochNum =5000
-video_sim0 = mySim0.getVideo()#torch.Size([10, 128, 128, 1])
+#拟合原始视频
+if True:
+    from nir.myLib.SimModel import SimModel
+    mySim0=SimModel(pathIn)
+    mySim0.train(EpochNum) #EpochNum =5000
+    video_sim0 = mySim0.getVideo()#torch.Size([10, 128, 128, 1])
 
-if True:# False: #不输出解耦效果
+#输出解耦效果
+if True:# False:
  with torch.no_grad(): #
     orig = myMain.v.video.clone()
     orig = orig.permute(0, 2, 3, 1).detach().numpy()
@@ -104,14 +115,16 @@ if True:# False: #不输出解耦效果
         mainFreeCOS(paramPath, os.path.join(outpath, "recon_non3"), os.path.join(outpath, "mask3"))
         check(os.path.join(outpath, "mask3"), videoId, "nir.1.recon_non3")
 
-if False:#效果极为差劲
-    mySim1=SimModel(os.path.join(outpath,"recon_non2"))
-    mySim1.train(EpochNum) #EpochNum =5000
+# exit(0)
+# 拟合解耦出来的血管纹理
+if True: #效果不好
+    from nir.myLib.ModelVessel import ModelVessel
+    mySim1=ModelVessel(os.path.join(outpath,"recon_non2"),maskPath=maskPath) #只拟合血管区域
+    mySim1.train(EpochNum) # EpochNum =5000
     video_pre1 = mySim1.getVideo()
-    save1(video_pre1, "recon_non2_smooth")
-    mainFreeCOS(paramPath, os.path.join(outpath, "recon_non2_smooth"), os.path.join(outpath, "mask2_"))
-    check(os.path.join(outpath, "mask2_"), videoId, "nir.1.recon_non2_smooth")
-
+    save1(video_pre1, "recon_non2_smooth_onlyVessel.01")
+    # mainFreeCOS(paramPath, os.path.join(outpath, "recon_non2_smooth"), os.path.join(outpath, "mask2_"))
+    # check(os.path.join(outpath, "mask2_"), videoId, "nir.1.recon_non2_smooth")
 
 '''
     python -m nir.myReflection3

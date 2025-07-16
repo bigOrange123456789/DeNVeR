@@ -64,7 +64,7 @@ class Main():
                                   inPath=config["my"]["datasetPath"],
                                   needHessian=needHessian
                                   )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
-        if not needHessian:
+        if not needHessian: # 黑塞矩阵是局部特征、难以获取全局特征 #需要
             paramPath = os.path.join(ROOT,config["my"]["raftConfig"],"freecos_Seg.pt")
             pathIn = os.path.join(ROOT,myP0["inpath"])
             pathOut = os.path.join(ROOT,myP0["outpath"])
@@ -75,7 +75,8 @@ class Main():
             mainFreeCOS(paramPath,pathIn,pathOut)
         saveTime("黑塞矩阵+区域生长")
         skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
-        saveTime("获取骨架")
+        saveTime("获取骨架") #通过光流图追踪骨架 # 光流图需要进行遮挡分析不？背景、最好仍然有刚体、软体、流体的光流分析。
+        # 基于光流分析的解耦
         # exit(0)
 
         # run raft #RAFT是方法简称

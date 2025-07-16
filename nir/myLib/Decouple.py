@@ -28,9 +28,9 @@ class Decouple(nn.Module):
         # return x
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
-    def __init__(self, path):
+    def __init__(self, path,maskPath="./nir/data/mask/filter",hidden_features=128):
         super().__init__()
-        v = VideoFitting(path)
+        v = VideoFitting(path,maskPath=maskPath)
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
         model_input, ground_truth, mask = next(iter(videoloader))
         model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
@@ -53,14 +53,14 @@ class Decouple(nn.Module):
         self.NUM_soft = 1 # 软体层的数据
         self.f_soft_list = []
         for i in range(self.NUM_soft):
-            self.f_soft_list.append(Layer(useGlobal=False))
+            self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
         # 二、刚体
         self.NUM_figid = 3 # 刚体层的数据
         self.f_rigid_list=[]
         for i in range(self.NUM_figid):
-            self.f_rigid_list.append(Layer(useDeformation=True))
+            self.f_rigid_list.append(Layer(useDeformation=True,hidden_features=hidden_features))
         # 三、流体
-        self.f2 = Siren(in_features=3, out_features=1, hidden_features=128,
+        self.f2 = Siren(in_features=3, out_features=1, hidden_features=hidden_features,
                    hidden_layers=4, outermost_linear=True)
         self.f2.cuda()
 
