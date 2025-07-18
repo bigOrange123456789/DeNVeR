@@ -13,7 +13,8 @@ from nir.util import Dataset,ToTensor
 
 import torch.nn as nn
 class Layer(nn.Module):
-    def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,deformationSize=8,hidden_features=128):
+    def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
+                 deformationSize=8,hidden_features=128):
         super().__init__()
         self.useGlobal=useGlobal
         self.useLocal=useLocal

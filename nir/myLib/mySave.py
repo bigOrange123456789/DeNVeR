@@ -39,12 +39,32 @@ def check(predictPath,video_id,tag):
         y_list.append(t0)
     evaluate.analysis(tag, video_id, 255*torch.cat(y_list, dim=0), -1)
 
-def save2img(imgs,path):
+# def save2img(imgs,path):
+#     if not os.path.exists(path):os.makedirs(path)
+#     for i in range(imgs.shape[0]):
+#         image_array = imgs[i]
+#         image = Image.fromarray(image_array, mode='L')
+#         image.save(os.path.join(path, str(i).zfill(5) + '.png'))
+
+def save2img(imgs, path):
     if not os.path.exists(path):os.makedirs(path)
-    for i in range(imgs.shape[0]):
-        image_array = imgs[i]
-        image = Image.fromarray(image_array, mode='L')
-        image.save(os.path.join(path, str(i).zfill(5) + '.png'))
+
+    # 如果是 torch tensor，先转 numpy
+    if isinstance(imgs, torch.Tensor):
+        imgs = imgs.detach().cpu().numpy()
+
+    # 确保是 uint8
+    imgs = imgs.astype(np.uint8)
+    if imgs.ndim == 4: #[图片数，宽，高，通道]
+        for i in range(imgs.shape[0]):
+            image_array = imgs[i]      # [H, W, 3]
+            image = Image.fromarray(image_array, mode='RGB')
+            image.save(os.path.join(path, f'{i:05d}.png'))
+    else:
+        for i in range(imgs.shape[0]):
+            image_array = imgs[i]      # [H, W]
+            image = Image.fromarray(image_array, mode='L')
+            image.save(os.path.join(path, f'{i:05d}.png'))
 
 def save0(o_scene,tag):
     N, _, H, W = orig.size()
