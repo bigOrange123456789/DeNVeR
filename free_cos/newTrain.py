@@ -7,50 +7,7 @@ import torch.backends.cudnn as cudnn
 
 from free_cos.ModelSegment import ModelSegment
 import cv2
-import numpy as np
-from PIL import Image
-
-def calculate_mean_variance(image_folder):
-    # 初始化变量
-    total_pixels = 0
-    sum_pixels = 0.0
-    sum_squared_pixels = 0.0
-
-    # 获取文件夹中所有图片文件
-    image_files = [f for f in os.listdir(image_folder) if
-                   f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
-
-    if not image_files:
-        print("文件夹中没有找到图片文件")
-        return None, None
-
-    # 遍历所有图片
-    for img_file in image_files:
-        try:
-            img_path = os.path.join(image_folder, img_file)
-            img = Image.open(img_path).convert('L')  # 确保是灰度图
-            img_array = np.array(img).astype(np.float32)/255.0
-
-            # 更新统计量
-            num_pixels = img_array.size
-            total_pixels += num_pixels
-            sum_pixels += np.sum(img_array)
-            sum_squared_pixels += np.sum(img_array.astype(np.float64) ** 2)
-
-        except Exception as e:
-            print(f"处理图片 {img_file} 时出错: {e}")
-            continue
-
-    if total_pixels == 0:
-        print("没有有效的像素数据")
-        return None, None
-
-    # 计算均值和方差
-    mean = sum_pixels / total_pixels
-    variance = (sum_squared_pixels / total_pixels) - (mean ** 2)
-
-    return mean, variance
-def mainFreeCOS(pathParam,pathIn,pathOut):
+def train01(pathParam,pathIn,pathOut):
     os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -68,9 +25,17 @@ def mainFreeCOS(pathParam,pathIn,pathOut):
 
 
     ##############################   predictor.lastInference()   ##############################
+    pathParam = pathParam#"./logs/FreeCOS48.log/best_Segment.pt"#os.path.join('logs', "FreeCOS48.log", "best_Segment.pt")
+    pathOut = pathOut#"./logs/FreeCOS48.log/inference" #os.path.join('logs', "FreeCOS48.log", "inference")
+    pathIn = pathIn#"./DataSet-images/test/img"
+    print("pathOut",pathOut)
+    print("pathParam",pathParam)
+    print("pathIn",pathIn)
     checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
     Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
 
+    import numpy as np
+    from PIL import Image
     os.makedirs(pathOut, exist_ok=True)
     os.makedirs(os.path.join(pathOut, "filter"), exist_ok=True)
     os.makedirs(os.path.join(pathOut, "binary"), exist_ok=True)
@@ -79,10 +44,8 @@ def mainFreeCOS(pathParam,pathIn,pathOut):
         os.makedirs(os.path.join(pathOut, "connect_maxbox"), exist_ok=True)
     Segment_model.eval()
 
-    mean,std = calculate_mean_variance(pathIn)
-    # print("mean,std",mean,std)
-    # exit(0)
     from torchvision import transforms
+
     # 定义转换流程
     transform = transforms.Compose([
         transforms.ToTensor(),  # 转换为Tensor并自动归一化到[0,1]
@@ -93,7 +56,7 @@ def mainFreeCOS(pathParam,pathIn,pathOut):
 
         img = Image.open(file_path).convert('L')
         img = transform(img)
-        tensor=(img-mean)/ std
+        tensor=(img - torch.mean(img)) / torch.std(img)
         val_imgs = tensor.unsqueeze(0)
         val_imgs = val_imgs.cuda(non_blocking=True)  # NCHW
         result = Segment_model(val_imgs, mask=None, trained=False, fake=False)
@@ -156,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument("--pathIn")
     parser.add_argument("--pathOut")
     args = parser.parse_args()
-    mainFreeCOS(args.pathParam,args.pathIn,args.pathOut)
+    train01(args.pathParam,args.pathIn,args.pathOut)
 
 '''
     export PATH="~/anaconda3/bin:$PATH"

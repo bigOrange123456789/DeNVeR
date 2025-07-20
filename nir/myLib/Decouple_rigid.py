@@ -96,45 +96,6 @@ class Layer_rigid(nn.Module):
 
 #####################################################################
 
-videoId="CVAI-2855LAO26_CRA31"
-paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-pathIn = 'nir/data/in2'
-maskPath="./nir/data/mask/filter"
-pathLable = "nir/data/in2_gt"
-pathMaskOut = "./nir/data/mask"
-print("01:解耦刚体、并尽量高质量重构出视频", "(1)刚体的信息量不足、(2)在计算MASK的时候与recon-non不同、rigid-non不用除2。")
-print("02:不进行血管监督去除", "可视化结果由进步、但指标没有上涨。")
-# 如果使用MASK监督去除，某个位置刚体被误认为血管，该位置一直不移动、刚体解构就找不到该区域。
-# 因此刚体解耦绝不能去除血管监督。
-print("03:提高刚体的2D纹理表达能力, 刚体的隐含层特征维度由128变为512", "刚体层没有解耦出来任何信息。")
-print("04:降低刚体的局部变形能力deformationSize由8修改为1.5、所有刚体层计算损失的均值而不是求和", "刚体层依旧没有解耦出来任何信息")
-print("05:将刚体层的损失缩小100->10", "刚体层依旧没有解耦出任何信息")
-print("06:取消刚体层的局部形变", "软体层没有解耦出任何信息")
-# 对于刚体层来说、如果没有整体变化、那也不应该有局部变化 #刚体的抖动范围应该减半
-# 也可能是初始加权导致的刚体信息较少
-print("07:增加流体层的约束", "刚体层信息太少、软体层信息更少")
-print("08:单个刚体层(3->1),刚体的损失权重(10->1)", "刚体层信息太少、软体层信息更少")
-print("09:weight_init = [1, 1, 10]->[10, 0.1, 10]", "刚体层信息太少、软体层信息充足")#为啥我感觉刚体好像拟合不出来更远的距离
-print("10:刚体层减少隐含特征、关闭全局矩阵;", "刚体层的运动仍然不正确")
-print("11:担心刚体层无法描述远距离运动;", "刚体层信息为空")
-print("12:去除流体层;", "刚体层信息仍然为空")#流体层能够远距离移动、刚体层没有理由不行
-print("13:关闭整体移动的放缩、增大整体变换的表达能力", "刚体移动基本正确、最后有一个画面跳动错误")#软体刚体公用整体放缩
-#刚体损失太高、与之相比、软体就好像没有损失一样
-print("14:刚体层隐含特征128->512", "失败、抖动现象加剧")
-print("15:(1)刚体层隐含特征512->128(2)软体层数量1->2", "后期仍有抖动")
-print("16:软体随着刚体一起运动", "后期仍有抖动、产生原因是相机运动与心跳运动没有成功解耦")
-print("17:软体的隐含层维度由128改为512", "软体层完全消失","刚体层重构最好的一次实验")#我认为心跳运动由一个突变过程、因此使用偏导约束也不合适
-print("18:刚体层数量为2,软体层数量为0", "失败")
-print("19:使用log从而对颜色较浅的区域更敏感", "失败:刚体层全黑")
-print("20:只有重构损失", "效果还可以")
-print("21:刚体层数量2->20", "乳头图案仍旧无法拟合")
-print("22:(1)只有发生全局运动的时候才进行局部运动;(2)刚体层数量1。", "重构质量非常差")
-print("23:尝试重现17号实验的效果", "在相机没有移动的时候非常不错")
-print("24:分为两阶段进行训练", "局部移动非常不合理")
-print("25:限定第二阶段的局部移动大小", "局部移动的效果非常差","没有将局部位移限制到3像素、而是1.5倍的宽")
-#图层在移动的时候会有一些局部位移，而刚体层无法很好模拟出局部位移
-print("26:限定第二阶段的局部移动3像素", "效果非常差")
-print("27:单阶段、模拟旋转和放缩", "")
 outpath = './nir/data/removeRigid_27'
 EpochNum = 6000 #5000 #3000
 
@@ -387,52 +348,3 @@ class Decouple_rigid(nn.Module):
             return video_pre, layers, p
 
 
-#########################################################################
-
-# 解耦出血管层
-if True:
-    myMain=Decouple_rigid(pathIn,maskPath=maskPath,hidden_features=256)
-    myMain.train(EpochNum) #EpochNum =5000
-
-def save1(o_scene, tag):
-    o_scene = o_scene.cpu().detach().numpy()
-    o_scene = (o_scene * 255).astype(np.uint8)
-    save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
-
-
-#输出解耦效果
-if True:# False:
- with torch.no_grad(): #
-    orig = myMain.v.video.clone()
-    orig = orig.permute(0, 2, 3, 1).detach().numpy()
-    orig = (orig * 255).astype(np.uint8)
-    save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
-
-    ###########################################################################################
-    orig = myMain.v.video.clone()
-    N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
-    orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
-
-    video_pre, layers, p =myMain.getVideo(1)#使用局部形变
-
-    save1(video_pre, "recon")
-    save1(p["o_rigid_all"], "rigid")
-    # save1(p["o_soft_all"], "soft")
-    save1(orig.cuda()/(p["o_rigid_all"].abs()+10**-10), "rigid_non")
-    save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), "rigid_non2")
-
-    # video_pre0, layers0, p0 = myMain.getVideo(0)  # 不使用局部形变
-    # save1(video_pre0, "reconG")
-    # save1(p0["o_rigid_all"], "rigidG")
-    # save1(0.5 * orig.cuda() / (p0["o_rigid_all"].abs() + 10 ** -10), "rigidG_non2")
-
-
-    mainFreeCOS(paramPath, os.path.join(outpath, "rigid_non"), os.path.join(outpath, "mask_nr1"))
-    check(os.path.join(outpath, "mask_nr1"), videoId, "nir.1.rigid_non1")
-    mainFreeCOS(paramPath,os.path.join(outpath, "rigid_non2"),os.path.join(outpath, "mask_nr2"))
-    check(os.path.join(outpath, "mask_nr2"),videoId,"nir.1.rigid_non2")
-
-
-'''
-    python -m nir.removeRigid
-'''
