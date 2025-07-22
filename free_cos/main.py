@@ -30,6 +30,8 @@ def calculate_mean_variance(image_folder):
             img_path = os.path.join(image_folder, img_file)
             img = Image.open(img_path).convert('L')  # 确保是灰度图
             img_array = np.array(img).astype(np.float32)/255.0
+            # print("img_array",np.max(img_array),np.min(img_array))
+            # exit(0)
 
             # 更新统计量
             num_pixels = img_array.size

@@ -10,6 +10,7 @@ class Test():
         # print()
         # self.save_tensor_as_images(tensor)
         self.show_images(tensor)
+        # self.save_images(tensor)
 
     def save_tensor_as_images(self,tensor):  # 显示图片的一个测试脚本
         batch_size, channels, height, width = tensor.shape # 获取张量的形状
@@ -39,6 +40,27 @@ class Test():
 
         plt.show() # 显示所有图像
 
+    def save_images(self,tensorAll):  # 显示图片的一个测试脚本
+        batch_size, height, width = tensorAll.shape # 获取张量的形状
+
+        # 遍历每个样本
+        for i in range(batch_size):
+            tensor = tensorAll[i] # 提取单个样本
+            # 如果 tensor 在 GPU，先移到 CPU
+            tensor = tensor.cpu()
+
+            # 如果值范围是 [0, 1]，乘以 255；否则跳过
+            if tensor.max() <= 1.0:
+                tensor = tensor * 255
+
+            # 确保是整数类型
+            tensor = tensor.byte()
+
+            img = Image.fromarray(tensor.numpy(), mode='L')
+
+            # 保存图片
+            img.save('output'+str(i)+'.jpg')
+
     def show_images(self,tensor):  # 显示灰度图片组的一个测试脚本
         batch_size, height, width = tensor.shape # 获取张量的形状
 
@@ -48,7 +70,7 @@ class Test():
             img_array = img_tensor[:, :].cpu().detach().numpy()  # 去掉通道维度
 
             # 将张量值缩放到 [0, 1] 范围
-            img_array = (img_array - img_array.min()) / (img_array.max() - img_array.min())
+            # img_array = (img_array - img_array.min()) / (img_array.max() - img_array.min())
 
             # 显示图像
             plt.figure()
