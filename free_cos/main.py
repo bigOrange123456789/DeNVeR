@@ -51,8 +51,8 @@ def calculate_mean_variance(image_folder):
     mean = sum_pixels / total_pixels
     variance = (sum_squared_pixels / total_pixels) - (mean ** 2)
 
-    return mean, variance
-def mainFreeCOS(pathParam,pathIn,pathOut):
+    return mean, variance**0.5
+def mainFreeCOS(pathParam,pathIn,pathOut,needConnect=True):
     os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -140,7 +140,7 @@ def mainFreeCOS(pathParam,pathIn,pathOut):
         result_image[result_image>0]=1
         maxRegion = result_image
 
-        images_np = images_np*maxRegion
+        if needConnect: images_np = images_np*maxRegion
         image = Image.fromarray(images_np.copy(), mode='L')
         image.save(os.path.join(pathOut, "filter", filename))
         img2=images_np.copy()

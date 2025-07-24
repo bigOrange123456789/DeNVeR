@@ -12,10 +12,10 @@ from nir.util import get_mgrid, jacobian#, VideoFitting
 from nir.util import Dataset,ToTensor
 
 class VideoFitting(Dataset):
-    def __init__(self, path, transform=None,maskPath="./nir/data/mask/filter"):
+    def __init__(self, path, transform=None,useMask=True,maskPath="./nir/data/mask/filter"):
         super().__init__()
         self.numChannel=1 #不为3
-        self.useMask=True
+        self.useMask=useMask
 
         self.path = path
         if transform is None:

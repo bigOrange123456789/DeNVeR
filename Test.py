@@ -9,8 +9,12 @@ class Test():
     def __init__(self,tensor):
         # print()
         # self.save_tensor_as_images(tensor)
-        self.show_images(tensor)
+        if False:self.show_images(tensor)
         # self.save_images(tensor)
+
+    @staticmethod
+    def show_image(tensor,path):
+        Image.fromarray((tensor * 255).cpu().byte().numpy(), mode='L').save(path)
 
     def save_tensor_as_images(self,tensor):  # 显示图片的一个测试脚本
         batch_size, channels, height, width = tensor.shape # 获取张量的形状

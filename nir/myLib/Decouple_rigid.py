@@ -114,9 +114,9 @@ class Decouple_rigid(nn.Module):
         # return x
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
-    def __init__(self, path,maskPath="./nir/data/mask/filter",hidden_features=128):
+    def __init__(self, path,hidden_features=128):
         super().__init__()
-        v = VideoFitting(path,maskPath=maskPath)
+        v = VideoFitting(path,useMask=False,maskPath=None)
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
         model_input, ground_truth, mask = next(iter(videoloader))
         model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
@@ -142,7 +142,7 @@ class Decouple_rigid(nn.Module):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
             self.f_soft_list.append(Layer(useGlobal=False, hidden_features=512))
         # 二、刚体
-        self.NUM_figid = 1#20 # 刚体层的数据
+        self.NUM_figid = 2#20 # 刚体层的数据
         self.f_rigid_list=[]
         for i in range(self.NUM_figid):
             # self.f_rigid_list.append(Layer(useDeformation=True,hidden_features=512,deformationSize=1.5))
@@ -235,7 +235,7 @@ class Decouple_rigid(nn.Module):
         loss = loss_recon + loss_soft + loss_fluid + loss_rigid
 
         self.layers=layers
-        if not step % 200:
+        if not step % 2000:#200:
             print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_soft=%0.8f, loss_fluid=%0.8f, loss_rigid=%0.4f" % (
                 step, loss, loss_recon, loss_soft , loss_fluid , loss_rigid))
             # print("i_r0:", i_r0.item(),"; i_s0:", i_s0.item(),"; i_f0:", i_f0.item(),"\ntemp",
