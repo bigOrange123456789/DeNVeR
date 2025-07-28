@@ -106,6 +106,36 @@ class MyDataset(Dataset):
         return image_tensor
     def getVideoHead(self):
         from pathlib import Path
+        path0 = "../DeNVeR_in/firstImg"
+
+        folder = Path(path0)  # ← 换成你的目录
+        # 1. 仅保留文件，过滤掉子目录
+        files = [p for p in folder.iterdir() if p.is_file()]
+
+
+        import random
+        fileName = random.choice(files)
+        # print(fileName)
+        # print(self.videoPath, fileName)
+        img = Image.open(fileName)
+
+        if torch.rand(1) > 0.5:
+            if torch.rand(1) > 0.5:
+                img = img.rotate(90, expand=False)  # 逆时针 90°
+            else:
+                img = img.rotate(180, expand=False)  # 逆时针 180°
+        elif torch.rand(1) > 0.5:
+            img = img.rotate(-90, expand=False)  # 顺时针 90°
+
+        img = self.transform(img.convert('L'))
+
+        if torch.rand(1)>0.5: img = TF.hflip(img) # 水平翻转
+        if torch.rand(1)>0.5: img = TF.vflip(img) # 垂直翻转
+
+        return img
+
+    def getVideoHeadOld(self):
+        from pathlib import Path
 
         folder = Path(self.videoPath)  # ← 换成你的目录
         # 1. 仅保留文件，过滤掉子目录
@@ -197,19 +227,38 @@ def train_model(model, train_loader, criterion, optimizer, device, pathOut , num
             # exit(0)
 
             # 前向传播
+            imgs[gts<0.25]=0 #后面要测试一下这里为1是否结果会更好
             outputs = model(imgs)["pred"]
+            '''
             with torch.no_grad():  # 禁用梯度计算
                 weight_mask = gts.clone().detach()
                 weight_mask[gts == 0] = 0.05#0.05  # 0.1  # 值为0的元素设为0.1
                 weight_mask[gts > 0] = 1  # 1  # 值为1的元素保持不变
                 criterion_bce = nn.BCELoss(weight=weight_mask)
+            '''
+            with torch.no_grad():  # 禁用梯度计算
+                weight_mask = gts.clone().detach()
+                weight_mask[gts >= 0.75] = 0.05  # 血管
+                weight_mask[(gts >= 0.25) & (gts < 0.75)] = 1  # 导管
+                weight_mask[gts < 0.25] = 0  # 背景
+                criterion_bce = nn.BCELoss(weight=weight_mask)
+                # mask = torch.ones_like(gts)
+                # mask[gts < 0.25]  = 0  #背景不进行监督
+            outputs[gts < 0.25]  = 0 # 背景
+            gts[gts < 0.25] = 0 # 背景
+            gts[gts >= 0.75] = 0  # 血管
+            gts[(gts >= 0.25) & (gts < 0.75)] = 1 #导管
             ###########################################################
             # from Test
             ###########################################################
+            '''
             gts[gts <  0.25] = 0 #背景
             gts[gts >= 0.75] = 1 #血管
             gts[(gts >= 0.25) & (gts < 0.75)] = 0 #导管被视为背景
+            '''
+
             loss = criterion(outputs, gts) + 3.0*criterion_bce(outputs, gts)
+
             for i in range(1):#(len(outputs)):
                 Image.fromarray((outputs[i,0] * 255).cpu().byte().numpy(), mode='L').save(
                     os.path.join(pathOut,"train_epoch"+str(epoch),str(test_i)+".jpg"))
@@ -260,12 +309,13 @@ def start(pathParam,pathIn,pathOut):
     # Segment_model.load_state_dict(checkpoint)  # 提取模型状态字典并赋值给模型
     checkpoint = torch.load(pathParam)  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
     Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
+    # evaluate(pathOut, Segment_model,"orig")
 
     #########################################################################################################
     # 设置参数
     noisy_dir = "../DeNVeR_in/datasetSysthesis/vessel_3D_2"  # 噪声图像目录
     clean_dir = "../DeNVeR_in/datasetSysthesis/label_3D_2"  # 干净图像目录
-    batch_size = 10#10#10#10#10#11#4#8
+    batch_size = 10#10#10#10#10#10#10#10#11#4#8
     num_epochs = 1#10#10#20#10#10
     learning_rate = 0.001
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -298,7 +348,9 @@ def start(pathParam,pathIn,pathOut):
     )
 
     if False:# 保存模型
-        torch.save(trained_model.state_dict(), os.path.join(pathOut,"freecos_Seg_new.pt"))
+        #['state_dict']
+        # torch.save(trained_model.state_dict(), os.path.join(pathOut,"freecos_Seg_new.pt"))
+        torch.save({"state_dict":trained_model.state_dict(),}, os.path.join(pathOut, "freecos_Seg_new.pt"))
         print("模型参数已保存!")
     #########################################################################################################
 
@@ -312,6 +364,7 @@ def start(pathParam,pathIn,pathOut):
         os.makedirs(os.path.join(pathOut, "connect_maxbox"), exist_ok=True)
     Segment_model.eval()
 
+    evaluate(pathOut,Segment_model)
     # 定义转换流程
     transform = transforms.Compose([
         transforms.ToTensor(),  # 转换为Tensor并自动归一化到[0,1]
@@ -379,6 +432,127 @@ def start(pathParam,pathIn,pathOut):
         image2 = Image.fromarray(img2, mode='L')
         image2.save(os.path.join(pathOut, "binary", filename))
 
+
+from nir.myLib.mySave import check
+from free_cos.main import mainFreeCOS
+
+def getIndicators(binary_image, ground_truth):  # 对于指标来说预测结果和真值不对称
+    x, y = binary_image.shape
+    g_x, g_y = ground_truth.shape
+    if x != g_x and y != g_y:
+        binary_image = binary_image.astype(np.uint8)
+        binary_image = cv2.resize(binary_image, (g_x, g_y))
+    binary_image = np.where(binary_image < 1, 0, 255)
+    # 计算真正例、假正例、真负例和假负例的数量
+    true_positive = np.logical_and(
+        binary_image == 255, ground_truth == 255).sum()
+    false_positive = np.logical_and(
+        binary_image == 255, ground_truth == 0).sum()
+    true_negative = np.logical_and(binary_image == 0, ground_truth == 0).sum()
+    false_negative = np.logical_and(
+        binary_image == 0, ground_truth == 255).sum()
+    # print(binary_file)
+    # print(true_positive+false_positive+true_negative+false_negative)
+    # 计算精确度
+    accuracy = (true_positive + true_negative) / (true_positive +
+                                                  false_positive + true_negative + false_negative + 1e-10)
+    # 计算召回率
+    recall = true_positive / (true_positive + false_negative + 1e-10)
+    # 计算精确率
+    precision = true_positive / (true_positive + false_positive + 1e-10)
+    # 计算F1分数
+    f1 = 2 * (precision * recall) / (precision + recall + 1e-10)
+    # 计算IoU
+    iou = true_positive / (true_positive + false_positive + false_negative + 1e-10)
+    specificity = true_negative / (true_negative + false_positive + 1e-10)
+
+    return {
+        "accuracy": accuracy,
+        "recall": recall,
+        "precision": precision,
+        "f1": f1, "iou": iou,
+        "specificity": specificity
+    }
+import csv
+def initCSV(path,head): # 写入 CSV 文件
+    csv_file_path = path#os.path.join(path, "experiment_results.csv")
+    csv_header = head#["binary_mask_flag", "tag", "id", "frameId", "accuracy", "recall", "precision", "f1", "iou","specificity", "time_gap"]
+    if os.path.exists(csv_file_path):  os.remove(csv_file_path)
+    with open(csv_file_path, mode="a+", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, csv_header)
+        writer.writeheader()  # 写入表头
+def save2CVS(path,head,data):
+    with open(path, 'a+', newline='', encoding="utf-8") as file:
+        csv_writer = csv.writer(file)
+        arr = []
+        for i in head: arr.append(data[i])
+        csv_writer.writerow(arr)
+def evaluate(pathOut,model,tag="eval"):
+    os.makedirs(os.path.join(pathOut,tag), exist_ok=True)
+    head = ["fileName","accuracy","recall","precision","f1","iou","specificity"]
+    path = os.path.join(pathOut, "experiment_results.csv")
+    initCSV(path, head)
+    model.eval()
+    transform = transforms.Compose([
+        transforms.ToTensor(),  # 转换为Tensor
+    ])
+    datasetPath = "../DeNVeR_in/xca_dataset_video"
+    sum_recall = 0
+    sum_precision = 0
+    sum_f1 = 0
+    for name in os.listdir(os.path.join(datasetPath,"img")):
+        path_img = os.path.join(datasetPath,"img",name)
+        img = Image.open( path_img ).convert('L')
+        img = transform(img).unsqueeze(0).cuda()
+        path_m0 = os.path.join(datasetPath, "A.mask_nr2", name)
+        m0 = Image.open(path_m0).convert('L')
+        m0 = transform(m0).unsqueeze(0).cuda()
+        img[m0<0.5]=0
+        pred = model(img)["pred"]
+
+        pred[pred >= 0.5] = 1
+        pred[pred <  0.5] = 0
+        # output_org=output.clone()
+        m0[m0<0.5] = 0
+        m0[m0>=0.5] = 1
+        output = (1-pred)*m0 #去除m0中的导管
+        # output2 = output.clone()
+        # output2[m0==1&pred==0] = 0.5
+        # output[output >= 0.5] = 1
+        # output[output < 0.5] = 0
+        path_gt = os.path.join(datasetPath, "gt", name)
+        gt = Image.open(path_gt).convert('L')
+        gt = transform(gt).unsqueeze(0).cuda()
+        ind=getIndicators(
+            output[0,0].detach().cpu()*255,
+            gt[0,0].detach().cpu()*255
+        )
+        ind["fileName"]=name.split(".png")[0]
+        output2 = output.clone()
+        output2[m0 == 1] = 1 #血管和导管
+        output2[(m0 == 1) & (pred == 0)] = 0.5 #血管区域
+        Image.fromarray(
+            (output2[0,0].detach().cpu()*255).numpy().astype(np.uint8), mode='L'
+        ).save(os.path.join(pathOut, "eval", name))
+        save2CVS(path, head, ind)
+        sum_recall += ind["recall"]
+        sum_precision += ind["precision"]
+        sum_f1 += ind["f1"]
+    print("f1:",sum_f1/len(os.listdir(datasetPath+"/img")),
+          "pr:",sum_precision/len(os.listdir(datasetPath+"/img")),
+          "sn:",sum_recall/len(os.listdir(datasetPath+"/img")))
+    print("f1:", sum_f1.item() / len(os.listdir(datasetPath + "/img")),
+          "pr:", sum_precision.item() / len(os.listdir(datasetPath + "/img")),
+          "sn:", sum_recall.item() / len(os.listdir(datasetPath + "/img")))
+    # paramPath = os.path.join(pathOut,"freecos_Seg_new.pt")
+    # patient_names = [name for name in os.listdir(datasetPath)
+    #              if os.path.isdir(os.path.join(datasetPath, name))]
+    ####################################################################
+    # if os.path.exists(path0):
+    #     mainFreeCOS(paramPath, datasetPath, os.path.join(pathOut,"eval",videoId))
+    #     check(os.path.join(pathOut,"eval",videoId), videoId, "newTrain.30.recon_non2")
+
+
 import argparse
 if __name__ == '__main__':
     '''
@@ -411,8 +585,19 @@ if __name__ == '__main__':
     print("26:使用真实背景噪声、但背景处的损失函数为1/20", "失败：还是只能分割出轮廓")
     print("27:提高造影剂浓度", "失败：还是只能分割出轮廓")
     print("28:乘上噪声、而不是添加噪声", "基本正确、但没有去除乳头和导管")
-    '''
     print("29:有1/2的概率使用真实背景噪声", "失败：查准率较低")
+    '''
+    # 基于去除刚体：F1:0.764351423 Pr:0.691800375 Sn:0.860701029
+    print("30:使用规模为111张图片的噪声集", "成功:查全率和查准率粗看是正确的")
+    # f1:0.6433  pr: 0.5364  sn: 0.8438
+    print("31:改变思路：接下来只识别导管", "不能对去除刚体的效果进行提升")
+    # f1:0.7618  pr: 0.7004 sn: 0.8421
+    print("32:将MASK信息输入神经网络中", "")
+    # f1: tensor(0.7390) pr: tensor(0.7089) sn: tensor(0.7788)
+    print("33:修复训练过程中的一个BUG", "")
+    # f1: tensor(0.7689)  pr: tensor(0.7063) sn: tensor(0.8502)
+    # f1: 0.7666700544400452 pr: 0.7093585950756505 sn: 0.84076963398791
+    # print("34:关注于纯血管的学习、而不是导管", "")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pathParam")
@@ -422,7 +607,7 @@ if __name__ == '__main__':
     # train01(args.pathParam,args.pathIn,args.pathOut)
     start("../DeNVeR_in/models_config/freecos_Seg.pt",
             "./free_cos/data/in",
-            "./free_cos/data/out29")
+            "./free_cos/data/out33")
 
 '''
     export PATH="~/anaconda3/bin:$PATH"

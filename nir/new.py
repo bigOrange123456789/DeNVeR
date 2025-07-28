@@ -22,7 +22,6 @@ from nir.myLib.mySave import check,save2img,save0
 
 # maskPath="./nir/data/mask/filter"
 
-
 EpochNum = 4000 #6000#000 #5000 #3000
 # outpath = './nir/data/new_08'
 flagHadRigid=False#是否已经完成了刚体解耦
@@ -449,14 +448,14 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):
 if __name__ == "__main__":
     '''
     print("01:test", "可行性测试、结果正确(正确？很久之前的测试，当时的main.py部分的代码还没有出BUG)")
-    # '血管层去除'中MASK遮挡的范围可以大一些
+    #'血管层去除'中MASK遮挡的范围可以大一些  
     print("02:拟合背景的时候血管遮挡范围不考虑连通约束", "(main.py中的标准差写成了方差、现已改正)，最终效果非常好，竟然都不需要微调FreeCOS")
     print("03:钢体更硬、表达能力更强、无损失约束", "F1比02下降了一个点(查全率升高、查准率下降)")#84-83
     print("04:(1)使用旧版刚体(2)均方重构损失改为对数重构损失[更关注黯的区域]", "无明显变化") #84-84
     print("05:不对软体和流体进行损失监督", "刚体无用、软体用处不大")
     print("06:刚体和软体的数量为0", "效果没有太大变化；重构损失3442")
     print("07:增加隐含特征数量256=>256*4", "重构损失3839")#失败
-    print("08:隐含特征数量256，隐含层数4=>4*4", "失败:没有正常重构出视频")#失败
+    print("08:隐含特征数量256，隐含层数4=>4*4", "失败:没有正常重构出视频") #失败 
     '''
     print("09:", "")
     inpath  = "../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29"
