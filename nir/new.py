@@ -55,17 +55,24 @@ def startDecouple1(videoId,paramPath,pathIn,outpath):
         N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
         orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
 
-        video_pre, layers, p =myMain.getVideo(1)#使用局部形变
+        video_pre, layers, p = myMain.getVideo(1)#使用局部形变
 
         save1(p["o_rigid_all"], "A.rigid")#看一下刚体层的效果
-        if len(layers["r"])>1:
-         for i in range(len(layers["r"])):
+        for i in range(len(layers["r"])):
             save1(layers["r"][i], "A.rigid" + str(i))
         save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), "A.rigid_non2")
 
         mainFreeCOS(paramPath,os.path.join(outpath, "A.rigid_non2"),os.path.join(outpath, "A.mask_nr2_old"))
         check(os.path.join(outpath, "A.mask_nr2_old"),videoId,"A.nir.1.rigid_non2_old")
         mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid_non2"), os.path.join(outpath, "A.mask_nr2"),needConnect=False)
+
+        rigidMain=layers["r"][myMain.getMainRigidIndex()]
+        save1(rigidMain, "A.rigid.main")
+        save1(orig.cuda() / (rigidMain.abs() + 10 ** -10), "A.rigid.main_non1")
+        save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), "A.rigid.main_non2")
+        mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid.main_non2"), os.path.join(outpath, "A.mask.main_nr2"))
+        check(os.path.join(outpath, "A.mask.main_nr2"), videoId, "A.mask.main_nr2")
+
 ###############################################################################################################
 ###############################################################################################################
 from nir.model import Siren
@@ -396,8 +403,8 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):
     if True:
         script_path = os.path.abspath(__file__)
         ROOT = os.path.dirname(script_path)
-        maskPath = os.path.join(ROOT,"..",outpath, "A.mask_nr2","filter") if not flagHadRigid else os.path.join(
-            ROOT,"..",outpath,"..","new_02", "A.mask_nr2","filter")
+        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") if not flagHadRigid else os.path.join(
+            ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
         os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
         check(maskPath+"/..", videoId, "A.mask_nir2")
         myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)

@@ -74,6 +74,11 @@ class Layer_rigid(nn.Module):
                 v=scale*v
                 new_u = (u * cos_theta - v * sin_theta) + tx
                 new_v = (u * sin_theta + v * cos_theta) + ty
+
+                h_global = torch.cat([
+                    c[:, [0]],
+                    c[:, [1]]
+                ], dim=-1)
             # 组合成新坐标张量
             new_uv = torch.stack([new_u, new_v], dim=1)
             xy_ = new_uv
@@ -165,6 +170,26 @@ class Decouple_rigid(nn.Module):
             self.parameters = self.parameters + self.f_rigid_list[i].parameters
         for i in range(self.NUM_soft):
             self.parameters = self.parameters + self.f_soft_list[i].parameters
+    def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
+        N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+        n = N//2
+        t = torch.arange(n, dtype=torch.float32)/(2*N)-0.5
+        xyt = torch.cat([torch.zeros(n, 2, dtype=torch.float32),
+                         t.unsqueeze(-1) ], dim=-1)
+        o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt.cuda(),0)#stage=0 纹理学习，不分析局部位移
+        h_global = p_rigid0["h_global"] #这几个点的全局位移
+        h_global_x = h_global[:, 0]
+        h_global_y = h_global[:, 1]
+        return torch.std(h_global_x)+torch.std(h_global_y)
+    def getMainRigidIndex(self):#获取全局形变最少的刚体层
+        i=0
+        s=10**10
+        for i0 in range(self.NUM_figid):
+            s0 = self.getMoveDis(i0)
+            if s0<s:
+                s=s0
+                i=i0
+        return i
 
     def forward(self,xyt,stage): # soft, rigid, fluid
         # 1.刚体
