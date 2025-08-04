@@ -175,14 +175,14 @@ if __name__ == "__main__":
     print("三、基于A.rigid.main_non1计算光流图")
     print("四、光流图基于流体视频 ")
     # traverseVideo()
-    evaluateNew(TAG="raft")   #raft f1: (tensor(0.6607),) pr: (tensor(0.6640),) sn: tensor(0.6659)
-    evaluateNew(TAG="raft2")  #raft2 f1: (tensor(0.6665),) pr: (tensor(0.7139),) sn: tensor(0.6374)
-    evaluateNew(TAG="raft_g") #raft_g f1: (tensor(0.7168),) pr: (tensor(0.7289),) sn: tensor(0.7121)
-    evaluateNew(TAG="raft2_g")#raft2_g f1: (tensor(0.0510),) pr: (tensor(0.2277),) sn: tensor(0.0327)
+    # evaluateNew(TAG="raft")   #raft f1: (tensor(0.6607),) pr: (tensor(0.6640),) sn: tensor(0.6659)
+    # evaluateNew(TAG="raft2")  #raft2 f1: (tensor(0.6665),) pr: (tensor(0.7139),) sn: tensor(0.6374)
+    # evaluateNew(TAG="raft_g") #raft_g f1: (tensor(0.7168),) pr: (tensor(0.7289),) sn: tensor(0.7121)
+    # evaluateNew(TAG="raft2_g")#raft2_g f1: (tensor(0.0510),) pr: (tensor(0.2277),) sn: tensor(0.0327)
     evaluateNew(TAG="raft_gd")  #raft_gd f1: (tensor(0.7806),) pr: (tensor(0.7477),) sn: tensor(0.8260)
-    evaluateNew(TAG="raft_gn")#raft_gn f1: (tensor(0.7585),) pr: (tensor(0.7501),) sn: tensor(0.7750)
-    evaluateNew(TAG="raft_gn_max") #raft_gn_max f1: (tensor(0.6805),) pr: (tensor(0.5613),) sn: tensor(0.8789)
-    evaluateNew(TAG="raft3") #raft3 f1: (tensor(0.5381),) pr: (tensor(0.3881),) sn: tensor(0.9229)
+    # evaluateNew(TAG="raft_gn")#raft_gn f1: (tensor(0.7585),) pr: (tensor(0.7501),) sn: tensor(0.7750)
+    # evaluateNew(TAG="raft_gn_max") #raft_gn_max f1: (tensor(0.6805),) pr: (tensor(0.5613),) sn: tensor(0.8789)
+    # evaluateNew(TAG="raft3") #raft3 f1: (tensor(0.5381),) pr: (tensor(0.3881),) sn: tensor(0.9229)
     '''
     一、普通
     raft:  f1:0.6498 pr:0.6204 sn:0.6904
@@ -247,6 +247,7 @@ if __name__ == "__main__":
     (6)去除更多导管：最低半径由mean*0.75变为mean*0.5
     raft_gd f1: (tensor(0.7859),) pr: (tensor(0.7639),) sn: tensor(0.8190)
     (7)去除更多导管：取消最低半径约束
+    raft_gd f1: (tensor(0.7873),) pr: (tensor(0.7686),) sn: tensor(0.8167)
     '''
     '''
     # 难崩,无法基于光流一致性提升指标
