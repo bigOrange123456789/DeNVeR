@@ -65,7 +65,7 @@ def mainFreeCOS(pathParam,pathIn,pathOut,needConnect=True):
 
     # 有1个cuda 。torch.cuda.device_count()=1
     if torch.cuda.is_available():
-        print("cuda_is available")
+        # print("cuda_is available")
         Segment_model = Segment_model.cuda() # 分割模型
 
 
@@ -148,6 +148,43 @@ def mainFreeCOS(pathParam,pathIn,pathOut,needConnect=True):
         img2[img2<255*0.5]=0
         image2 = Image.fromarray(img2, mode='L')
         image2.save(os.path.join(pathOut, "binary", filename))
+
+def getConnRegion(images_np):
+    # 查找连通区域
+    binary_image = images_np.copy()
+    binary_image[binary_image>0] = 255
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_image, connectivity=8)
+    # 创建一个与原图同样大小的彩色图像
+    colored_image = np.zeros((binary_image.shape[0], binary_image.shape[1], 3), dtype=np.uint8)
+    # 为每个连通区域分配不同的颜色
+    for label in range(1, num_labels):  # 跳过背景（标签0）
+        color = (np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256))
+        colored_image[labels == label] = color
+    # 保存标注后的图像
+    # cv2.imwrite(os.path.join(pathOut, "connect", filename), colored_image)
+
+    # 初始化最大包围框面积和对应标签
+    max_bbox_area = -1
+    max_label = -1
+    # 跳过背景(0)，从1开始遍历
+    for label in range(1, num_labels):
+        # stats结构: [x0, y0, width, height, area]
+        w = stats[label, cv2.CC_STAT_WIDTH]
+        h = stats[label, cv2.CC_STAT_HEIGHT]
+        bbox_area = w * h  # 计算包围框面积
+        if bbox_area > max_bbox_area:# 更新最大区域
+            max_bbox_area = bbox_area
+            max_label = label
+    # 创建只包含最大连通区域的图像
+    result_image = np.zeros_like(binary_image)
+    if max_label != -1:  # 确保找到有效区域
+        result_image[labels == max_label] = 255
+    # 保存结果
+    # cv2.imwrite(os.path.join(pathOut, "connect_maxbox", filename), result_image)
+    result_image[result_image>0]=1
+    maxRegion = result_image
+
+    return images_np * maxRegion
 
 
 
