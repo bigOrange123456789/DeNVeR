@@ -47,7 +47,7 @@ def getModel(pathParam):
         Segment_model = Segment_model.cuda() # 分割模型
 
     checkpoint = torch.load(pathParam)  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
-    Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
+    Segment_model.load_state_dict(checkpoint['state_dict'], map_location=torch.device('cpu'))  # 提取模型状态字典并赋值给模型
     return Segment_model
 
 from free_cos.newTrain import initCSV, save2CVS, getIndicators

@@ -1,5 +1,5 @@
 import os
-from nir.new import startDecouple1,startDecouple2
+from nir.new import startDecouple1,startDecouple3
 
 from torchvision import transforms
 from tqdm import tqdm
@@ -11,19 +11,19 @@ script_path = os.path.abspath(__file__)
 ROOT = os.path.dirname(script_path)
 datasetPath=os.path.join(ROOT,"../","../DeNVeR_in/xca_dataset")
 def getImg(TAG,transform, patientID, videoId, frameId):
-    if TAG=="vessel":
+    if TAG=="fluid":
         img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "recon_non2", frameId)
         img = Image.open(img_path).convert('L') 
         img = transform(img).unsqueeze(0).cuda()
-    elif TAG=="noRigid1":
+    elif TAG=="noRigid1": #soft_fluid_1 f1: (tensor(0.7707),) pr: (tensor(0.7516),) sn: tensor(0.8020)
         img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)
         img = Image.open(img_path).convert('L') 
         img = transform(img).unsqueeze(0).cuda()
-    elif TAG=="noRigid2":
+    elif TAG=="noRigid2":#noRigid2 f1: (tensor(0.7772),) pr: (tensor(0.7564),) sn: tensor(0.8091)
         img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non2", frameId) # A.mask.main_nr2
         img = Image.open(img_path).convert('L') 
         img = transform(img).unsqueeze(0).cuda()
-    elif TAG=="mix":
+    elif TAG=="mix": #mix f1: (tensor(0.7630),) pr: (tensor(0.7348),) sn: tensor(0.8062)
         img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "recon_non2", frameId)
         img1 = Image.open(img_path1).convert('L') 
         img1 = transform(img1).unsqueeze(0).cuda()
@@ -31,12 +31,20 @@ def getImg(TAG,transform, patientID, videoId, frameId):
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
         img=(img1+img2)/2
-    elif TAG=="orig":
-        img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)
+    elif TAG=="mix2":
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "recon_non2", frameId)#流体
+        img1 = Image.open(img_path1).convert('L') 
+        img1 = transform(img1).unsqueeze(0).cuda()
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img2 = Image.open(img_path2).convert('L') 
+        img2 = transform(img2).unsqueeze(0).cuda()
+        img=(img1+img2)/2
+    elif TAG=="orig": #orig f1: (tensor(0.7558),) pr: (tensor(0.7176),) sn: tensor(0.8118)
+        img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "orig", frameId)
         img = Image.open(img_path).convert('L') 
         img = transform(img).unsqueeze(0).cuda()
     return img
-def getImgAll(TAG,transform, patientID, videoId):
+def calculate_mean_varianceOld(TAG,transform, patientID, videoId):
     img_list = []
     path0 = os.path.join(datasetPath, patientID, "decouple", videoId, "orig")
     # print(path0,len(os.path.join(path0)))
@@ -45,20 +53,85 @@ def getImgAll(TAG,transform, patientID, videoId):
         img = getImg(TAG,transform, patientID, videoId, frameId)
         img_list.append(img)
     imgAll = torch.cat(img_list, dim=0)
-    if False:
-        flat_tensor = imgAll.flatten()
-        q_min = torch.quantile(flat_tensor, 0.05)
-        q_max = torch.quantile(flat_tensor, 0.95)
-        mask = (flat_tensor >= q_min) & (flat_tensor <= q_max)
-        imgAll = flat_tensor[mask]
+    if True:
+
+        import numpy as np
+        # 假设 tensor 是 [10, 3, 256, 256]
+        flat = imgAll.detach().cpu().numpy().flatten()
+        # 计算 5% 和 95% 分位数
+        q_min = np.percentile(flat, 5)
+        q_max = np.percentile(flat, 95)
+
+        # 构建 mask
+        mask = (imgAll >= q_min) & (imgAll <= q_max)
+        imgAll = imgAll[mask]
+
     mean0 = imgAll.mean()
     std0 = imgAll.std()
     return mean0, std0
+import numpy as np
+def calculate_mean_variance(TAG,transform, patientID, videoId):
+    image_folder = os.path.join(datasetPath, patientID, "decouple", videoId, "orig")
+    # 初始化变量
+    total_pixels = 0
+    sum_pixels = 0.0
+    sum_squared_pixels = 0.0
+
+    # 获取文件夹中所有图片文件
+    image_files = [f for f in os.listdir(image_folder) if
+                   f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))]
+
+    if not image_files:
+        print("文件夹中没有找到图片文件")
+        return None, None
+
+    # 遍历所有图片
+    for img_file in image_files:
+        try:
+            img_path = os.path.join(image_folder, img_file)
+            img = Image.open(img_path).convert('L')  # 确保是灰度图
+            img_array = np.array(img).astype(np.float32)/255.0
+            # print("img_array",np.max(img_array),np.min(img_array))
+            # exit(0)
+
+            # 更新统计量
+            num_pixels = img_array.size
+            total_pixels += num_pixels
+            sum_pixels += np.sum(img_array)
+            sum_squared_pixels += np.sum(img_array.astype(np.float64) ** 2)
+
+        except Exception as e:
+            print(f"处理图片 {img_file} 时出错: {e}")
+            continue
+
+    if total_pixels == 0:
+        print("没有有效的像素数据")
+        return None, None
+
+    # 计算均值和方差
+    mean = sum_pixels / total_pixels
+    variance = (sum_squared_pixels / total_pixels) - (mean ** 2)
+
+    return mean, variance**0.5
+def initModel(pathParam):
+    import torch.backends.cudnn as cudnn
+    from free_cos.ModelSegment import ModelSegment
+    os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    cudnn.benchmark = True #benchmark的意思是基准
+    n_channels = 1
+    num_classes =  1
+    Segment_model = ModelSegment(n_channels, num_classes)
+    if torch.cuda.is_available():
+        Segment_model = Segment_model.cuda() # 分割模型
+    checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
+    Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
+    return Segment_model.eval()
 from free_cos.main import mainFreeCOS
 def evaluate(TAG="raft", threshold=0.5):
     print("TAG:",TAG)
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-    model = getModel(paramPath)
+    model = initModel(paramPath) # getModel(paramPath)
     transform = transforms.Compose([
         transforms.ToTensor(),  # 转换为Tensor
     ])
@@ -88,7 +161,7 @@ def evaluate(TAG="raft", threshold=0.5):
                 video_path = os.path.join(datasetPath, patientID, "ground_truth", videoId)
                 outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
                 if  not TAG=="pred":
-                    mean0, std0 = getImgAll(TAG,transform, patientID, videoId)
+                    mean0, std0 = calculate_mean_variance(TAG,transform, patientID, videoId)
                 else:
                     mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid.main_non2"), os.path.join(outpath, "A.mask.main_nr2.cf"),needConnect=False)
                 for frameId in os.listdir(video_path):
@@ -153,38 +226,38 @@ def evaluate(TAG="raft", threshold=0.5):
     return f1, pr, sn
 
 if __name__ == "__main__":
-    # datasetPath="../DeNVeR_in/xca_dataset"
-    # paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-    # patient_names = [name for name in os.listdir(datasetPath)
-    #              if os.path.isdir(os.path.join(datasetPath, name))]
-    # CountSum = 0
-    # for patientID in patient_names:
-    #     patient_path = os.path.join(datasetPath, patientID, "images")
-    #     video_names = [name for name in os.listdir(patient_path)
-    #                  if os.path.isdir(os.path.join(patient_path, name))]
-    #     CountSum = CountSum + len(video_names)
-    # CountI = 0
-    # for patientID in patient_names:
-    #     patient_path = os.path.join(datasetPath, patientID, "images")
-    #     video_names = [name for name in os.listdir(patient_path)
-    #                  if os.path.isdir(os.path.join(patient_path, name))]
-    #     for videoId in video_names:
-    #         CountI = CountI + 1
-    #         print(str(CountI)+"/"+str(CountSum),videoId)
-    #         inpath = os.path.join(datasetPath, patientID, "images", videoId)
-    #         outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
-    #         os.makedirs(outpath, exist_ok=True)
-    #         startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
-    #         startDecouple2(videoId, paramPath, inpath, outpath)  # 获取流体层
+    datasetPath="../DeNVeR_in/xca_dataset"
+    paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
+    patient_names = [name for name in os.listdir(datasetPath)
+                 if os.path.isdir(os.path.join(datasetPath, name))]
+    CountSum = 0
+    for patientID in patient_names:
+        patient_path = os.path.join(datasetPath, patientID, "images")
+        video_names = [name for name in os.listdir(patient_path)
+                     if os.path.isdir(os.path.join(patient_path, name))]
+        CountSum = CountSum + len(video_names)
+    CountI = 0
+    for patientID in patient_names:
+        patient_path = os.path.join(datasetPath, patientID, "images")
+        video_names = [name for name in os.listdir(patient_path)
+                     if os.path.isdir(os.path.join(patient_path, name))]
+        for videoId in video_names:
+            CountI = CountI + 1
+            print(str(CountI)+"/"+str(CountSum),videoId)
+            inpath = os.path.join(datasetPath, patientID, "images", videoId)
+            outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
+            os.makedirs(outpath, exist_ok=True)
+            startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+            startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
     # print("01：逐个图片进行归一化","vessel的效果最好")
     # print("02：放大方差","没有明显变化")
     print("03:基于整段视频的均值和方差")
-    print("04:去除最大和最小的数据后再进行归一化")
-    # evaluate(TAG="mix")
-    # evaluate(TAG="noRigid2")
-    # evaluate(TAG="vessel")
-    # evaluate(TAG="orig")
-    evaluate(TAG="pred")
+    print("04:去除最大和最小的数据后再进行归一化","指标无显著变化0.7776")
+    # evaluate(TAG="mix") #f1: 0.7630
+    # evaluate(TAG="soft_fluid_1")#soft_fluid_1 0.7707),)
+    # evaluate(TAG="mix2")
+    evaluate(TAG="orig")
+    # evaluate(TAG="soft_fluid_2") #0.7772     # evaluate(TAG="pred")
     '''
 
     01：逐个图片进行归一化(vessel的效果最好)

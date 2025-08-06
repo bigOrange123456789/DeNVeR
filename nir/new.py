@@ -451,7 +451,52 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):
 '''
     python -m nir.new
 '''
+def startDecouple3(videoId,paramPath,pathIn,outpath):
+    def save1(o_scene, tag):
+        if o_scene==None or len(o_scene)==0: return
+        o_scene = o_scene.cpu().detach().numpy()
+        o_scene = (o_scene * 255).astype(np.uint8)
+        save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
 
+    # 解耦出血管层
+    if True:
+        script_path = os.path.abspath(__file__)
+        ROOT = os.path.dirname(script_path)
+        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") if not flagHadRigid else os.path.join(
+            ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
+        os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
+        check(maskPath+"/..", videoId, "A.mask_nir2")
+        # myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)
+        myMain = Decouple(
+            os.path.join(ROOT,"..",outpath, "A.rigid.main_non1"),
+            maskPath=maskPath,hidden_features=256*4)
+        myMain.train(EpochNum) #EpochNum =5000
+
+    # 输出解耦效果
+    if True:# False:
+     with torch.no_grad(): #
+        orig = myMain.v.video.clone()
+        N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+        orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
+
+        video_pre, layers, p =myMain.getVideo()
+
+        save1(video_pre, "C.recon")
+        save1(orig.cuda()/(video_pre.abs()+10**-10), "C.recon_non")
+        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), "C.recon_non2")
+        save1(p["o_rigid_all"], "C.rigid")
+        save1(p["o_soft_all"], "C.soft")
+
+        if len(layers["r"])>1:
+         for i in range(len(layers["r"])):
+            save1(layers["r"][i], "C.rigid" + str(i))
+        if len(layers["s"]) > 1:
+         for i in range(len(layers["s"])):
+            save1(layers["s"][i], "C.soft" + str(i))
+        save1(layers["f"], "C.fluid")
+
+        mainFreeCOS(paramPath,os.path.join(outpath, "C.recon_non2"),os.path.join(outpath, "C.mask2"))
+        check(os.path.join(outpath, "mask2"),videoId,"C.nir.1.recon_non2")
 if __name__ == "__main__":
     '''
     print("01:test", "可行性测试、结果正确(正确？很久之前的测试，当时的main.py部分的代码还没有出BUG)")
