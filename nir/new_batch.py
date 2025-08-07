@@ -11,8 +11,16 @@ script_path = os.path.abspath(__file__)
 ROOT = os.path.dirname(script_path)
 datasetPath=os.path.join(ROOT,"../","../DeNVeR_in/xca_dataset")
 def getImg(TAG,transform, patientID, videoId, frameId):
-    if TAG=="fluid":
+    if TAG=="orig": #orig f1: (tensor(0.7558),) pr: (tensor(0.7176),) sn: tensor(0.8118) 
+        img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "orig", frameId)
+        img = Image.open(img_path).convert('L') 
+        img = transform(img).unsqueeze(0).cuda()
+    elif TAG=="fluid":
         img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "recon_non2", frameId)
+        img = Image.open(img_path).convert('L') 
+        img = transform(img).unsqueeze(0).cuda()
+    elif TAG=="fluid2":#fluid2 f1: (tensor(0.7668),) pr: (tensor(0.7599),) sn: tensor(0.7875)
+        img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)
         img = Image.open(img_path).convert('L') 
         img = transform(img).unsqueeze(0).cuda()
     elif TAG=="noRigid1": #soft_fluid_1 f1: (tensor(0.7707),) pr: (tensor(0.7516),) sn: tensor(0.8020)
@@ -39,10 +47,31 @@ def getImg(TAG,transform, patientID, videoId, frameId):
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
         img=(img1+img2)/2
-    elif TAG=="orig": #orig f1: (tensor(0.7558),) pr: (tensor(0.7176),) sn: tensor(0.8118)
-        img_path = os.path.join(datasetPath, patientID, "decouple", videoId, "orig", frameId)
-        img = Image.open(img_path).convert('L') 
-        img = transform(img).unsqueeze(0).cuda()
+    elif TAG=="mix4": #mix4 f1: (tensor(0.7702),) pr: (tensor(0.7544),) sn: tensor(0.7988)
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)#流体
+        img1 = Image.open(img_path1).convert('L') 
+        img1 = transform(img1).unsqueeze(0).cuda()
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img2 = Image.open(img_path2).convert('L') 
+        img2 = transform(img2).unsqueeze(0).cuda()
+        img=(img1+img2)/2
+    elif TAG=="mix5": #mix5 f1: (tensor(0.7705),) pr: (tensor(0.7125),) sn: tensor(0.8461)
+        # t=0.85 mix5 f1: (tensor(0.7783),) pr: (tensor(0.7446),) sn: tensor(0.8223)
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)#流体
+        img1 = Image.open(img_path1).convert('L') 
+        img1 = transform(img1).unsqueeze(0).cuda()
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img2 = Image.open(img_path2).convert('L') 
+        img2 = transform(img2).unsqueeze(0).cuda()
+        img=img1*img2
+    elif TAG=="mix6": #mix6 f1: (tensor(0.0472),) pr: (tensor(0.1330),) sn: tensor(0.0308)
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non", frameId)#流体
+        img1 = Image.open(img_path1).convert('L') 
+        img1 = transform(img1).unsqueeze(0).cuda()
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img2 = Image.open(img_path2).convert('L') 
+        img2 = transform(img2).unsqueeze(0).cuda()
+        img=img1*img2
     return img
 def calculate_mean_varianceOld(TAG,transform, patientID, videoId):
     img_list = []
@@ -128,7 +157,8 @@ def initModel(pathParam):
     Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
     return Segment_model.eval()
 from free_cos.main import mainFreeCOS
-def evaluate(TAG="raft", threshold=0.5):
+# def evaluate(TAG="raft", threshold=0.5):
+def evaluate(TAG="raft", threshold=0.85):
     print("TAG:",TAG)
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
     model = initModel(paramPath) # getModel(paramPath)
@@ -179,8 +209,8 @@ def evaluate(TAG="raft", threshold=0.5):
                             img = (img - mean0 ) / std0
                         pred = model(img)["pred"] #输出是0-1
 
-                    pred[pred > 0.5] = 1 #是0~1与0~255的原因吗？
-                    pred[pred <=  0.5] = 0
+                    pred[pred > threshold] = 1 #是0~1与0~255的原因吗？
+                    pred[pred <=  threshold] = 0
                     # path_gt = os.path.join(pathGt, name)
                     # gt = Image.open(path_gt).convert('L')
                     # gt = transform(gt).unsqueeze(0).cuda()
@@ -201,8 +231,8 @@ def evaluate(TAG="raft", threshold=0.5):
                     gt_path = os.path.join(datasetPath, patientID, "ground_truth", videoId,frameId)
                     gt = Image.open(gt_path).convert('L')
                     gt = transform(gt).unsqueeze(0).cuda()
-                    gt[gt > threshold] = 1
-                    gt[gt <= threshold] = 0
+                    gt[gt > 0.5] = 1
+                    gt[gt <= 0.5] = 0
 
                     ind = getIndicators(
                         pred[0, 0].detach().cpu() * 255,
@@ -224,31 +254,48 @@ def evaluate(TAG="raft", threshold=0.5):
     sn = sum_recall / CountSum
     print(TAG,"f1:", f1, "pr:", pr, "sn:", sn )
     return f1, pr, sn
-
+def evaluateNew(TAG="raft"):
+    if False:
+        f1, pr, sn = evaluate(TAG)
+        print(TAG,"f1:",f1, "pr:",pr, "sn:",sn)
+        return
+    f1_last = -1
+    pr_last = -1
+    sn_last = -1
+    t_last = -1
+    for i in range(20):
+        f1, pr, sn = evaluate(TAG, threshold= i/20)
+        f1 = f1[0]
+        if f1<=0 or f1 > f1_last:
+            f1_last = f1
+            pr_last = pr
+            sn_last = sn
+            t_last = i/20
+    print("最佳阈值:",TAG,f1_last, pr_last, sn_last, t_last)
 if __name__ == "__main__":
     datasetPath="../DeNVeR_in/xca_dataset"
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-    patient_names = [name for name in os.listdir(datasetPath)
-                 if os.path.isdir(os.path.join(datasetPath, name))]
-    CountSum = 0
-    for patientID in patient_names:
-        patient_path = os.path.join(datasetPath, patientID, "images")
-        video_names = [name for name in os.listdir(patient_path)
-                     if os.path.isdir(os.path.join(patient_path, name))]
-        CountSum = CountSum + len(video_names)
-    CountI = 0
-    for patientID in patient_names:
-        patient_path = os.path.join(datasetPath, patientID, "images")
-        video_names = [name for name in os.listdir(patient_path)
-                     if os.path.isdir(os.path.join(patient_path, name))]
-        for videoId in video_names:
-            CountI = CountI + 1
-            print(str(CountI)+"/"+str(CountSum),videoId)
-            inpath = os.path.join(datasetPath, patientID, "images", videoId)
-            outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
-            os.makedirs(outpath, exist_ok=True)
-            startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
-            startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+    # patient_names = [name for name in os.listdir(datasetPath)
+    #              if os.path.isdir(os.path.join(datasetPath, name))]
+    # CountSum = 0
+    # for patientID in patient_names:
+    #     patient_path = os.path.join(datasetPath, patientID, "images")
+    #     video_names = [name for name in os.listdir(patient_path)
+    #                  if os.path.isdir(os.path.join(patient_path, name))]
+    #     CountSum = CountSum + len(video_names)
+    # CountI = 0
+    # for patientID in patient_names:
+    #     patient_path = os.path.join(datasetPath, patientID, "images")
+    #     video_names = [name for name in os.listdir(patient_path)
+    #                  if os.path.isdir(os.path.join(patient_path, name))]
+    #     for videoId in video_names:
+    #         CountI = CountI + 1
+    #         print(str(CountI)+"/"+str(CountSum),videoId)
+    #         inpath = os.path.join(datasetPath, patientID, "images", videoId)
+    #         outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
+    #         os.makedirs(outpath, exist_ok=True)
+    #         startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+    #         startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
     # print("01：逐个图片进行归一化","vessel的效果最好")
     # print("02：放大方差","没有明显变化")
     print("03:基于整段视频的均值和方差")
@@ -256,7 +303,7 @@ if __name__ == "__main__":
     # evaluate(TAG="mix") #f1: 0.7630
     # evaluate(TAG="soft_fluid_1")#soft_fluid_1 0.7707),)
     # evaluate(TAG="mix2")
-    evaluate(TAG="orig")
+    evaluateNew(TAG="mix5")
     # evaluate(TAG="soft_fluid_2") #0.7772     # evaluate(TAG="pred")
     '''
 
@@ -281,5 +328,6 @@ if __name__ == "__main__":
     noRigid2 f1: (tensor(0.6586),) pr: (tensor(0.7414),) sn: tensor(0.6062)
     pred f1: (tensor(0.7809),) pr: (tensor(0.7480),) sn: tensor(0.8264) 进行连通性分析
     pred f1: (tensor(0.7782),) pr: (tensor(0.7416),) sn: tensor(0.8275) 不进行连通性分析
+    orig f1: (tensor(0.7558),) pr: (tensor(0.7176),) sn: tensor(0.8118)
 
     '''
