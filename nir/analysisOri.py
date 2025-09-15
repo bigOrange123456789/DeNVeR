@@ -674,7 +674,7 @@ if __name__ == "__main__":
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
     print("version:2025.09.09.0924")
     model = getModel(paramPath)
-    if False:
+    if True:
         print("\n【分形合成】")
         inpath_a = "../DeNVeR_in/xca_dataset_video/img"
         outpath = "../DeNVeR_in/xca_dataset_video/pred.freecos1"
