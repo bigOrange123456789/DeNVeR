@@ -421,7 +421,7 @@ def start(pathParam,pathIn,pathOut):
         # 保存结果
         cv2.imwrite(os.path.join(pathOut, "connect_maxbox", filename), result_image)
         result_image[result_image>0]=1
-        maxRegion = result_image
+        # maxRegion = result_image
 
         # images_np = images_np*maxRegion
         image = Image.fromarray(images_np.copy(), mode='L')

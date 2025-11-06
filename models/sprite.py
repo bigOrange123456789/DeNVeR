@@ -29,7 +29,8 @@ class SpriteModel(nn.Module):#这应该是那个三分支模型本身
 
         # 一、initialize mask prediction 初始化掩码预测
         args = cfg.alpha_pred
-        self.alpha_pred = AlphaModel(n_layers, pathParam=pathParam,useFreeCOS=True,**dict(args))#几何生成器
+        print("AlphaModel: useFreeCOS=False")
+        self.alpha_pred = AlphaModel(n_layers, pathParam=pathParam,useFreeCOS=False,**dict(args))#几何生成器
         optims = [{"params": self.alpha_pred.parameters(), "lr": args.lr}]
 
         self.has_tex = cfg.use_tex #使用纹理

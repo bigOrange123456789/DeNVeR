@@ -58,10 +58,10 @@ class Main():
         # data_name = config["my"]["videoId"]#args.data
         # data_name: CVAI-2828RAO2_CRA32
         # preprocess
-        needHessian = False#True# #将黑塞矩阵方法替换为FreeCOS方法
+        needHessian = True#False#True# #是否将黑塞矩阵方法替换为FreeCOS方法
         myP0=preprocess.filter_extract(data_name,
-                                  filePathRoot=config["my"]["filePathRoot"],
-                                  inPath=config["my"]["datasetPath"],
+                                  filePathRoot = config["my"]["filePathRoot"],
+                                  inPath = config["my"]["datasetPath"],
                                   needHessian=needHessian
                                   )#通过“黑塞矩阵+区域生长”生成MASK，并存入“preprocess/--/binary”
         if not needHessian: # 黑塞矩阵是局部特征、难以获取全局特征 #需要
@@ -77,7 +77,6 @@ class Main():
         skeltoize(data_name,ROOT=os.path.join(ROOT, config["my"]["filePathRoot"])) # 获取图片的骨架，并存入custom_videos/skeltoize
         saveTime("获取骨架") #通过光流图追踪骨架 # 光流图需要进行遮挡分析不？背景、最好仍然有刚体、软体、流体的光流分析。
         # 基于光流分析的解耦
-        # exit(0)
 
         # run raft #RAFT是方法简称
         # print(ROOT)
@@ -91,10 +90,10 @@ class Main():
         # cmd = f"cd scripts && python dataset_raft.py  --root { custom_videos_path } --dtype custom --seqs {data_name}"
         print(cmd) # cd scripts && python dataset_raft.py  --root ../custom_videos/ --dtype custom --seqs CVAI-2828RAO2_CRA32
         subprocess.call(cmd, shell=True) # 计算光流数据，并存入custom_videos中
-        # exit(0)
         saveTime("计算光流")
+        # exit(0)
 
-        if False:# stage 1                     # 获取背景的静态全景图
+        if True:# stage 1                     # 获取背景的静态全景图
             nirs_path = os.path.join(ROOT, config["my"]["filePathRoot"],"nirs")
             print("nirs_path:",nirs_path)
             filePathRoot2=os.path.join(ROOT, config["my"]["filePathRoot"])#用于加载数据集
@@ -104,14 +103,15 @@ class Main():
             saveTime("NIR前/背景分离")
             # exit(0)
         # stage 2
-        cmd = f"python {ROOT}/run_opt2.py data=custom data.seq={data_name}"
+        cmd = f"python {ROOT}/run_opt.py data=custom data.seq={data_name}"
         print(cmd) # python run_opt.py data=custom data.seq=CVAI-2828RAO11_CRA11
         subprocess.call(cmd, shell=True)
         saveTime("执行完毕")
 
 import yaml
 if __name__ == "__main__":
-    print("version:2025.06.14 15:46")
+    # print("version:2025.06.14 15:46")
+    print("version:2025.11.06 01:55")
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--data")
     args = parser.parse_args()
@@ -122,6 +122,7 @@ if __name__ == "__main__":
     # 打开并读取 YAML 文件
     with open(file_path, 'r', encoding='utf-8') as file:
         config = yaml.safe_load(file)
+        print("notes:",config["my"]["notes"])
         Main(config,args.data)
     # main(args)
     # main()

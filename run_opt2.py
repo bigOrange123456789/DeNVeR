@@ -188,6 +188,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
     evaluate.analysis("0.init", cfg.data.seq, torch.cat(y_list, dim=0), getTime(time_pre))
 
     # 一、warmstart the masks 通过masks进行热开始 #优化MASK几何分割器
+    print("一、warmstart the masks 通过masks进行热开始")
     label = "masks"
     model_kwargs = dict(ret_tex=False, ret_tform=False)
     if cfg.epochs_per_phase["epi"] > 0:  # epi对应传统的黑塞矩阵MASK
@@ -220,6 +221,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
         return
 
     # 二、warmstart planar transforms # 热开始平面变换（planar平面）[不知道为啥要训练两遍]
+    print("二、warmstart planar transforms # 热开始平面变换[不知道为啥要训练两遍]")
     label = "planar"
     n_epochs = cfg.epochs_per_phase[label]
     if cfg.my.TestFlag:
@@ -257,6 +259,7 @@ def main(cfg: DictConfig):  # 现在最重要的是搞清楚这个三分支架�
         evaluate.analysis("2.2.planar", cfg.data.seq, result_seg, getTime(time_pre))
 
     # 四、deform
+    print("四、deform")
     # add deformations
     label = "deform"
     model.init_local_motion()

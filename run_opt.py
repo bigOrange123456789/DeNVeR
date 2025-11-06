@@ -170,6 +170,8 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     if cfg.my.TestFlag:
         n_epochs = 1 #在最终训练的过程中这里应该去除 #为啥不能跳过第1阶段
         print("!!!!!这里注释掉了第一阶段的训练过程!!!!!")
+    # print("test173")
+    # exit(0)
     if n_epochs > 0:
         print("epi>0")
         print("model_kwargs:",model_kwargs)
@@ -222,14 +224,10 @@ def main(cfg: DictConfig): #现在最重要的是搞清楚这个三分支架构�
     # print("test")
     # print("test")
     #     print("ok2", ok)
-    # exit(0)
 
     # (2.2)
     step_ct, val_dict, result_seg = opt_infer_helper(n_epochs, start=step_ct, label=label) # 这里执行了planar平面训练过程
     evaluate.analysis("2.2.planar", cfg.data.seq, result_seg,getTime(time_pre))
-
-
-    exit(0)
 
     # 三、parallel
     label = "parallel"

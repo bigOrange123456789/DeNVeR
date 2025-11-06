@@ -534,8 +534,9 @@ class MaskWarpLoss(nn.Module):#根据光流图预测的下一帧要与真实的�
         F12, O12 = F12[ok], O12[ok] #输入的光流图和遮挡图
 
         # mask 1 resampled from mask 2
-        print("M2, F12, O12",M2.shape, F12.shape, O12.shape)
-        exit(0)
+        # print("M2, F12, O12",M2.shape, F12.shape, O12.shape)
+        # print("MaskWarpLoss")
+        # exit(0)
         W1 = utils.inverse_flow_warp(M2, F12, O12) #根据光流图，从终点MASK2得到起始MASK1
 
         if self.norm == 1: #1范数

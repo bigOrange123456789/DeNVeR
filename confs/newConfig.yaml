@@ -1,10 +1,11 @@
 my:
-    filePathRoot: "log"
+    filePathRoot: "log_6"
+    notes: "Measure the indicators randomly first"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath:  "../DeNVeR_in/xca_dataset"
+    datasetPath:  "../DeNVeR_in/xca_dataset_sim2"
     raftConfig: "../DeNVeR_in/models_config"
-    TestFlag: True
+    TestFlag: False
     useFreeCOS: True
 

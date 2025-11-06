@@ -106,7 +106,7 @@ def optimize_model(#优化模型就是在进行训练函数
     out_name = None if label is None else f"tr_{label}"#out_name=tr_masks
     save_vis = vis_every > 0 and out_name is not None #vis_every=3000 save_vis=True
     # print("n_epochs",n_epochs)
-    # exit(0)
+    # print("test109")
     for _ in tqdm(range(n_epochs)): #n_epochs:188
         # print("test81")
         for batch in loader:#如果视频帧数比较多、似乎这个加载器会爆内存 #每个batch是一段视频
@@ -117,17 +117,22 @@ def optimize_model(#优化模型就是在进行训练函数
             # exit(0)
             # print("test83")
             # exit(0)
+            # print("ttt1")
             model.optim.zero_grad() #清零梯度。确保每次计算梯度时不会受到之前计算的影响。
             batch = utils.move_to(batch, DEVICE) #batch的长度为8,device="cuda"
+            # print("ttt1.1")
             out_dict = model(batch, **model_kwargs) #model_kwargs: {'ret_tex': False, 'ret_tform': False}
             # 输入原视频、输出的MASK是预测的光流图(因为是双通道)
             # 对于这个损失函数现在有两种理解：(感觉第2种更有可能)
             #       1.预测的MASK视频与RAFT光流一致
             #       2.预测的B样条参数与RAFT光流一致
+            # print("ttt1.5")
             loss_dict = compute_losses(loss_fncs, batch, out_dict) # 计算所有损失函数的数值
             # print("loss_fncs",loss_fncs,type(loss_fncs))
             # 在第一阶段实际上有3个损失函数: 前/后向损失函数、MASK损失函数
             # {'f_warp': MaskWarpLoss(), 'b_warp': MaskWarpLoss(), 'epi': EpipolarLoss()}
+            # exit(0)
+            # print("ttt2")
             # exit(0)
             '''
                 name f_warp weight 0.1
@@ -141,14 +146,16 @@ def optimize_model(#优化模型就是在进行训练函数
             # print("batch[idx]",batch["idx"])
             # print("step_ct", step_ct)
             # print("len(loss_dict)",len(loss_dict))
-            if len(loss_dict) < 1:
+            if len(loss_dict) < 1: #len(loss_dict)==3
                 continue
             sum(loss_dict.values()).backward() #计算梯度
             model.optim.step() #进行参数优化
+            # print("ttt3")
 
             if writer is not None:
                 for name, loss in loss_dict.items():
                     writer.add_scalar(f"loss/{name}", loss.item(), step_ct)
+            # print("ttt4")
 
             # if save_vis and step_ct % vis_every < len(batch["idx"]) :
             #     save_dir = "{:08d}_{}".format(step_ct, out_name)
@@ -158,6 +165,8 @@ def optimize_model(#优化模型就是在进行训练函数
             #         )
             #     utils.save_vis_dict(save_dir, out_dict)
     # print("step_ct_last:",step_ct)
+    # exit(0)
+    # print("test161")
     # exit(0)
     return step_ct
 
