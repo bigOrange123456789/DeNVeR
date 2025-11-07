@@ -33,15 +33,40 @@ from main import Main
 import time
 import yaml
 if __name__ == "__main__":
+
     time_start = time.time()
     # 指定 YAML 文件路径
     script_path = os.path.abspath(__file__)
     ROOT1 = os.path.dirname(script_path)
     file_path = os.path.join(ROOT1, './confs/newConfig.yaml')
+
+    #######################################################################################
+    import json
+    # 进度文件路径
+    progress_file = os.path.join(ROOT1, 'progress.json')
+    # 加载进度文件
+    processed_items = set()
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                progress_data = json.load(f)
+                processed_items = set(progress_data.get('processed_items', []))
+                print(f"加载进度文件，已处理 {len(processed_items)} 个项目")
+        except Exception as e:
+            print(f"读取进度文件失败: {e}")
+            processed_items = set()
+    else:
+        print("未找到进度文件，将从头开始处理")
+    #######################################################################################
     # 打开并读取 YAML 文件
     with open(file_path, 'r', encoding='utf-8') as file:
         config = yaml.safe_load(file)
         lines=getVideoId(config["my"]["datasetPath"])#'job_specs/vessel.txt'
+
+        # 过滤掉已处理的项目
+        items_to_process = [item for item in lines if item not in processed_items]
+        print(f"需要处理的项目数量: {len(items_to_process)}/{len(lines)}")
+
         ##################   预.删除文件   ##################
         file_path= os.path.join(ROOT1, config['my']['filePathRoot'], "experiment_results.csv")
         if os.path.exists(file_path):
@@ -50,11 +75,24 @@ if __name__ == "__main__":
         for i in range(len(lines)):
             Main(config,lines[i])
             print("处理进度:"+str(i+1)+"/"+str(len(lines)),lines[i],"/n")
+            # 更新进度
+            item = lines[i]
+            processed_items.add(item)
+            progress_data = {
+                'processed_items': list(processed_items),
+                'last_processed': item,
+                'progress': f"{len(processed_items)}/{len(lines)}",
+                'timestamp': time.time()
+            }
+            # 保存进度到JSON文件
+            with open(progress_file, 'w', encoding='utf-8') as f:
+                json.dump(progress_data, f, ensure_ascii=False, indent=2)
         ##################   二.分析结果   ##################
         from eval.eval import Evaluate
         Evaluate().get() # subprocess.call(f"python ./eval/eval.py", shell=True)
     time_end = time.time()
     print("运行时长为",(time_end-time_start)/60,"分钟")
+
 
 '''
 pip install pillow==10.2.0 scikit-image==0.22.0 scipy==1.12.0 matplotlib==3.8.3 opencv-python==4.9.0.80 tensorboard==2.16.2 torch==2.2.1 torchvision==0.17.1 tqdm==4.66.2 hydra-core==1.3.2

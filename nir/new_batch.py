@@ -43,7 +43,7 @@ def getImg(TAG,transform, patientID, videoId, frameId):
         img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "recon_non2", frameId)#流体
         img1 = Image.open(img_path1).convert('L') 
         img1 = transform(img1).unsqueeze(0).cuda()
-        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体1
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
         img=(img1+img2)/2
@@ -51,27 +51,27 @@ def getImg(TAG,transform, patientID, videoId, frameId):
         img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)#流体
         img1 = Image.open(img_path1).convert('L') 
         img1 = transform(img1).unsqueeze(0).cuda()
-        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体1
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
         img=(img1+img2)/2
     elif TAG=="mix5": #mix5 f1: (tensor(0.7705),) pr: (tensor(0.7125),) sn: tensor(0.8461)
         # t=0.85 mix5 f1: (tensor(0.7783),) pr: (tensor(0.7446),) sn: tensor(0.8223)
-        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)#流体
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non2", frameId)#流体2
         img1 = Image.open(img_path1).convert('L') 
         img1 = transform(img1).unsqueeze(0).cuda()
-        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体1
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
-        img=img1*img2
+        img=img1*img2 # 流体*非刚体
     elif TAG=="mix6": #mix6 f1: (tensor(0.0472),) pr: (tensor(0.1330),) sn: tensor(0.0308)
-        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non", frameId)#流体
+        img_path1 = os.path.join(datasetPath, patientID, "decouple", videoId, "C.recon_non", frameId)#流体1
         img1 = Image.open(img_path1).convert('L') 
         img1 = transform(img1).unsqueeze(0).cuda()
-        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体
+        img_path2 = os.path.join(datasetPath, patientID, "decouple", videoId, "A.rigid.main_non1", frameId)#非刚体1
         img2 = Image.open(img_path2).convert('L') 
         img2 = transform(img2).unsqueeze(0).cuda()
-        img=img1*img2
+        img=img1*img2 # 流体*非刚体
     return img
 def calculate_mean_varianceOld(TAG,transform, patientID, videoId):
     img_list = []
@@ -302,8 +302,8 @@ if __name__ == "__main__":
     print("04:去除最大和最小的数据后再进行归一化","指标无显著变化0.7776")
     # evaluate(TAG="mix") #f1: 0.7630
     # evaluate(TAG="soft_fluid_1")#soft_fluid_1 0.7707),)
-    # evaluate(TAG="mix2")
-    evaluateNew(TAG="mix5")
+    evaluate(TAG="mix2", threshold=0.5) # evaluate(TAG="mix2")
+    if False: evaluateNew(TAG="mix5")
     # evaluate(TAG="soft_fluid_2") #0.7772     # evaluate(TAG="pred")
     '''
 

@@ -1,6 +1,6 @@
 my:
-    filePathRoot: "log_6"
-    notes: "Measure the indicators randomly first"
+    filePathRoot: "log_7"
+    notes: "Test NIR video decoupling"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
