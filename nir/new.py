@@ -24,9 +24,39 @@ from nir.myLib.mySave import check,save2img,save0
 
 EpochNum = 4000 #6000#000 #5000 #3000
 # outpath = './nir/data/new_08'
-flagHadRigid=False#是否已经完成了刚体解耦
+flagHadRigid=False #是否已经完成了刚体解耦
 
-def startDecouple1(videoId,paramPath,pathIn,outpath):
+def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
+    # config = { 
+    #     "A.mask.main_nr2":True,
+    #     "A.mask_nr2":True,
+    #     "A.mask_nr2_old":True,
+    #     "A.rigid":True,
+    #     "A.rigid.main":True,
+    #     "A.rigid.main_non1":True,
+    #     "A.rigid.main_non2":True,
+    #     "A.rigid_non2":True,
+    #     "A.rigid0":True,
+    #     "A.rigid1":True,
+    #     "orig":True,
+    # }
+    # needConfig = { #是否需要生成这些信息
+    #     "A.mask.main_nr2":True,
+    #     "A.mask_nr2":True,
+    #     "A.mask_nr2_old":True,
+    #     "A.rigid":True,
+    #     "A.rigid.main":True,
+    #     "A.rigid.main_non1":True,
+    #     "A.rigid.main_non2":True,
+    #     "A.rigid_non2":True,
+    #     "A.rigid0":True,
+    #     "A.rigid1":True,
+    #     "orig":True,
+    # }
+    # if config:
+    #     for id in config:
+    #         needConfig[id]=config[id]
+
     if False:
         mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
         check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
@@ -39,6 +69,7 @@ def startDecouple1(videoId,paramPath,pathIn,outpath):
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
+        o_scene[o_scene>1]=1#添加这个操作来去除黑点，否则超过上限后颜色值会变为黑色
         o_scene = o_scene.cpu().detach().numpy()
         o_scene = (o_scene * 255).astype(np.uint8)
         save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
@@ -68,7 +99,24 @@ def startDecouple1(videoId,paramPath,pathIn,outpath):
 
         rigidMain=layers["r"][myMain.getMainRigidIndex()]
         save1(rigidMain, "A.rigid.main")
-        save1(orig.cuda() / (rigidMain.abs() + 10 ** -10), "A.rigid.main_non1")
+        main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
+        # main_non1
+        # main_non1[main_non1 > 1] = 1
+        save1(main_non1, "A.rigid.main_non1")#有黑点
+        # if True:#测试
+        #     o = orig.cuda() / (rigidMain.abs() + 10 ** -10)
+        #     print(type(o))
+        #     print(o.shape)
+        #     # 获取最大值和最小值
+        #     # max_val = np.max(o)
+        #     # min_val = np.min(o)
+        #     # 获取全局最大值和最小值
+        #     max_val = o.max().item()
+        #     min_val = o.min().item()
+        #     print("max_val",max_val)
+        #     print("min_val",min_val)
+        #     exit(0)
+
         save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), "A.rigid.main_non2")
         mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid.main_non2"), os.path.join(outpath, "A.mask.main_nr2"))
         check(os.path.join(outpath, "A.mask.main_nr2"), videoId, "A.mask.main_nr2")
@@ -497,7 +545,7 @@ def startDecouple3(videoId,paramPath,pathIn,outpath):
 
         mainFreeCOS(paramPath,os.path.join(outpath, "C.recon_non2"),os.path.join(outpath, "C.mask2"))
         check(os.path.join(outpath, "mask2"),videoId,"C.nir.1.recon_non2")
-if __name__ == "__main__":
+if False: #if __name__ == "__main__":
     '''
     print("01:test", "可行性测试、结果正确(正确？很久之前的测试，当时的main.py部分的代码还没有出BUG)")
     #'血管层去除'中MASK遮挡的范围可以大一些  
@@ -519,3 +567,25 @@ if __name__ == "__main__":
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
     startDecouple1(videoId,paramPath, inpath, outpath)#去除刚体层
     startDecouple2(videoId,paramPath, inpath, outpath)#获取流体层
+if __name__ == "__main__":
+    script_path = os.path.abspath(__file__)
+    ROOT1 = os.path.dirname(script_path)
+    file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+    # 打开并读取 YAML 文件
+    import yaml
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+        print("notes:",config["my"]["notes"])
+        rootPath = config["my"]["filePathRoot"]
+
+        userId = "CVAI-2186"
+        videoId = userId+"RAO28_CAU28"
+        frameId = "00055"
+        inpath  = "../DeNVeR_in/xca_dataset/"+userId+"/images/"+videoId
+        outpath = rootPath+"/decouple2" #"../DeNVeR_in/xca_dataset/"+userId+"/decouple/"+videoId
+
+        paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
+        startDecouple1(videoId,paramPath, inpath, outpath)#去除刚体层
+        # startDecouple2(videoId,paramPath, inpath, outpath)#获取流体层
+
+    
