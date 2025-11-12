@@ -1,6 +1,6 @@
 my:
-    filePathRoot: "log_9"
-    notes: "Find out the cause of the black dot in CVAI-2186RAO28_CAU28.A.rigid.main_non1.00055.png"
+    filePathRoot: "log_10"
+    notes: "Remove redundant code"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
