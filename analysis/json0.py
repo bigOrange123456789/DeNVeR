@@ -1,15 +1,15 @@
 config_data0 = {
             "experiments" : [
-                {
-                    "name":"1.masks",
-                    "color":"#1E88E5",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/1.masks",
-                    "block_cath":False,
-                    # "binarize": True,
-                    "threshold": 0.5,
-                },
+                # {
+                #     "name":"1.masks",
+                #     "color":"#1E88E5",
+                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sim2_result/1.masks",
+                #     "block_cath":False,
+                #     # "binarize": True,
+                #     "threshold": 0.5,
+                # },
 
                 # {
                 #     "name":"2.2.planar",
@@ -69,7 +69,7 @@ config_data0 = {
                     "color":"#2E7D32",
                     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/orig",
+                    "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_01",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
@@ -78,7 +78,7 @@ config_data0 = {
                     "color":"#C2185B",
                     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/orig",
+                    "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_01-orig",
                     "block_cath":False,
                     "threshold": 0.5,
                 },

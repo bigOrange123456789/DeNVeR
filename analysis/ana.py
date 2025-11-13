@@ -71,6 +71,9 @@ def process_test_config(config):
      for frameId in os.listdir(gt_path+"/"+videoId):
         filename = frameId
         gt_img = load_and_binarize_image(os.path.join(gt_path, videoId, frameId),0.5)
+        # print("pred_path",pred_path)
+        # print("os.path.join(pred_path, videoId, frameId)",os.path.join(pred_path, videoId, frameId))
+        # exit(0)
         pred_img = load_and_binarize_image(os.path.join(pred_path, videoId, frameId),config["threshold"])
         if block_cath: 
             cath_img = load_and_binarize_image(os.path.join(cath_path, videoId+"CATH", frameId),None)
@@ -195,7 +198,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-####################################################################################################
 
 

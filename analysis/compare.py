@@ -1,0 +1,232 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+from PIL import Image
+import argparse
+
+def load_images_for_comparison(videoId, frameId, original_path, gt_path, pred_path1, pred_path2):
+    """
+    加载用于比较的四张图像：原始图像、真实标签、方法1预测、方法2预测
+    """
+    images = {}
+    
+    # 原始图像
+    try:
+        orig_img_path = os.path.join(original_path, videoId, frameId)
+        images['original'] = np.array(Image.open(orig_img_path))
+    except:
+        images['original'] = None
+    
+    # 真实标签
+    try:
+        gt_img_path = os.path.join(gt_path, videoId, frameId)
+        gt_img = Image.open(gt_img_path)
+        gt_img = np.array(gt_img)
+        if len(gt_img.shape) == 3:
+            gt_img = np.mean(gt_img, axis=2)
+        images['gt'] = (gt_img > 128).astype(np.uint8)  # 二值化
+    except:
+        images['gt'] = None
+    
+    # 方法1预测
+    try:
+        pred1_img_path = os.path.join(pred_path1, videoId, frameId)
+        pred1_img = Image.open(pred1_img_path)
+        pred1_img = np.array(pred1_img)
+        if len(pred1_img.shape) == 3:
+            pred1_img = np.mean(pred1_img, axis=2)
+        images['pred1'] = (pred1_img > 128).astype(np.uint8)  # 二值化
+    except:
+        images['pred1'] = None
+    
+    # 方法2预测
+    try:
+        pred2_img_path = os.path.join(pred_path2, videoId, frameId)
+        pred2_img = Image.open(pred2_img_path)
+        pred2_img = np.array(pred2_img)
+        if len(pred2_img.shape) == 3:
+            pred2_img = np.mean(pred2_img, axis=2)
+        images['pred2'] = (pred2_img > 128).astype(np.uint8)  # 二值化
+    except:
+        images['pred2'] = None
+    
+    return images
+
+def create_comparison_figure(cases, title, original_path, gt_path, pred_path1, pred_path2, k):
+    """
+    创建比较图：4行×K列，显示原始图像、GT、方法1预测、方法2预测
+    """
+    fig, axes = plt.subplots(4, k, figsize=(3*k, 12))
+    
+    # 如果只有一列，确保axes是二维数组
+    if k == 1:
+        axes = axes.reshape(4, 1)
+    
+    for col, (_, row) in enumerate(cases.iterrows()):
+        videoId = row['videoId']
+        frameId = row['frameId']
+        metric_value1 = row['metric1']
+        metric_value2 = row['metric2']
+        diff = row['diff']
+        
+        # 加载图像
+        images = load_images_for_comparison(videoId, frameId, original_path, gt_path, pred_path1, pred_path2)
+        
+        # 显示原始图像
+        if images['original'] is not None:
+            if len(images['original'].shape) == 2:
+                axes[0, col].imshow(images['original'], cmap='gray')
+            else:
+                axes[0, col].imshow(images['original'])
+        axes[0, col].set_title(f'Original\n{frameId}', fontsize=10)
+        axes[0, col].axis('off')
+        
+        # 显示真实标签
+        if images['gt'] is not None:
+            axes[1, col].imshow(images['gt'], cmap='gray')
+        axes[1, col].set_title('Ground Truth', fontsize=10)
+        axes[1, col].axis('off')
+        
+        # 显示方法1预测
+        if images['pred1'] is not None:
+            axes[2, col].imshow(images['pred1'], cmap='gray')
+        axes[2, col].set_title(f'Method1: {metric_value1:.3f}', fontsize=10)
+        axes[2, col].axis('off')
+        
+        # 显示方法2预测
+        if images['pred2'] is not None:
+            axes[3, col].imshow(images['pred2'], cmap='gray')
+        axes[3, col].set_title(f'Method2: {metric_value2:.3f}', fontsize=10)
+        axes[3, col].axis('off')
+    
+    plt.suptitle(title, fontsize=16, y=0.95)
+    plt.tight_layout()
+    return fig
+
+from analysis.json0 import config_data 
+def main():
+    # 设置参数解析
+    parser = argparse.ArgumentParser(description='Compare two experiment results and visualize differences')
+    parser.add_argument('--excel1', 
+                        default='_011_continuity_01-CATH_results.xlsx',
+                        type=str, help='Path to first Excel file')
+    parser.add_argument('--excel2', 
+                        default='_011_continuity_01-orig-CATH_results.xlsx',
+                        type=str, help='Path to second Excel file')
+    parser.add_argument('--metric', 
+                        default='recall',
+                        type=str, help='Metric column name (e.g., dice, recall, precision)')
+    parser.add_argument('--k', 
+                        default=10,
+                        type=int, help='Number of top cases to display for each category')
+    parser.add_argument('--original_path', 
+                        default='./outputs/xca_dataset_sim2_copy/images',
+                        type=str, help='Path to original images')
+    parser.add_argument('--gt_path', type=str, help='Path to ground truth masks')
+    parser.add_argument('--pred_path1', type=str, help='Path to method1 prediction masks')
+    parser.add_argument('--pred_path2', type=str, help='Path to method2 prediction masks')
+    parser.add_argument('--output_dir', type=str, 
+                        default='./outputs', 
+                        help='Output directory for results')
+    
+    # name1=args
+    # config1=config_data[""]
+    args = parser.parse_args()
+    name1 = args.excel1.split("_results.xlsx")[0]
+    name2=args.excel2.split("_results.xlsx")[0]
+    config1={}
+    config2={}
+    for i in config_data["experiments"]:
+        print("i name",i["name"])
+        if i["name"]==name1: 
+            config1=i
+        if i["name"]==name2: 
+            config2=i
+    args.gt_path=config1["gt_path"]
+    args.pred_path1=config1["pred_path"]
+    args.pred_path2=config2["pred_path"]
+
+    
+    # 创建输出目录
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    # 读取Excel文件
+    print(f"Loading {args.excel1} and {args.excel2}...")
+    df1 = pd.read_excel(args.excel1)
+    df2 = pd.read_excel(args.excel2)
+    
+    # 确保两个DataFrame有相同的行数且对应相同的图片
+    if len(df1) != len(df2):
+        print("Warning: The two Excel files have different numbers of rows!")
+    
+    # 合并两个DataFrame
+    merged_df = pd.merge(
+        df1[['videoId', 'frameId', args.metric]], 
+        df2[['videoId', 'frameId', args.metric]], 
+        on=['videoId', 'frameId'], 
+        suffixes=('_1', '_2')
+    )
+    
+    # 计算差异
+    merged_df['metric1'] = merged_df[f'{args.metric}_1']
+    merged_df['metric2'] = merged_df[f'{args.metric}_2']
+    merged_df['diff'] = merged_df['metric1'] - merged_df['metric2']
+    
+    # 找出差异最大的案例
+    # 方法1优于方法2最多的K个案例
+    method1_better = merged_df.nlargest(args.k, 'diff')
+    # 方法2优于方法1最多的K个案例（即差异最小的K个）
+    method2_better = merged_df.nsmallest(args.k, 'diff')
+    
+    print(f"Found {len(method1_better)} cases where method1 is better than method2")
+    print(f"Found {len(method2_better)} cases where method2 is better than method1")
+    
+    # 创建第一张图：方法1优于方法2的案例
+    if len(method1_better) > 0:
+        fig1 = create_comparison_figure(
+            method1_better, 
+            f'Top {args.k} Cases: Method1 > Method2 (by {args.metric})',
+            args.original_path,
+            args.gt_path,
+            args.pred_path1,
+            args.pred_path2,
+            min(args.k, len(method1_better))
+        )
+        fig1.savefig(os.path.join(args.output_dir, f'method1_better_{args.metric}.png'), dpi=150, bbox_inches='tight')
+        print(f"Saved method1_better_{args.metric}.png")
+    
+    # 创建第二张图：方法2优于方法1的案例
+    if len(method2_better) > 0:
+        fig2 = create_comparison_figure(
+            method2_better,
+            f'Top {args.k} Cases: Method2 > Method1 (by {args.metric})',
+            args.original_path,
+            args.gt_path,
+            args.pred_path1,
+            args.pred_path2,
+            min(args.k, len(method2_better))
+        )
+        fig2.savefig(os.path.join(args.output_dir, f'method2_better_{args.metric}.png'), dpi=150, bbox_inches='tight')
+        print(f"Saved method2_better_{args.metric}.png")
+    
+    # 保存差异分析结果到CSV
+    comparison_summary = pd.concat([
+        method1_better.assign(category='method1_better'),
+        method2_better.assign(category='method2_better')
+    ])
+    comparison_summary.to_csv(os.path.join(args.output_dir, f'comparison_summary_{args.metric}.csv'), index=False)
+    print(f"Saved comparison_summary_{args.metric}.csv")
+    
+    # 打印统计信息
+    print(f"\nComparison Summary for {args.metric}:")
+    print(f"Average {args.metric} - Method1: {merged_df['metric1'].mean():.4f}")
+    print(f"Average {args.metric} - Method2: {merged_df['metric2'].mean():.4f}")
+    print(f"Average difference (Method1 - Method2): {merged_df['diff'].mean():.4f}")
+    print(f"Method1 better in {len(method1_better)} cases")
+    print(f"Method2 better in {len(method2_better)} cases")
+    
+    plt.show()
+
+if __name__ == "__main__":
+    main()
