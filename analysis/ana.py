@@ -17,7 +17,7 @@ def load_and_binarize_image(image_path, threshold=0.5):
             img_array = np.mean(img_array, axis=2)
         
         # 二值化
-        if not threshold is None:#阈值为空的时候不进行二值化
+        if not threshold is None:#阈值非空的时候进行二值化
             img_array = (img_array > 256*threshold).astype(np.uint8)
         else:
             img_array = img_array.astype(np.float32)/256
@@ -62,35 +62,6 @@ def process_test_config(config):
     print(f"Pred path: {pred_path}")
     if block_cath: print(f"cath_path: {cath_path}")
     
-    # # 获取所有图像文件
-    # def getFiles(path):
-    #     files=[]
-    #     for videoId in os.listdir(path):
-    #         for frameId in os.listdir(path+"/"+videoId):
-    #             files.append(videoId+"/"+frameId)
-    #     return files
-    # def getFilesCATH(path):
-    #     files=[]
-    #     for videoId in os.listdir(path):
-    #         for frameId in os.listdir(path+"/"+videoId):
-    #             files.append(videoId+"CATH/"+frameId)
-    #     return files
-
-    # gt_files = getFiles(gt_path)#[f for f in os.listdir(gt_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp'))]
-    # pred_files = getFiles(pred_path)#[f for f in os.listdir(pred_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp'))]
-    # if block_cath: cath_files = getFilesCATH(cath_path)
-    # else: cath_files = None
-
-    
-    # # 找到共同的文件
-    # common_files = set(gt_files) & set(pred_files)
-    
-    # if len(common_files) == 0:
-    #     print(f"Warning: No common image files found between {gt_path} and {pred_path}")
-    #     return name, {"dice": 0, "recall": 0, "precision": 0}
-    
-    # print(f"Found {len(common_files)} common image files")
-    
     # 计算所有图像的指标
     all_dice = []
     all_recall = []
@@ -102,14 +73,11 @@ def process_test_config(config):
         gt_img = load_and_binarize_image(os.path.join(gt_path, videoId, frameId),0.5)
         pred_img = load_and_binarize_image(os.path.join(pred_path, videoId, frameId),config["threshold"])
         if block_cath: 
-            # print("gt",np.max(gt_img))
             cath_img = load_and_binarize_image(os.path.join(cath_path, videoId+"CATH", frameId),None)
             mask_cath = np.zeros_like(cath_img)#torch.zeros_like(gt_tensor)
             mask_vessel = np.zeros_like(cath_img)
             mask_cath[cath_img>0.75]=1
             mask_vessel[(cath_img>0.25) & (cath_img<0.75)]=1 
-            # print("cath", np.sum(mask_cath))
-            # print("vessel",np.sum(mask_vessel))
             gt_img = mask_vessel
             pred_img = pred_img * ( 1 - mask_cath )
 
@@ -144,12 +112,17 @@ def process_test_config(config):
 def create_bar_chart(results, colors):
     """创建按指标分组的柱状图"""
     metrics = ['Dice', 'Recall', 'Precision']
+    print("results.keys()",results.keys())
     test_names = list(results.keys())
+    print("test_names",test_names)
+    test_names2=[]
+    for i in test_names:
+        test_names2.append("tag:"+i)
     
     # 准备数据
-    dice_values = [results[name]['dice'] for name in test_names]
-    recall_values = [results[name]['recall'] for name in test_names]
-    precision_values = [results[name]['precision'] for name in test_names]
+    # dice_values = [results[name]['dice'] for name in test_names]
+    # recall_values = [results[name]['recall'] for name in test_names]
+    # precision_values = [results[name]['precision'] for name in test_names]
     
     # 设置柱状图位置
     x = np.arange(len(metrics))
@@ -162,7 +135,7 @@ def create_bar_chart(results, colors):
     for i, name in enumerate(test_names):
         offset = (i - len(test_names)/2 + 0.5) * width
         values = [results[name]['dice'], results[name]['recall'], results[name]['precision']]
-        bars = ax.bar(x + offset, values, width, label=name, color=colors[name])
+        bars = ax.bar(x + offset, values, width, label=test_names2[i], color=colors[name])
         
         # 添加数值标签
         for bar, value in zip(bars, values):
@@ -175,8 +148,8 @@ def create_bar_chart(results, colors):
     ax.set_ylabel('Scores')
     ax.set_title('Segmentation Performance Metrics Comparison')
     ax.set_xticks(x)
-    ax.set_xticklabels(metrics)
-    ax.legend()
+    ax.set_xticklabels(metrics) #显示指标名称
+    ax.legend()#显示每个颜色的含义
     ax.grid(True, alpha=0.3)
     
     # 设置y轴范围
@@ -186,84 +159,11 @@ def create_bar_chart(results, colors):
     plt.tight_layout()
     
     # 保存图像
-    plt.savefig('segmentation_metrics_comparison.png', dpi=300, bbox_inches='tight')
+    if False: plt.savefig('segmentation_metrics_comparison.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-
+from analysis.json0 import config_data 
 def main():
-    # 从命令行参数获取配置
-    if len(sys.argv) < 2:
-        jsonPath="./analysis/ana.json"
-    else:
-        jsonPath=sys.argv[1]
-    
-    try:
-        config_data = {
-            "experiments" : [
-                {
-                    "name":"1.masks",
-                    "color":"r",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/1.masks",
-                    "block_cath":False,
-                    # "binarize": True,
-                    "threshold": 0.5,
-                },
-                {
-                    "name":"1.masks-CATH",
-                    "color":"r",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/1.masks",
-                    "block_cath":True,
-                    "threshold": 0.5,
-                },
-
-                {
-                    "name":"5.refine",
-                    "color":"g",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/5.refine",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                {
-                    "name":"5.refine-CATH",
-                    "color":"g",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/5.refine",
-                    "block_cath":True,
-                    "threshold": 0.5,
-                },
-
-                {
-                    "name":"orig",
-                    "color":"b",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/orig",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                {
-                    "name":"orig-CATH",
-                    "color":"b",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/orig",
-                    "block_cath":True,
-                    "threshold": 0.5,
-                },
-            ]
-        }#json.loads(jsonPath)
-        print("config_data:",config_data)
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
-        return
-    
     # 处理每个测试配置
     results = {}
     colors = {}
@@ -272,7 +172,10 @@ def main():
         name, metrics = process_test_config(config)
         results[name] = metrics
         colors[name] = config["color"]
+        print("name:",name)
         print("-" * 50)
+    print("results",results.keys())
+    # exit(0)
     
     # 打印汇总结果
     print("\n" + "="*60)

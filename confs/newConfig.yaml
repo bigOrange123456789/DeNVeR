@@ -1,6 +1,6 @@
 my:
-    filePathRoot: "log_10"
-    notes: "Remove redundant code"
+    filePathRoot: "log_11"
+    notes: "Test how to achieve 100% recall rate without blocking cath"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
