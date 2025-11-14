@@ -46,8 +46,8 @@ class ImageLoader:
     
     IMAGE_PATHS = {
         "orig": "{dataset_path}/{patient_id}/decouple/{video_id}/orig/{frame_id}",
-        "fluid": "{dataset_path}/{patient_id}/decouple/{video_id}/recon_non2/{frame_id}",
-        "fluid2": "{dataset_path}/{patient_id}/decouple/{video_id}/C.recon_non2/{frame_id}",
+        "fluid": "{dataset_path}/{patient_id}/decouple/{video_id}/recon_non2/{frame_id}", #拟合原视频得到的血管
+        "fluid2": "{dataset_path}/{patient_id}/decouple/{video_id}/C.recon_non2/{frame_id}", #拟合去刚视频得到的血管
         "noRigid1": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non1/{frame_id}",
         "noRigid2": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non2/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"

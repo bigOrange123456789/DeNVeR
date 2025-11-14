@@ -434,12 +434,9 @@ class Main2:
         """获取预测结果"""
         def s(pred):
             from torchvision.utils import save_image
-            if False: path_save = os.path.join(self.config.root_path, "outputs", video_id, config['name'])
-            # path_save = os.path.join(self.config.root_path, "outputs", config['name'], video_id)
-            path_save = os.path.join(self.config.root_path, "outputs", config['name']+"-orig", video_id)
+            path_save = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
             os.makedirs(path_save, exist_ok=True)
             save_image(pred, os.path.join(path_save,frame_id))
-
         
         if config.get("precomputed", False):
             # 读取预计算的分割结果
@@ -613,7 +610,7 @@ class Main2:
                 for video_id in video_names:
                     if "CATH" not in video_id:  # 只处理非导管视频
                         for config in configs:
-                            path_in = os.path.join(self.config.root_path, "outputs", config['name']+"-orig", video_id)
+                            path_in = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
                             path_out = os.path.join(self.config.root_path, "outputs", config['name'], video_id)
                             PostProcessing(path_in, path_out,progress_bar)
                             progress_bar.update(1)
@@ -653,7 +650,7 @@ def main():
     block_cath = True
     
     # 定义多个配置
-    configs = [
+    configs = [#在短视频数据上的测试结果
         ##########################  DeNVeR.010  ##########################  
         # {
         #     "name": "1.masks", 
@@ -705,14 +702,23 @@ def main():
         #     "norm_method": norm_calculator.calculate_mean_variance,
         #     "binarize": True,
         #     "inferenceAll":True,
-        # },
+        # },#"_011_continuity_01-temp" : orig
+        # {
+        #     "name": "_011_continuity_02",
+        #     "precomputed": False,
+        #     "input_mode": "noRigid1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,
+        # }, #"_011_continuity_02-temp" : noRigid1
+        ##########################  DeNVeR.012  ##########################  
         {
-            "name": "_011_continuity_02",
+            "name": "_012_continuity_01",
             "precomputed": False,
-            "input_mode": "noRigid1",
+            "input_mode": "fluid2",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll":True,
+            "inferenceAll":False,
         },
     ]
     
@@ -726,7 +732,6 @@ def main():
             configs2.append(c)
         
     
-    # 创建综合比较器
     Main(config, model_manager, image_loader, norm_calculator).inference(
         configs1, config.root_path + "/", block_cath, threshold
     )#只推理有人工标注的图像

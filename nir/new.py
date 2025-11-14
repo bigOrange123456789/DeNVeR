@@ -440,7 +440,7 @@ class Decouple(nn.Module):
                 }
             return video_pre, layers, p
 
-def startDecouple2(videoId,paramPath,pathIn,outpath):
+def startDecouple2(videoId,paramPath,pathIn,outpath):#用没有去除刚体的数据进行拟合
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
         o_scene = o_scene.cpu().detach().numpy()
@@ -451,8 +451,7 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):
     if True:
         script_path = os.path.abspath(__file__)
         ROOT = os.path.dirname(script_path)
-        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") if not flagHadRigid else os.path.join(
-            ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
+        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter")
         os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
         check(maskPath+"/..", videoId, "A.mask_nir2")
         myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)
@@ -499,7 +498,7 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):
 '''
     python -m nir.new
 '''
-def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解耦方法的区别是什么？
+def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解耦方法的区别是：拟合原视频 vs 拟合去刚视频
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
         o_scene = o_scene.cpu().detach().numpy()
@@ -510,8 +509,7 @@ def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解
     if True:
         script_path = os.path.abspath(__file__)
         ROOT = os.path.dirname(script_path)
-        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") if not flagHadRigid else os.path.join(
-            ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
+        maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter")
         os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
         check(maskPath+"/..", videoId, "A.mask_nir2")
         # myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)
@@ -558,15 +556,7 @@ def startDecouple4(videoId,paramPath,outpath="",mytag="D",maskPath=""):#2号解�
     if True:
         script_path = os.path.abspath(__file__)
         ROOT = os.path.dirname(script_path)
-        # maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") if not flagHadRigid else os.path.join(
-        #     ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
-        # maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter") 
-        # maskPath = os.path.join(ROOT,"..",
-        #                         "..","DeNVeR.011","log_11","outputs","_011_continuity_02")
-                                # outpath, "A.mask.main_nr2","filter") 
         os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
-        # check(maskPath+"/..", videoId, "A.mask_nir2")
-        # myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)
         myMain = Decouple(
             os.path.join(ROOT,"..",outpath, "A.rigid.main_non1"),
             maskPath=maskPath,hidden_features=256*4)
