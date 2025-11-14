@@ -35,7 +35,8 @@ class Config:
             config = yaml.safe_load(file)
             self.root_path = config["my"]["filePathRoot"]
             self.dataset_path_gt = config["my"]["datasetPath"]  # 真值标签路径
-            self.dataset_path = os.path.join("..", "DeNVeR.008", "log_8", "dataset_decouple")  # 解耦数据路径
+            # self.dataset_path = os.path.join("..", "DeNVeR.008", "log_8", "dataset_decouple")  # 解耦数据路径
+            self.dataset_path = os.path.join(self.root_path, "dataset_decouple")
             
         print(f"真值标签的路径: {self.dataset_path_gt}")
         print(f"解耦数据的路径: {self.dataset_path}")
@@ -47,7 +48,9 @@ class ImageLoader:
     IMAGE_PATHS = {
         "orig": "{dataset_path}/{patient_id}/decouple/{video_id}/orig/{frame_id}",
         "fluid": "{dataset_path}/{patient_id}/decouple/{video_id}/recon_non2/{frame_id}", #拟合原视频得到的血管
-        "fluid2": "{dataset_path}/{patient_id}/decouple/{video_id}/C.recon_non2/{frame_id}", #拟合去刚视频得到的血管
+        "fluid2": "{dataset_path}/{patient_id}/decouple/{video_id}/C.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于普通掩膜)
+        "fluid3": "{dataset_path}/{patient_id}/decouple/{video_id}/D.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于增大掩膜)
+        # "fluid3": "log_12/dataset_decouple/{patient_id}/decouple/{video_id}/D.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于增大掩膜)
         "noRigid1": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non1/{frame_id}",
         "noRigid2": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non2/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"

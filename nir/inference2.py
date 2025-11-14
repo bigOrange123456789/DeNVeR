@@ -675,7 +675,7 @@ def main():
         # },
         # {
         #     "name": "4.deform", 
-        #     "precomputed": True,
+        #     "precomputed": True,#复制结果
         #     "result_path_template": os.path.join("../DeNVeR.006/log_6/outputs", "{videoId}", "4.deform", "{frameId}"),
         #     "input_mode_for_display": "orig",
         #     "binarize": True
@@ -712,10 +712,18 @@ def main():
         #     "inferenceAll":True,
         # }, #"_011_continuity_02-temp" : noRigid1
         ##########################  DeNVeR.012  ##########################  
+        # {
+        #     "name": "_012_continuity_01",
+        #     "precomputed": False,
+        #     "input_mode": "fluid2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":False,
+        # },
         {
-            "name": "_012_continuity_01",
+            "name": "_012_02_bigMaskFluid",
             "precomputed": False,
-            "input_mode": "fluid2",
+            "input_mode": "fluid3",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll":False,
@@ -735,7 +743,7 @@ def main():
     Main(config, model_manager, image_loader, norm_calculator).inference(
         configs1, config.root_path + "/", block_cath, threshold
     )#只推理有人工标注的图像
-    Main2(config, model_manager, image_loader, norm_calculator).inference(
+    if False:Main2(config, model_manager, image_loader, norm_calculator).inference(
         configs2, config.root_path + "/", block_cath, threshold
     )#推理全部图像
 
