@@ -273,6 +273,15 @@ def evaluateNew(TAG="raft"):
             t_last = i/20
     print("最佳阈值:",TAG,f1_last, pr_last, sn_last, t_last)
 if __name__ == "__main__":
+    import yaml
+    ROOT1 = os.path.dirname(script_path)
+    file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+        print("notes:",config["my"]["notes"])
+        rootPath = config["my"]["filePathRoot"]
+    print("rootPath:",rootPath)
+    
     datasetPath="../DeNVeR_in/xca_dataset"
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
     patient_names = [name for name in os.listdir(datasetPath)
@@ -292,7 +301,8 @@ if __name__ == "__main__":
             CountI = CountI + 1
             print(str(CountI)+"/"+str(CountSum),videoId)
             inpath = os.path.join(datasetPath, patientID, "images", videoId)
-            outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
+            # outpath = os.path.join(datasetPath, patientID, "decouple", videoId)
+            outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)
             os.makedirs(outpath, exist_ok=True)
             startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
             startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层

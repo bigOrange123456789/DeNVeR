@@ -376,7 +376,6 @@ class PostProcessing:
         
         # print(f"所有帧处理完成！结果保存在: {output_folder}")
 
-
 class Main2:
     """多组结果综合比较分析器（整合了单对比较功能）"""
     
@@ -640,7 +639,6 @@ class Main2:
             # 获取预测结果
             self._get_prediction2(config, model, img_norm, threshold, patient_id, video_id, frame_id)
             
-
 def main(): 
     """主函数"""
     # 初始化配置和各个管理器
@@ -700,10 +698,18 @@ def main():
         #     "binarize": True
         # },
         ##########################  DeNVeR.011  ##########################  
+        # {
+        #     "name": "_011_continuity_01",
+        #     "precomputed": False,
+        #     "input_mode": "orig",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,
+        # },
         {
-            "name": "_011_continuity_01",
+            "name": "_011_continuity_02",
             "precomputed": False,
-            "input_mode": "orig",
+            "input_mode": "noRigid1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll":True,

@@ -1,7 +1,7 @@
 import os
 import yaml
 import json
-from nir.new import startDecouple1,startDecouple3
+from nir.new import startDecouple1,startDecouple3,startDecouple4
 
 from torchvision import transforms
 from tqdm import tqdm
@@ -822,7 +822,7 @@ AVAILABLE_TAGS = [
     "mix", "mix2", "mix4", "mix5", "mix6", "pred"
 ]
 
-if False:#
+if True:#
 # if __name__ == "__main__":
     ROOT1 = os.path.dirname(script_path)
     file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
@@ -875,13 +875,22 @@ if False:#
                 
                 inpath = os.path.join(datasetPath0, patientID, "images", videoId)
                 outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
-                outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#本地路径
+                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#本地路径
+                outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)
                 print("outpath:",outpath)
                 os.makedirs(outpath, exist_ok=True)
                 
-                startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+                # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 # startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+                startDecouple4(
+                    videoId, 
+                    paramPath, 
+                    mytag="D",
+                    outpath=outpath,
+                    maskPath=os.path.join("../DeNVeR.011/log_11/outputs/_011_continuity_02",videoId)
+                    )  # 获取流体层
+                # os.path.join(ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
                     
                 # 处理成功，更新进度
                 CountI += 1
@@ -896,7 +905,7 @@ if False:#
     ##########################################################################################
 
 # 修改主函数调用
-if __name__ == "__main__":
+if False:#if __name__ == "__main__":
     topK = 10
     threshold = 0.5
     

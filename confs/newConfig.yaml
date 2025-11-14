@@ -1,6 +1,6 @@
 my:
-    filePathRoot: "log_11"
-    notes: "Test how to achieve 100% recall rate without blocking cath"
+    filePathRoot: "log_12"
+    notes: "Testing whether improving the recall of the shielding mask can enhance the dice of fluid layer segmentation."
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
