@@ -1,7 +1,7 @@
 import os
 import yaml
 import json
-from nir.new import startDecouple1,startDecouple3
+from nir.new import startDecouple1,startDecouple3,startDecouple4
 
 from torchvision import transforms
 from tqdm import tqdm
@@ -91,7 +91,6 @@ def getImg(TAG,transform, patientID, videoId, frameId):
         img2 = transform(img2).unsqueeze(0).cuda()
         img=img1*img2 # 流体*非刚体
     return img
-
 def calculate_mean_variance(TAG,transform, patientID, videoId):
     img_list = []
     path0 = os.path.join(datasetPath, patientID, "decouple", videoId, "orig")
@@ -588,44 +587,49 @@ def save_results_to_excel(df, t_test_results, tag1, tag2, save_path):
     print(f"  4. 方法比较 - 简明的比较结果")
     print(f"  5. 图像路径 - 所有输入图像和ground truth的路径")
 
-
-##########################################################################################################
-
-def comprehensive_comparison_analysis(config1, config2, K=5, threshold=0.85, save_path="", blockCath=False):
-    """
-    对两种配置进行全面的比较分析
+# # 使用示例
+# if __name__ == "__main__":
+#     # 示例1: 比较fluid和orig，同时保存图像和Excel
+#     df, results, top_k = comprehensive_comparison_analysis(
+#         tag1="fluid", 
+#         tag2="orig", 
+#         K=5, 
+#         threshold=0.85,
+#         save_img_path="fluid_vs_orig_comparison.jpg",
+#         save_excel_path="fluid_vs_orig_statistical_analysis.xlsx"
+#     )
     
-    参数:
-        config1: 第一种配置的JSON对象
-        config2: 第二种配置的JSON对象
-        K: 对比图中显示的图像数量
-        threshold: 分割阈值
-        save_path: 保存路径
-        only_annotated: 是否只分割有人工标注的图片
+#     # 示例2: 比较其他方法，使用默认保存路径
+#     df2, results2, top_k2 = comprehensive_comparison_analysis(
+#         tag1="noRigid1", 
+#         tag2="noRigid2", 
+#         K=5, 
+#         threshold=0.85
+#     )
+
+def comprehensive_comparison_analysis(tag1, tag2, K=5, threshold=0.85, save_path=""):
     """
-    tag1 = config1["name"]
-    tag2 = config2["name"]
-    
+    对两种方法进行全面的比较分析，同时保存对比图像和Excel统计结果
+    优化版：只推理一次，输出最好的K张图片和最差的K张图片
+    """
     print(f"开始全面的比较分析: {tag1} vs {tag2}")
-    print(f"模式: {'屏蔽标签中的导管' if blockCath else '不屏蔽标签中的导管'}")
     print("=" * 60)
     
     # 设置默认保存路径
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    mode_suffix = "_hasCath" if blockCath else "_nonCath"
-    save_img_path_best = f"{save_path}{tag1}_vs_{tag2}_best{mode_suffix}_{timestamp}.jpg"
-    save_img_path_worst = f"{save_path}{tag1}_vs_{tag2}_worst{mode_suffix}_{timestamp}.jpg"
-    save_excel_path = f"{save_path}{tag1}_vs_{tag2}_statistical_analysis{mode_suffix}_{timestamp}.xlsx"
+    save_img_path_best = f"{save_path}{tag1}_vs_{tag2}_best_{timestamp}.jpg"
+    save_img_path_worst = f"{save_path}{tag1}_vs_{tag2}_worst_{timestamp}.jpg"
+    save_excel_path = f"{save_path}{tag1}_vs_{tag2}_statistical_analysis_{timestamp}.xlsx"
     
-    # 步骤1: 收集所有图像的指标数据
+    # 步骤1: 收集所有图像的指标数据（优化版）
     print("步骤1/4: 收集所有图像的指标数据...")
-    df, best_results, worst_results = collect_all_metrics_optimized(config1, config2, K, threshold, blockCath)
+    df, best_results, worst_results = collect_all_metrics_optimized(tag1, tag2, K, threshold)
     
     # 步骤2: 执行统计检验
     print("步骤2/4: 执行统计检验...")
     t_test_results = perform_paired_t_test_on_dataframe(df, tag1, tag2)
     
-    # 步骤3: 保存对比图像
+    # 步骤3: 保存对比图像（分别保存最好和最差的）
     print("步骤3/4: 保存对比图像...")
     save_comparison_figure_optimized(best_results, K, tag1, tag2, save_img_path_best, "Best")
     save_comparison_figure_optimized(worst_results, K, tag1, tag2, save_img_path_worst, "Worst")
@@ -642,31 +646,20 @@ def comprehensive_comparison_analysis(config1, config2, K=5, threshold=0.85, sav
     
     return df, t_test_results, best_results, worst_results
 
-def collect_all_metrics_optimized(config1, config2, K=5, threshold=0.85, blockCath=True):
+def collect_all_metrics_optimized(tag1, tag2, K=5, threshold=0.85):
     """
     收集所有图像的指标数据（优化版）
+    只推理一次，同时找出两种方法差异最大的K张图像
     
-    参数:
-        config1: 第一种配置的JSON对象
-        config2: 第二种配置的JSON对象
+    返回:
+        df: 包含所有图像指标的DataFrame
+        best_results: tag1优于tag2的前K张图像结果
+        worst_results: tag2优于tag1的前K张图像结果
     """
-    # 初始化模型和转换（只有需要模型推理的配置才需要）
+    # 初始化模型和转换
     paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-    
-    # 检查哪些配置需要模型
-    need_model1 = not config1.get("precomputed", False)
-    need_model2 = not config2.get("precomputed", False)
-    
-    if need_model1 or need_model2:
-        model = initModel(paramPath)
-    else:
-        model = None
-        
+    model = initModel(paramPath)
     transform = transforms.Compose([transforms.ToTensor()])
-    
-    # 获取配置信息
-    tag1 = config1["name"]
-    tag2 = config2["name"]
     
     # 获取所有患者和视频
     patient_names = [name for name in os.listdir(datasetPath)
@@ -674,548 +667,152 @@ def collect_all_metrics_optimized(config1, config2, K=5, threshold=0.85, blockCa
     
     # 存储所有图像的指标结果
     all_results = []
+    # 存储用于图像对比的结果
     comparison_results = []
     
     # 计算总图像数量用于进度条
     total_images = 0
-    if True:#if only_annotated:
-        # 只处理有标注的图片
-        for patientID in patient_names:
-            patient_path = os.path.join(datasetPath0, patientID, "ground_truth")
-            if not os.path.exists(patient_path):
-                continue
-            video_names = [name for name in os.listdir(patient_path)
-                           if os.path.isdir(os.path.join(patient_path, name))]
-            for videoId in video_names:
-                if len(videoId.split("CATH")) == 1:
-                    video_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId)
-                    total_images += len(os.listdir(video_path))
-    # else:
-    #     # 处理所有图片
-    #     for patientID in patient_names:
-    #         patient_path = os.path.join(datasetPath, patientID, "images")
-    #         if not os.path.exists(patient_path):
-    #             continue
-    #         video_names = [name for name in os.listdir(patient_path)
-    #                        if os.path.isdir(os.path.join(patient_path, name))]
-    #         for videoId in video_names:
-    #             video_path = os.path.join(datasetPath, patientID, "images", videoId)
-    #             total_images += len(os.listdir(video_path))
+    for patientID in patient_names:
+        patient_path = os.path.join(datasetPath0, patientID, "ground_truth")
+        video_names = [name for name in os.listdir(patient_path)
+                       if os.path.isdir(os.path.join(patient_path, name))]
+        for videoId in video_names:
+            if len(videoId.split("CATH")) == 1:
+                video_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId)
+                total_images += len(os.listdir(video_path))
     
     print(f"总图像数量: {total_images}")
     
     # 创建进度条
     with tqdm(total=total_images, desc="处理图像") as pbar:
         for patientID in patient_names:
-            # if not blockCath: # 如果不遮挡标签中的导管 # only_annotated:
-                # 只处理有标注的图片
-                patient_gt_path = os.path.join(datasetPath0, patientID, "ground_truth")
-                if not os.path.exists(patient_gt_path):
-                    continue
-                video_names = [name for name in os.listdir(patient_gt_path)
-                               if os.path.isdir(os.path.join(patient_gt_path, name))]
-                
-                for videoId in video_names:
-                    if len(videoId.split("CATH")) == 1:
-                        video_gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId)
-                        if not os.path.exists(video_gt_path):
-                            continue
-                            
-                        pbar.set_postfix(patient=patientID, video=videoId, mode="annotated")
-                        
-                        # 计算均值和标准差（只有需要模型推理的配置才需要）
-                        mean_tag1, std_tag1 = get_normalization_params(config1, transform, patientID, videoId)
-                        mean_tag2, std_tag2 = get_normalization_params(config2, transform, patientID, videoId)
-                        
-                        for frameId in os.listdir(video_gt_path):
-                            try:
-                                process_single_image_final(patientID, videoId, frameId, 
-                                                         config1, config2, tag1, tag2,
-                                                         mean_tag1, std_tag1, mean_tag2, std_tag2,
-                                                         model, transform, threshold, 
-                                                         all_results, comparison_results, True,
-                                                         blockCath)
-                            except Exception as e:
-                                print(f"处理错误 {patientID}/{videoId}/{frameId}: {str(e)}")
-                            pbar.update(1)
-            # else: # 如果遮挡标签中的导管
-            #     # 处理所有图片
-            #     patient_img_path = os.path.join(datasetPath, patientID, "images")
-            #     if not os.path.exists(patient_img_path):
-            #         continue
-            #     video_names = [name for name in os.listdir(patient_img_path)
-            #                    if os.path.isdir(os.path.join(patient_img_path, name))]
-                
-            #     for videoId in video_names:
-            #         video_img_path = os.path.join(datasetPath, patientID, "images", videoId)
-            #         if not os.path.exists(video_img_path):
-            #             continue
-                        
-            #         pbar.set_postfix(patient=patientID, video=videoId, mode="all")
+            patient_path = os.path.join(datasetPath0, patientID, "ground_truth")
+            video_names = [name for name in os.listdir(patient_path)
+                           if os.path.isdir(os.path.join(patient_path, name))]
+            
+            for videoId in video_names:#
+                if len(videoId.split("CATH")) == 1:
+                    video_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId)
                     
-            #         # 计算均值和标准差（只有需要模型推理的配置才需要）
-            #         mean_tag1, std_tag1 = get_normalization_params(config1, transform, patientID, videoId)
-            #         mean_tag2, std_tag2 = get_normalization_params(config2, transform, patientID, videoId)
+                    # 更新进度条描述
+                    pbar.set_postfix(patient=patientID, video=videoId)
                     
-            #         for frameId in os.listdir(video_img_path):
-            #             try:
-            #                 # 检查是否有对应的ground truth
-            #                 gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId, frameId)
-            #                 has_gt = os.path.exists(gt_path)
+                    # 计算该视频的均值和标准差（只计算一次）
+                    mean_tag1, std_tag1 = calculate_mean_variance(tag1, transform, patientID, videoId)
+                    mean_tag2, std_tag2 = calculate_mean_variance(tag2, transform, patientID, videoId)
+                    
+                    for frameId in os.listdir(video_path):
+                        try:
+                            # 获取两种方法的输入图像
+                            img_tag1 = getImg(tag1, transform, patientID, videoId, frameId)
+                            img_tag2 = getImg(tag2, transform, patientID, videoId, frameId)
                             
-            #                 process_single_image_final(patientID, videoId, frameId,
-            #                                          config1, config2, tag1, tag2,
-            #                                          mean_tag1, std_tag1, mean_tag2, std_tag2,
-            #                                          model, transform, threshold,
-            #                                          all_results, comparison_results, has_gt)
-            #             except Exception as e:
-            #                 print(f"处理错误 {patientID}/{videoId}/{frameId}: {str(e)}")
-            #             pbar.update(1)
+                            # 归一化处理
+                            img_tag1_norm = (img_tag1 - mean_tag1) / std_tag1
+                            img_tag2_norm = (img_tag2 - mean_tag2) / std_tag2
+                            
+                            # 将两个图像堆叠成一个batch进行推理
+                            batch_imgs = torch.cat([img_tag1_norm, img_tag2_norm], dim=0)
+                            batch_preds = model(batch_imgs)["pred"]
+                            
+                            # 分割预测结果
+                            pred_tag1 = batch_preds[0:1]
+                            pred_tag2 = batch_preds[1:2]
+                            
+                            pred_tag1[pred_tag1 > threshold] = 1
+                            pred_tag1[pred_tag1 <= threshold] = 0
+                            pred_tag2[pred_tag2 > threshold] = 1
+                            pred_tag2[pred_tag2 <= threshold] = 0
+                            
+                            # 获取ground truth
+                            gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId, frameId)
+                            gt = Image.open(gt_path).convert('L')
+                            gt_tensor = transform(gt).unsqueeze(0).cuda()
+                            gt_tensor[gt_tensor > 0.5] = 1
+                            gt_tensor[gt_tensor <= 0.5] = 0
+                            
+                            # 计算指标
+                            ind_tag1 = getIndicators(
+                                pred_tag1[0, 0].detach().cpu() * 255,
+                                gt_tensor[0, 0].detach().cpu() * 255
+                            )
+                            ind_tag2 = getIndicators(
+                                pred_tag2[0, 0].detach().cpu() * 255,
+                                gt_tensor[0, 0].detach().cpu() * 255
+                            )
+                            
+                            f1_tag1 = ind_tag1["f1"]
+                            f1_tag2 = ind_tag2["f1"]
+                            
+                            # 转换为标量值
+                            if not f1_tag1.dim() == 0:
+                                f1_tag1 = f1_tag1[0]
+                            if not f1_tag2.dim() == 0:
+                                f1_tag2 = f1_tag2[0]
+                            
+                            f1_diff = float(f1_tag1 - f1_tag2)
+                            
+                            # 获取输入图片路径
+                            tag1_img_path = get_image_path(tag1, patientID, videoId, frameId)
+                            tag2_img_path = get_image_path(tag2, patientID, videoId, frameId)
+                            
+                            # 存储用于统计的数据
+                            result = {
+                                'patientID': patientID,
+                                'videoId': videoId,
+                                'frameId': frameId,
+                                'image_id': f"{patientID}_{videoId}_{frameId}",
+                                'tag1_image_path': tag1_img_path,
+                                'tag2_image_path': tag2_img_path,
+                                'ground_truth_path': gt_path,
+                                'f1_diff': f1_diff
+                            }
+                            
+                            # 添加tag1的指标
+                            for metric_name, metric_value in ind_tag1.items():
+                                result[f'{tag1}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
+                            
+                            # 添加tag2的指标
+                            for metric_name, metric_value in ind_tag2.items():
+                                result[f'{tag2}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
+                            
+                            all_results.append(result)
+                            
+                            # 存储用于图像对比的数据
+                            comparison_result = {
+                                'patientID': patientID,
+                                'videoId': videoId,
+                                'frameId': frameId,
+                                'f1_tag1': float(f1_tag1),
+                                'f1_tag2': float(f1_tag2),
+                                'f1_diff': f1_diff,
+                                'img_tag1': img_tag1.detach().cpu().numpy()[0, 0],
+                                'img_tag2': img_tag2.detach().cpu().numpy()[0, 0],
+                                'pred_tag1': pred_tag1.detach().cpu().numpy()[0, 0],
+                                'pred_tag2': pred_tag2.detach().cpu().numpy()[0, 0],
+                                'gt': gt_tensor.detach().cpu().numpy()[0, 0],
+                                'tag1_image_path': tag1_img_path,
+                                'tag2_image_path': tag2_img_path
+                            }
+                            comparison_results.append(comparison_result)
+                            
+                        except Exception as e:
+                            print(f"处理错误 {patientID}/{videoId}/{frameId}: {str(e)}")
+                        
+                        # 更新进度条
+                        pbar.update(1)
     
     # 转换为DataFrame
     df = pd.DataFrame(all_results)
     
-    if any('f1_diff' in result for result in comparison_results):
-    # if only_annotated or any('f1_diff' in result for result in comparison_results):
-        # 找出config1优于config2的前K张图像
-        valid_results = [r for r in comparison_results if 'f1_diff' in r]
-        best_results = sorted(valid_results, key=lambda x: x['f1_diff'], reverse=True)[:K]
-        
-        # 找出config2优于config1的前K张图像
-        worst_results = sorted(valid_results, key=lambda x: x['f1_diff'])[:K]
-    # else:
-    #     best_results = []
-    #     worst_results = []
+    # 找出tag1优于tag2的前K张图像（F1差异最大）
+    best_results = sorted(comparison_results, key=lambda x: x['f1_diff'], reverse=True)[:K]
+    
+    # 找出tag2优于tag1的前K张图像（F1差异最小）
+    worst_results = sorted(comparison_results, key=lambda x: x['f1_diff'])[:K]
     
     return df, best_results, worst_results
 
-def get_normalization_params(config, transform, patientID, videoId):
-    """
-    根据配置获取归一化参数
-    """
-    if config.get("precomputed", False):
-        # 预计算的方法不需要归一化
-        return 0, 1
-    else:
-        # 需要模型推理的方法需要归一化
-        input_mode = config["input_mode"]
-        norm_method = config["norm_method"]
-        return norm_method(input_mode, transform, patientID, videoId)
-
-def process_single_image_final_old(patientID, videoId, frameId, 
-                              config1, config2, tag1, tag2,
-                              mean_tag1, std_tag1, mean_tag2, std_tag2,
-                              model, transform, threshold,
-                              all_results, comparison_results, has_gt=True,blockCath=False):
-    """
-    处理单张图片的通用函数（最终版）
-    """
-    # 获取两种配置的输入图像
-    img_tag1 = get_input_image(config1, transform, patientID, videoId, frameId)
-    img_tag2 = get_input_image(config2, transform, patientID, videoId, frameId)
-    
-    # 归一化处理（只有需要模型推理的配置才需要）
-    img_tag1_norm = normalize_image(config1, img_tag1, mean_tag1, std_tag1)
-    img_tag2_norm = normalize_image(config2, img_tag2, mean_tag2, std_tag2)
-    
-    # 获取预测结果
-    pred_tag1 = get_prediction_final(config1, model, img_tag1_norm, threshold, patientID, videoId, frameId)
-    pred_tag2 = get_prediction_final(config2, model, img_tag2_norm, threshold, patientID, videoId, frameId)
-    
-    # 获取输入图片路径
-    tag1_img_path = get_image_path_final(config1, patientID, videoId, frameId)
-    tag2_img_path = get_image_path_final(config2, patientID, videoId, frameId)
-    
-    # 存储基本结果
-    result = {
-        'patientID': patientID,
-        'videoId': videoId,
-        'frameId': frameId,
-        'image_id': f"{patientID}_{videoId}_{frameId}",
-        'tag1_image_path': tag1_img_path,
-        'tag2_image_path': tag2_img_path,
-        'has_ground_truth': has_gt
-    }
-    
-    if has_gt:
-        # 获取ground truth
-        gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId, frameId)
-        gt = Image.open(gt_path).convert('L')
-        gt_tensor = transform(gt).unsqueeze(0).cuda()
-        gt_tensor[gt_tensor > 0.5] = 1
-        gt_tensor[gt_tensor <= 0.5] = 0
-        
-        # 计算指标
-        ind_tag1 = getIndicators(
-            pred_tag1[0, 0].detach().cpu() * 255,
-            gt_tensor[0, 0].detach().cpu() * 255
-        )
-        ind_tag2 = getIndicators(
-            pred_tag2[0, 0].detach().cpu() * 255,
-            gt_tensor[0, 0].detach().cpu() * 255
-        )
-        
-        f1_tag1 = ind_tag1["f1"]
-        f1_tag2 = ind_tag2["f1"]
-        
-        # 转换为标量值
-        if not f1_tag1.dim() == 0:
-            f1_tag1 = f1_tag1[0]
-        if not f1_tag2.dim() == 0:
-            f1_tag2 = f1_tag2[0]
-        
-        f1_diff = float(f1_tag1 - f1_tag2)
-        
-        result['ground_truth_path'] = gt_path
-        result['f1_diff'] = f1_diff
-        
-        # 添加tag1的指标
-        for metric_name, metric_value in ind_tag1.items():
-            result[f'{tag1}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
-        
-        # 添加tag2的指标
-        for metric_name, metric_value in ind_tag2.items():
-            result[f'{tag2}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
-        
-        # 存储用于图像对比的数据
-        comparison_result = {
-            'patientID': patientID,
-            'videoId': videoId,
-            'frameId': frameId,
-            'f1_tag1': float(f1_tag1),
-            'f1_tag2': float(f1_tag2),
-            'f1_diff': f1_diff,
-            'img_tag1': img_tag1.detach().cpu().numpy()[0, 0],
-            'img_tag2': img_tag2.detach().cpu().numpy()[0, 0],
-            'pred_tag1': pred_tag1.detach().cpu().numpy()[0, 0],
-            'pred_tag2': pred_tag2.detach().cpu().numpy()[0, 0],
-            'gt': gt_tensor.detach().cpu().numpy()[0, 0],
-            'tag1_image_path': tag1_img_path,
-            'tag2_image_path': tag2_img_path,
-            'has_ground_truth': True
-        }
-        comparison_results.append(comparison_result)
-    else:
-        # 对于没有ground truth的图片，只保存预测结果
-        comparison_result = {
-            'patientID': patientID,
-            'videoId': videoId,
-            'frameId': frameId,
-            'img_tag1': img_tag1.detach().cpu().numpy()[0, 0],
-            'img_tag2': img_tag2.detach().cpu().numpy()[0, 0],
-            'pred_tag1': pred_tag1.detach().cpu().numpy()[0, 0],
-            'pred_tag2': pred_tag2.detach().cpu().numpy()[0, 0],
-            'tag1_image_path': tag1_img_path,
-            'tag2_image_path': tag2_img_path,
-            'has_ground_truth': False
-        }
-        comparison_results.append(comparison_result)
-    
-    all_results.append(result)
-
-def process_single_image_final(patientID, videoId, frameId, 
-                              config1, config2, tag1, tag2,
-                              mean_tag1, std_tag1, mean_tag2, std_tag2,
-                              model, transform, threshold,
-                              all_results, comparison_results, has_gt=True, blockCath=False):
-    """
-    处理单张图片的通用函数（最终版）
-    """
-    # 获取两种配置的输入图像
-    img_tag1 = get_input_image(config1, transform, patientID, videoId, frameId)
-    img_tag2 = get_input_image(config2, transform, patientID, videoId, frameId)
-    
-    # 归一化处理（只有需要模型推理的配置才需要）
-    img_tag1_norm = normalize_image(config1, img_tag1, mean_tag1, std_tag1)
-    img_tag2_norm = normalize_image(config2, img_tag2, mean_tag2, std_tag2)
-    
-    # 获取预测结果
-    pred_tag1 = get_prediction_final(config1, model, img_tag1_norm, threshold, patientID, videoId, frameId)
-    pred_tag2 = get_prediction_final(config2, model, img_tag2_norm, threshold, patientID, videoId, frameId)
-    
-    # 获取输入图片路径
-    tag1_img_path = get_image_path_final(config1, patientID, videoId, frameId)
-    tag2_img_path = get_image_path_final(config2, patientID, videoId, frameId)
-    
-    # 存储基本结果
-    result = {
-        'patientID': patientID,
-        'videoId': videoId,
-        'frameId': frameId,
-        'image_id': f"{patientID}_{videoId}_{frameId}",
-        'tag1_image_path': tag1_img_path,
-        'tag2_image_path': tag2_img_path,
-        'has_ground_truth': has_gt
-    }
-    
-    if has_gt:
-        # 获取ground truth
-        if blockCath: #需要考虑导管区域
-            gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId+"CATH", frameId)
-        else: #不需要考虑导管区域
-            gt_path = os.path.join(datasetPath0, patientID, "ground_truth", videoId, frameId)
-        # print("gt_path",gt_path,"pred_tag1.shape",pred_tag1.shape)
-        gt = Image.open(gt_path).convert('L')
-        gt_tensor = transform(gt).unsqueeze(0).cuda()
-        if blockCath: #需要考虑导管区域
-            # mask_cath = (gt_tensor == 1).to(gt_tensor.dtype)  
-            # mask_vessel = (gt_tensor == 0.5).to(gt_tensor.dtype)  
-            mask_cath = torch.zeros_like(gt_tensor)
-            mask_vessel = torch.zeros_like(gt_tensor)
-            mask_cath[gt_tensor>0.75]=1
-            mask_vessel[(gt_tensor>0.25) & (gt_tensor<0.75)]=1 
-            gt_tensor = mask_vessel
-            pred_tag1 = pred_tag1 * ( 1 - mask_cath )
-            pred_tag2 = pred_tag2 * ( 1 - mask_cath )
-            # print("mask_cath",mask_cath.sum())
-        else: #不需要考虑导管区域
-            gt_tensor[gt_tensor > 0.5] = 1
-            gt_tensor[gt_tensor <= 0.5] = 0
-        # print("")
-        # 计算指标
-        ind_tag1 = getIndicators(
-            pred_tag1[0, 0].detach().cpu() * 255,
-            gt_tensor[0, 0].detach().cpu() * 255
-        )
-        ind_tag2 = getIndicators(
-            pred_tag2[0, 0].detach().cpu() * 255,
-            gt_tensor[0, 0].detach().cpu() * 255
-        )
-        
-        f1_tag1 = ind_tag1["f1"]
-        f1_tag2 = ind_tag2["f1"]
-        
-        # 转换为标量值
-        if not f1_tag1.dim() == 0:
-            f1_tag1 = f1_tag1[0]
-        if not f1_tag2.dim() == 0:
-            f1_tag2 = f1_tag2[0]
-        
-        f1_diff = float(f1_tag1 - f1_tag2)
-        
-        result['ground_truth_path'] = gt_path
-        result['f1_diff'] = f1_diff
-        
-        # 添加tag1的指标
-        for metric_name, metric_value in ind_tag1.items():
-            result[f'{tag1}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
-        
-        # 添加tag2的指标
-        for metric_name, metric_value in ind_tag2.items():
-            result[f'{tag2}_{metric_name}'] = float(metric_value[0] if not metric_value.dim() == 0 else metric_value)
-        
-        # 存储用于图像对比的数据
-        comparison_result = {
-            'patientID': patientID,
-            'videoId': videoId,
-            'frameId': frameId,
-            'f1_tag1': float(f1_tag1),
-            'f1_tag2': float(f1_tag2),
-            'f1_diff': f1_diff,
-            'img_tag1': img_tag1.detach().cpu().numpy()[0, 0],
-            'img_tag2': img_tag2.detach().cpu().numpy()[0, 0],
-            'pred_tag1': pred_tag1.detach().cpu().numpy()[0, 0],
-            'pred_tag2': pred_tag2.detach().cpu().numpy()[0, 0],
-            'gt': gt_tensor.detach().cpu().numpy()[0, 0],
-            'tag1_image_path': tag1_img_path,
-            'tag2_image_path': tag2_img_path,
-            'has_ground_truth': True
-        }
-        comparison_results.append(comparison_result)
-    else:
-        # 对于没有ground truth的图片，只保存预测结果
-        comparison_result = {
-            'patientID': patientID,
-            'videoId': videoId,
-            'frameId': frameId,
-            'img_tag1': img_tag1.detach().cpu().numpy()[0, 0],
-            'img_tag2': img_tag2.detach().cpu().numpy()[0, 0],
-            'pred_tag1': pred_tag1.detach().cpu().numpy()[0, 0],
-            'pred_tag2': pred_tag2.detach().cpu().numpy()[0, 0],
-            'tag1_image_path': tag1_img_path,
-            'tag2_image_path': tag2_img_path,
-            'has_ground_truth': False
-        }
-        comparison_results.append(comparison_result)
-    
-    all_results.append(result)
-
-def get_input_image(config, transform, patientID, videoId, frameId):
-    """
-    根据配置获取输入图像
-    """
-    if config.get("precomputed", False):
-        # 预计算的方法使用指定的输入模式获取图像用于显示
-        input_mode = config.get("input_mode", "orig")
-        return getImg(input_mode, transform, patientID, videoId, frameId)
-    else:
-        # 需要模型推理的方法使用自己的输入模式
-        input_mode = config["input_mode"]
-        return getImg(input_mode, transform, patientID, videoId, frameId)
-
-def normalize_image(config, img, mean, std):
-    """
-    根据配置对图像进行归一化
-    """
-    if config.get("precomputed", False):
-        # 预计算的方法不需要归一化
-        return img
-    else:
-        # 需要模型推理的方法需要归一化
-        return (img - mean) / std
-
-def get_prediction_final(config, model, img_norm, threshold, patientID, videoId, frameId):
-    """
-    获取预测结果的通用函数（最终版）
-    """
-    if config.get("precomputed", False):
-        # 对于预计算方法，直接读取预先计算的分割结果
-        result_path_template = config["result_path_template"]
-        pred_path = result_path_template.format(
-            patientID=patientID, 
-            videoId=videoId, 
-            frameId=frameId
-        )
-        if os.path.exists(pred_path):
-            pred = Image.open(pred_path).convert('L')
-            pred_tensor = transforms.ToTensor()(pred).unsqueeze(0).cuda()
-            if config.get("binarize", True):
-                # 根据阈值进行二值化
-                pred_tensor[pred_tensor > threshold] = 1
-                pred_tensor[pred_tensor <= threshold] = 0
-            return pred_tensor
-        else:
-            raise FileNotFoundError(f"Precomputed prediction not found: {pred_path}")
-    else:
-        # 对于需要模型推理的方法，使用模型推理
-        pred = model(img_norm)["pred"]
-        if config.get("binarize", True):
-            pred[pred > threshold] = 1
-            pred[pred <= threshold] = 0
-        return pred
-
-def get_image_path_final(config, patientID, videoId, frameId):
-    """
-    根据配置获取图像路径（最终版）
-    """
-    if config.get("precomputed", False):
-        # 预计算方法的结果路径
-        result_path_template = config["result_path_template"]
-        return result_path_template.format(
-            patientID=patientID, 
-            videoId=videoId, 
-            frameId=frameId
-        )
-    else:
-        # 需要模型推理的方法的输入图像路径
-        input_mode = config["input_mode"]
-        return get_image_path(input_mode, patientID, videoId, frameId)
-
-
-##########################################################################################################
-
-def get_prediction_final(config, model, img_norm, threshold, patientID, videoId, frameId):
-    """
-    获取预测结果的通用函数（最终版）
-    """
-    if config.get("precomputed", False):
-        # 对于预计算方法，直接读取预先计算的分割结果
-        result_path_template = config["result_path_template"]
-        pred_path = result_path_template.format(
-            patientID=patientID, 
-            videoId=videoId, 
-            frameId=frameId
-        )
-        if os.path.exists(pred_path):
-            pred = Image.open(pred_path).convert('L')
-            pred_tensor = transforms.ToTensor()(pred).unsqueeze(0).cuda()
-            if config.get("binarize", True):
-                # 根据阈值进行二值化
-                pred_tensor[pred_tensor > threshold] = 1
-                pred_tensor[pred_tensor <= threshold] = 0
-            return pred_tensor
-        else:
-            raise FileNotFoundError(f"Precomputed prediction not found: {pred_path}")
-    else:
-        # 对于需要模型推理的方法，使用模型推理
-        pred = model(img_norm)["pred"]
-        if config.get("binarize", True):
-            pred[pred > threshold] = 1
-            pred[pred <= threshold] = 0
-        return pred
-
-def get_input_image(config, transform, patientID, videoId, frameId):
-    """
-    根据配置获取输入图像（用于显示）
-    """
-    # 所有方法都使用相同的输入图像用于显示
-    # 对于预计算方法，使用config中指定的input_mode_for_display
-    # 对于模型推理方法，使用自己的input_mode
-    if config.get("precomputed", False):
-        input_mode = config.get("input_mode_for_display", "orig")
-    else:
-        input_mode = config["input_mode"]
-    
-    return getImg(input_mode, transform, patientID, videoId, frameId)
-
-def get_image_path_final(config, patientID, videoId, frameId):
-    """
-    根据配置获取图像路径（最终版）
-    """
-    if config.get("precomputed", False):
-        # 预计算方法的结果路径
-        result_path_template = config["result_path_template"]
-        return result_path_template.format(
-            patientID=patientID, 
-            videoId=videoId, 
-            frameId=frameId
-        )
-    else:
-        # 需要模型推理的方法的输入图像路径
-        input_mode = config["input_mode"]
-        return get_image_path(input_mode, patientID, videoId, frameId)
-
-
-
-def compare_configs(config_a, config_b, blockCath=False):
-        print(f"\n比较: {config_a['name']} vs {config_b['name']}")
-        print(f"预计算: {config_a.get('precomputed', False)} vs {config_b.get('precomputed', False)}")
-        
-        if config_a.get('precomputed', False):
-            print(f"结果路径模板: {config_a['result_path_template']}")
-            print(f"显示输入图像模式: {config_a.get('input_mode_for_display', 'orig')}")
-        else:
-            print(f"输入模式: {config_a['input_mode']}")
-            print(f"归一化方法: {config_a['norm_method'].__name__}")
-            
-        if config_b.get('precomputed', False):
-            print(f"结果路径模板: {config_b['result_path_template']}")
-            print(f"显示输入图像模式: {config_b.get('input_mode_for_display', 'orig')}")
-        else:
-            print(f"输入模式: {config_b['input_mode']}")
-            print(f"归一化方法: {config_b['norm_method'].__name__}")
-            
-        print(f"二值化: {config_a.get('binarize', True)} vs {config_b.get('binarize', True)}")
-        
-        df, t_test_results, best_results, worst_results = comprehensive_comparison_analysis(
-            config1=config_a, config2=config_b, K=topK, threshold=threshold, 
-            save_path=rootPath+"/", blockCath=blockCath
-        )
-        
-        # 打印结果摘要
-        valid_best = [r for r in best_results if r.get('has_ground_truth', True)]
-        valid_worst = [r for r in worst_results if r.get('has_ground_truth', True)]
-        
-        print(f"\n{config_a['name']} 优于 {config_b['name']} 的前 {min(topK, len(valid_best))} 张图像:")
-        for i, result in enumerate(valid_best):
-            print(f"{i+1}. {result['patientID']}/{result['videoId']}/{result['frameId']} - "
-                  f"F1差异: {result['f1_diff']:.4f}")
-        
-        print(f"\n{config_b['name']} 优于 {config_a['name']} 的前 {min(topK, len(valid_worst))} 张图像:")
-        for i, result in enumerate(valid_worst):
-            print(f"{i+1}. {result['patientID']}/{result['videoId']}/{result['frameId']} - "
-                  f"F1差异: {result['f1_diff']:.4f}")
-            
 
 ##########################################################################################################
 
@@ -1225,8 +822,7 @@ AVAILABLE_TAGS = [
     "mix", "mix2", "mix4", "mix5", "mix6", "pred"
 ]
 
-def denoising():
-# if False:#
+if True:#
 # if __name__ == "__main__":
     ROOT1 = os.path.dirname(script_path)
     file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
@@ -1279,13 +875,22 @@ def denoising():
                 
                 inpath = os.path.join(datasetPath0, patientID, "images", videoId)
                 outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
-                outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#本地路径
+                # outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)#本地路径
                 print("outpath:",outpath)
                 os.makedirs(outpath, exist_ok=True)
                 
-                startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+                # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 # startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+                startDecouple4(
+                    videoId, 
+                    paramPath, 
+                    mytag="D",
+                    outpath=outpath,
+                    # maskPath=os.path.join("../DeNVeR.011/log_11/outputs/_011_continuity_02",videoId)
+                    maskPath=os.path.join("./log_13/outputs/_013_long01_fluid",videoId)
+                    )  # 获取流体层
+                # os.path.join(ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
                     
                 # 处理成功，更新进度
                 CountI += 1
@@ -1297,49 +902,39 @@ def denoising():
                     json.dump(progress_data, f, ensure_ascii=False, indent=2)    
                 print(f"{CountI}/{CountSum} {videoId} - 已完成")
                     
+    ##########################################################################################
 
 # 修改主函数调用
-if __name__ == "__main__":
+if False:#if __name__ == "__main__":
     topK = 10
     threshold = 0.5
-    blockCath = True # only_annotated = True 
     
     # 打开并读取 YAML 文件
     with open(file_path, 'r', encoding='utf-8') as file:
         config = yaml.safe_load(file)
         print("notes:",config["my"]["notes"])
-        rootPath = config["my"]["filePathRoot"]
+        rootPath = config["my"]["filePathRoot"] #输出结果的存储路径
     
-    # 定义两个对比配置
-    # config1 = {
-    #     "name": "noRigid1_NewNorm",
-    #     "precomputed": False,  # 还没有进行推理
-    #     "input_mode": "noRigid1",
-    #     "norm_method": calculate_mean_variance,
-    #     "binarize": True
-    # }
-    config1 = {
-        "name": "orig",
-        "precomputed": False,  # 还没有进行推理
-        "input_mode": "orig",
-        "norm_method": calculate_mean_variance,
-        "binarize": True
-    }
-
-    config2 = { # baseline(5.refine) 
-        "name": "refine", 
-        "precomputed": True,  # 已经推理完了
-        "result_path_template": os.path.join("../DeNVeR.006/log_6/outputs", "{videoId}", "5.refine", "{frameId}"),
-        # 1.masks   2.2.planar  3.parallel  4.deform    5.refine
-        "input_mode_for_display": "orig",  # 用于显示输入图像的模式
-        "binarize": True  # 对分割结果进行二值化
-    }
+    def compare_optimized(a, b):
+        print(f"\nExample: Comparing {a} vs {b}")
+        # 只需调用一次，同时得到最好和最差的结果
+        df, t_test_results, best_results, worst_results = comprehensive_comparison_analysis(
+            tag1=a, tag2=b, K=topK, threshold=threshold, save_path=rootPath+"/"
+        )
+        
+        # 打印结果摘要
+        print(f"\n{a} 优于 {b} 的前 {topK} 张图像 (F1差异最大):")
+        for i, result in enumerate(best_results):
+            print(f"{i+1}. {result['patientID']}/{result['videoId']}/{result['frameId']} - "
+                  f"F1差异: {result['f1_diff']:.4f}")
+        
+        print(f"\n{b} 优于 {a} 的前 {topK} 张图像 (F1差异最小):")
+        for i, result in enumerate(worst_results):
+            print(f"{i+1}. {result['patientID']}/{result['videoId']}/{result['frameId']} - "
+                  f"F1差异: {result['f1_diff']:.4f}")
     
-    # 使用示例：比较noRigid1_NewNorm和planar
-    compare_configs(config1, config2, blockCath=blockCath) # only_annotated => blockCath 是否屏蔽导管区域
-    
-    # test
-
+    compare_optimized("noRigid1", "orig")
+    # compare_optimized("noRigid1", "fluid")
 
 '''
     source activate DNVR
