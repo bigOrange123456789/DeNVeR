@@ -1,10 +1,10 @@
 my:
-    filePathRoot: "log_12"
-    notes: "Testing whether improving the recall of the shielding mask can enhance the dice of fluid layer segmentation."
+    filePathRoot: "log_13"
+    notes: "Demonstrating the Effectiveness of Fluid Decoupling in Long Videos."
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath:  "../DeNVeR_in/xca_dataset_sim2"
+    datasetPath:  "../DeNVeR_in/xca_dataset_sub1"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

@@ -429,10 +429,10 @@ def main():
     # parser.add_argument('--method1_name', type=str, default='Method1', help='Name of first method')
     # parser.add_argument('--method2_name', type=str, default='Method2', help='Name of second method')
     parser.add_argument('--excel1', 
-                        default='_011_continuity_01-orig-CATH_results.xlsx',
+                        default='_013_long02_bigMaskFluid-CATH_results.xlsx',
                         type=str, help='Path to first Excel file')
     parser.add_argument('--excel2', 
-                        default='_011_continuity_02-orig-CATH_results.xlsx',
+                        default='_013_long03_smallMaskFluid-CATH_results.xlsx',
                         type=str, help='Path to second Excel file')
     parser.add_argument('--metric', 
                         default='recall',
@@ -441,7 +441,7 @@ def main():
                         default=10,
                         type=int, help='Number of top cases to display for each category')
     parser.add_argument('--original_path', 
-                        default='./outputs/xca_dataset_sim2_copy/images',
+                        default='./outputs/xca_dataset_sub1_copy/images',
                         type=str, help='Path to original images')
     parser.add_argument('--gt_path', type=str, help='Path to ground truth masks')
     parser.add_argument('--pred_path1', type=str, help='Path to method1 prediction masks')
@@ -462,11 +462,13 @@ def main():
     config1={}
     config2={}
     for i in config_data["experiments"]:
-        print("i name",i["name"])
+        print("i name",i["name"],i["name"]==name1,name1)
         if i["name"]==name1: 
             config1=i
         if i["name"]==name2: 
             config2=i
+        i["name"]=i["name"]+"_results.xlsx"
+
     args.gt_path=config1["gt_path"]
     args.pred_path1=config1["pred_path"]
     args.pred_path2=config2["pred_path"]
@@ -616,5 +618,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-if __name__ == "__main__":
-    main()

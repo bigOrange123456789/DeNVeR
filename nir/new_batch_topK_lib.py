@@ -36,7 +36,8 @@ class Config:
             self.root_path = config["my"]["filePathRoot"]
             self.dataset_path_gt = config["my"]["datasetPath"]  # 真值标签路径
             # self.dataset_path = os.path.join("..", "DeNVeR.008", "log_8", "dataset_decouple")  # 解耦数据路径
-            self.dataset_path = os.path.join(self.root_path, "dataset_decouple")
+            # self.dataset_path = os.path.join(self.root_path, "dataset_decouple")
+            self.dataset_path = config["my"]["datasetPath"]
             
         print(f"真值标签的路径: {self.dataset_path_gt}")
         print(f"解耦数据的路径: {self.dataset_path}")

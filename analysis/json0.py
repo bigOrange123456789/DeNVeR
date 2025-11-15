@@ -99,26 +99,54 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },
                 ##########################  DeNVeR.012  ##########################  
+                # {
+                #     "name":"_012_(fluid)_01", #基于流体分割的效果 
+                #     "color":"#FF7F8A",
+                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sim2_result/_012_continuity_01",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
+                # {
+                #     "name":"_012_02_bigMaskFluid", #基于流体分割的效果 
+                #     "color":"#FFA36C",
+                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sim2_result/_012_02_bigMaskFluid",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
+
+                ####################### 改用长视频子集合测试 ####################### 
+                ##########################  DeNVeR.013  ##########################  
                 {
-                    "name":"_012_(fluid)_01", #基于流体分割的效果 
-                    "color":"#FF7F8A",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/_012_continuity_01",
+                    "name":"_013_long01_fluid-temp(no-rigid)", #基于去刚效果的分割的效果 
+                    "color":"#F0A36C",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_long01_fluid-temp",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
                 {
-                    "name":"_012_02_bigMaskFluid", #基于流体分割的效果 
-                    "color":"#FFA36C",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/_012_02_bigMaskFluid",
+                    "name":"_013_long02_bigMaskFluid", #基于大遮挡流体效果的分割的效果 
+                    "color":"#F0B36C",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_long02_bigMaskFluid",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
-
-
+                {
+                    "name":"_013_long03_smallMaskFluid", #基于小遮挡流体效果的分割的效果 
+                    "color":"#F0C36C",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_long03_smallMaskFluid",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
             ]
         }
 experiments=[]#{}

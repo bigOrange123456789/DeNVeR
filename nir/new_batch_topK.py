@@ -875,8 +875,7 @@ if True:#
                 
                 inpath = os.path.join(datasetPath0, patientID, "images", videoId)
                 outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
-                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#本地路径
-                outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)
+                # outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)#本地路径
                 print("outpath:",outpath)
                 os.makedirs(outpath, exist_ok=True)
                 
@@ -888,7 +887,8 @@ if True:#
                     paramPath, 
                     mytag="D",
                     outpath=outpath,
-                    maskPath=os.path.join("../DeNVeR.011/log_11/outputs/_011_continuity_02",videoId)
+                    # maskPath=os.path.join("../DeNVeR.011/log_11/outputs/_011_continuity_02",videoId)
+                    maskPath=os.path.join("./log_13/outputs/_013_long01_fluid",videoId)
                     )  # 获取流体层
                 # os.path.join(ROOT,"..",outpath,"..","new_02", "A.mask.main_nr2","filter")
                     

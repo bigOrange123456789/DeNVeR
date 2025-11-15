@@ -720,14 +720,40 @@ def main():
         #     "binarize": True,
         #     "inferenceAll":False,
         # },
+        # {
+        #     "name": "_012_02_bigMaskFluid",
+        #     "precomputed": False,
+        #     "input_mode": "fluid3",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":False,
+        # },
+        ##########################  DeNVeR.013  ##########################  
+        # {
+        #     "name": "_013_long01_fluid",
+        #     "precomputed": False,
+        #     "input_mode": "noRigid1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,
+        # },
+        # {
+        #     "name": "_013_long02_bigMaskFluid",
+        #     "precomputed": False,
+        #     "input_mode": "fluid3",#bigMask
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":False,
+        # },
         {
-            "name": "_012_02_bigMaskFluid",
+            "name": "_013_long03_smallMaskFluid",
             "precomputed": False,
-            "input_mode": "fluid3",
+            "input_mode": "fluid2",#smallMask
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll":False,
         },
+
     ]
     
     configs1=[]
@@ -743,7 +769,7 @@ def main():
     Main(config, model_manager, image_loader, norm_calculator).inference(
         configs1, config.root_path + "/", block_cath, threshold
     )#只推理有人工标注的图像
-    if False:Main2(config, model_manager, image_loader, norm_calculator).inference(
+    Main2(config, model_manager, image_loader, norm_calculator).inference(
         configs2, config.root_path + "/", block_cath, threshold
     )#推理全部图像
 
