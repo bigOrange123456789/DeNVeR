@@ -587,6 +587,9 @@ def startDecouple4(videoId,paramPath,outpath="",mytag="D",maskPath=""):#2号解�
 
         mainFreeCOS(paramPath,os.path.join(outpath, mytag+".recon_non2"),os.path.join(outpath, mytag+".mask2"))
         check(os.path.join(outpath, mytag+".mask2"),videoId,mytag+".nir.1.recon_non2")
+    
+def TDSA():#使用传统的DSA算法，将图像减去首帧
+    print()
 
 if False: #if __name__ == "__main__":
     '''

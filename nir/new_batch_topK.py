@@ -22,8 +22,9 @@ with open(file_path, 'r', encoding='utf-8') as file:
     config = yaml.safe_load(file)
     rootPath = config["my"]["filePathRoot"]
     datasetPath0 = config["my"]["datasetPath"] #真值标签的路径
-    datasetPath = os.path.join(rootPath, "dataset_decouple") #解耦数据的路径
-    datasetPath = os.path.join("..","DeNVeR.008","log_8", "dataset_decouple") #解耦数据的路径
+    # datasetPath = os.path.join(rootPath, "dataset_decouple") #解耦数据的路径
+    # datasetPath = os.path.join("..","DeNVeR.008","log_8", "dataset_decouple") #解耦数据的路径
+    datasetPath = datasetPath0
     print("真值标签的路径:",datasetPath0)
     print("解耦数据的路径:",datasetPath)
     # outpath = os.path.join(rootPath, "result", patientID, "decouple", videoId) #本地路径
@@ -1326,13 +1327,20 @@ if __name__ == "__main__":
         "binarize": True
     }
 
-    config2 = { # baseline(5.refine) 
-        "name": "refine", 
-        "precomputed": True,  # 已经推理完了
-        "result_path_template": os.path.join("../DeNVeR.006/log_6/outputs", "{videoId}", "5.refine", "{frameId}"),
-        # 1.masks   2.2.planar  3.parallel  4.deform    5.refine
-        "input_mode_for_display": "orig",  # 用于显示输入图像的模式
-        "binarize": True  # 对分割结果进行二值化
+    # config2 = { # baseline(5.refine) 
+    #     "name": "refine", 
+    #     "precomputed": True,  # 已经推理完了
+    #     "result_path_template": os.path.join("../DeNVeR.006/log_6/outputs", "{videoId}", "5.refine", "{frameId}"),
+    #     # 1.masks   2.2.planar  3.parallel  4.deform    5.refine
+    #     "input_mode_for_display": "orig",  # 用于显示输入图像的模式
+    #     "binarize": True  # 对分割结果进行二值化
+    # }
+    config2 = {
+        "name": "tDSA",
+        "precomputed": False,  # 还没有进行推理
+        "input_mode": "tDSA",
+        "norm_method": calculate_mean_variance,
+        "binarize": True
     }
     
     # 使用示例：比较noRigid1_NewNorm和planar

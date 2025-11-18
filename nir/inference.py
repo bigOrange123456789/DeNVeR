@@ -434,7 +434,10 @@ class Main2:
         """获取预测结果"""
         def s(pred):
             from torchvision.utils import save_image
-            path_save = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
+            if config["mergeMask"]:
+                path_save = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
+            else:
+                path_save = os.path.join(self.config.root_path, "outputs", config['name'], video_id)
             os.makedirs(path_save, exist_ok=True)
             save_image(pred, os.path.join(path_save,frame_id))
         
@@ -598,7 +601,7 @@ class Main2:
                     if "CATH" not in video_id:  # 只处理非导管视频
                         for config in configs:
                             num_video=num_video+1
-        if True:
+        if configs:
          with tqdm(total=num_video, desc="收集预测结果") as progress_bar:
             for patient_id in patient_names:
                 """处理单个患者的所有配置预测结果"""
@@ -610,6 +613,7 @@ class Main2:
                 for video_id in video_names:
                     if "CATH" not in video_id:  # 只处理非导管视频
                         for config in configs:
+                         if config["mergeMask"]:
                             path_in = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
                             path_out = os.path.join(self.config.root_path, "outputs", config['name'], video_id)
                             PostProcessing(path_in, path_out,progress_bar)
@@ -702,6 +706,7 @@ def main():
         #     "norm_method": norm_calculator.calculate_mean_variance,
         #     "binarize": True,
         #     "inferenceAll":True,
+        #     "mergeMask":True,
         # },#"_011_continuity_01-temp" : orig
         # {
         #     "name": "_011_continuity_02",
@@ -710,6 +715,7 @@ def main():
         #     "norm_method": norm_calculator.calculate_mean_variance,
         #     "binarize": True,
         #     "inferenceAll":True,
+        #     "mergeMask":True,
         # }, #"_011_continuity_02-temp" : noRigid1
         ##########################  DeNVeR.012  ##########################  
         # {
@@ -730,12 +736,13 @@ def main():
         # },
         ##########################  DeNVeR.013  ##########################  
         # {
-        #     "name": "_013_long01_fluid",
+        #     "name": "_013_long01_noRigid1",
         #     "precomputed": False,
         #     "input_mode": "noRigid1",
         #     "norm_method": norm_calculator.calculate_mean_variance,
         #     "binarize": True,
         #     "inferenceAll":True,
+        #     "mergeMask":True,
         # },
         # {
         #     "name": "_013_long02_bigMaskFluid",
@@ -743,17 +750,36 @@ def main():
         #     "input_mode": "fluid3",#bigMask
         #     "norm_method": norm_calculator.calculate_mean_variance,
         #     "binarize": True,
-        #     "inferenceAll":False,
+        #     "inferenceAll":True,#False,
+        #     "mergeMask":False,
+        # },
+        # {
+        #     "name": "_013_long03_smallMaskFluid",
+        #     "precomputed": False,
+        #     "input_mode": "fluid2",#smallMask
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,#False,
+        #     "mergeMask":False,
         # },
         {
-            "name": "_013_long03_smallMaskFluid",
+            "name": "_013_04_traditionalDSA",
             "precomputed": False,
-            "input_mode": "fluid2",#smallMask
+            "input_mode": "tDSA",#smallMask
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll":False,
+            "inferenceAll":True,
+            "mergeMask":False,
         },
-
+        {
+            "name": "_013_05_orig",
+            "precomputed": False,
+            "input_mode": "orig",
+            "norm_method": norm_calculator.calculate_mean_variance,
+            "binarize": True,
+            "inferenceAll":True,
+            "mergeMask":False,
+        },
     ]
     
     configs1=[]

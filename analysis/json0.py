@@ -121,11 +121,11 @@ config_data0 = {
                 ####################### 改用长视频子集合测试 ####################### 
                 ##########################  DeNVeR.013  ##########################  
                 {
-                    "name":"_013_long01_fluid-temp(no-rigid)", #基于去刚效果的分割的效果 
+                    "name":"_013_long01_noRigid1", #基于去刚效果的分割的效果 
                     "color":"#F0A36C",
                     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub1_result/_013_long01_fluid-temp",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_long01_noRigid1",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
@@ -144,6 +144,24 @@ config_data0 = {
                     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
                     "pred_path":"outputs/xca_dataset_sub1_result/_013_long03_smallMaskFluid",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                {
+                    "name":"_013_04_traditionalDSA", #基于传统DSA去噪方法的分割的效果 
+                    "color":"#F0D36C",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_04_traditionalDSA",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                {
+                    "name":"_013_05_orig", #使用没有去噪图像的分割的效果 
+                    "color":"#F0D37C",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_013_05_orig",
                     "block_cath":False,
                     "threshold": 0.5,
                 },

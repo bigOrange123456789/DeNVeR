@@ -48,6 +48,7 @@ class ImageLoader:
     
     IMAGE_PATHS = {
         "orig": "{dataset_path}/{patient_id}/decouple/{video_id}/orig/{frame_id}",
+        "tDSA": "{dataset_path}/{patient_id}/decouple/{video_id}/0.TDSA/{frame_id}", #用传统的DSA算法进行去噪
         "fluid": "{dataset_path}/{patient_id}/decouple/{video_id}/recon_non2/{frame_id}", #拟合原视频得到的血管
         "fluid2": "{dataset_path}/{patient_id}/decouple/{video_id}/C.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于普通掩膜)
         "fluid3": "{dataset_path}/{patient_id}/decouple/{video_id}/D.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于增大掩膜)
