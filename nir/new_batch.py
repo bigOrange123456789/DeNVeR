@@ -305,7 +305,7 @@ if __name__ == "__main__":
             outpath = os.path.join(rootPath,  "dataset_decouple", patientID,"decouple", videoId)
             os.makedirs(outpath, exist_ok=True)
             startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
-            startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+            # startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
     # print("01：逐个图片进行归一化","vessel的效果最好")
     # print("02：放大方差","没有明显变化")
     print("03:基于整段视频的均值和方差")

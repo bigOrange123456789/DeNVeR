@@ -1,10 +1,10 @@
 my:
-    filePathRoot: "log_13"
-    notes: "Demonstrating the Effectiveness of Fluid Decoupling in Long Videos."
+    filePathRoot: "log_15"
+    notes: "simplified de-rigid"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath:  "../DeNVeR_in/xca_dataset_sub1"
+    datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

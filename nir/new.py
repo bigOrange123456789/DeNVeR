@@ -17,7 +17,7 @@ from nir.model import Siren
 from nir.util import get_mgrid, jacobian
 from nir.util import Dataset,ToTensor
 
-from nir.myLib.Decouple import Decouple
+# from nir.myLib.Decouple import Decouple
 from nir.myLib.mySave import check,save2img,save0
 
 # maskPath="./nir/data/mask/filter"
@@ -122,14 +122,13 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
         check(os.path.join(outpath, "A.mask.main_nr2"), videoId, "A.mask.main_nr2")
 
 ###############################################################################################################
-###############################################################################################################
+
 from nir.model import Siren
 from nir.util import get_mgrid, jacobian
 from nir.util import Dataset,ToTensor
 
 from nir.myLib.Layer import Layer
 from nir.myLib.mySave import check,save2img,save0
-# from nir.myLib.Decouple import Decouple
 from nir.myLib.VideoFitting import VideoFitting
 class Layer_rigid(nn.Module):
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
@@ -512,7 +511,6 @@ def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解
         maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter")
         os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
         check(maskPath+"/..", videoId, "A.mask_nir2")
-        # myMain = Decouple(pathIn,maskPath=maskPath,hidden_features=256*4)
         myMain = Decouple(
             os.path.join(ROOT,"..",outpath, "A.rigid.main_non1"),
             maskPath=maskPath,hidden_features=256*4)
@@ -588,8 +586,7 @@ def startDecouple4(videoId,paramPath,outpath="",mytag="D",maskPath=""):#2号解�
         mainFreeCOS(paramPath,os.path.join(outpath, mytag+".recon_non2"),os.path.join(outpath, mytag+".mask2"))
         check(os.path.join(outpath, mytag+".mask2"),videoId,mytag+".nir.1.recon_non2")
     
-def TDSA():#使用传统的DSA算法，将图像减去首帧
-    print()
+
 
 if False: #if __name__ == "__main__":
     '''
@@ -626,7 +623,7 @@ if __name__ == "__main__":
 
         userId = "CVAI-2186"
         videoId = userId+"RAO28_CAU28"
-        frameId = "00055"
+        # frameId = "00055"
         inpath  = "../DeNVeR_in/xca_dataset/"+userId+"/images/"+videoId
         outpath = rootPath+"/decouple2" #"../DeNVeR_in/xca_dataset/"+userId+"/decouple/"+videoId
 

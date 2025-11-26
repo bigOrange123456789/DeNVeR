@@ -47,7 +47,31 @@ def calculate_metrics(gt, pred):
     
     return dice, recall, precision
 
-def process_test_config(config):
+
+import pandas as pd
+def getNameList():
+    # 读取 Excel 文件
+    df = pd.read_excel('./outputs/namelist.xlsx', sheet_name='文件夹列表')
+
+    # # 确保 videoId 列是字符串类型（避免格式问题）
+    # df['videoId'] = df['videoId'].astype(str)
+
+    # 构建字典便于快速检索
+    video_dict = df.set_index('videoId')[['long', 'short']].to_dict('index')
+    return video_dict
+
+
+
+def process_test_config(config, usedVideoId):
+    video_dict = getNameList()
+    # print(video_dict)
+    def get_video_info(video_id):
+        """
+        根据 videoId 返回对应的 long 和 short 值
+        返回格式：{'long': 值, 'short': 值} 或 None（如果未找到）
+        """
+        return video_dict.get(str(video_id))
+
     """处理单个测试配置"""
     name = config["name"]
     gt_path = config["gt_path"]
@@ -68,7 +92,15 @@ def process_test_config(config):
     all_precision = []
     
     for videoId in os.listdir(gt_path):
-     for frameId in os.listdir(gt_path+"/"+videoId):
+     if usedVideoId==None or(videoId in usedVideoId):
+    #  print(videoId,get_video_info(videoId))
+      long0 = get_video_info(videoId)["long"]
+      short0 = get_video_info(videoId)["short"]
+    #  exit(0)
+      for frameId in os.listdir(gt_path+"/"+videoId):
+      #if long0=="T" and short0=="T":
+      #if long0=="Move" and short0=="Move":
+        # print(long0, short0)
         filename = frameId
         gt_img = load_and_binarize_image(os.path.join(gt_path, videoId, frameId),0.5)
         # print("pred_path",pred_path)
@@ -117,7 +149,7 @@ def create_bar_chart(results, colors):
     metrics = ['Dice', 'Recall', 'Precision']
     print("results.keys()",results.keys())
     test_names = list(results.keys())
-    print("test_names",test_names)
+    # print("test_names",test_names)
     test_names2=[]
     for i in test_names:
         test_names2.append("tag:"+i)
@@ -172,7 +204,7 @@ def main():
     colors = {}
     
     for config in config_data["experiments"]:
-        name, metrics = process_test_config(config)
+        name, metrics = process_test_config(config, config_data["usedVideoId"])
         results[name] = metrics
         colors[name] = config["color"]
         print("name:",name)
@@ -196,6 +228,7 @@ def main():
     print("Bar chart saved as 'segmentation_metrics_comparison.png'")
 
 if __name__ == "__main__":
+    print("test:2020.11.26-12:31")
     main()
 
 

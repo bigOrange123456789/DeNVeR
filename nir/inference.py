@@ -642,6 +642,9 @@ class Main2:
             
 def main(): 
     """主函数"""
+    # 2025.11.26-15:59:做了一个诡异的梦
+    # 被聚集到一个城市中的一个庭院中，天空中飞过三个外星飞船，还隐约能够看到巨大的鱿鱼
+    # 
     # 初始化配置和各个管理器
     config = Config()
     model_manager = ModelManager()
@@ -762,25 +765,47 @@ def main():
         #     "inferenceAll":True,#False,
         #     "mergeMask":False,
         # },
+        # {
+        #     "name": "_013_04_traditionalDSA",
+        #     "precomputed": False,
+        #     "input_mode": "tDSA",#smallMask
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,
+        #     "mergeMask":False,
+        # },
+        # {
+        #     "name": "_013_05_orig",
+        #     "precomputed": False,
+        #     "input_mode": "orig",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll":True,
+        #     "mergeMask":False,
+        # },
+        ##########################  测试整个数据集  ##########################  
+        ##########################  DeNVeR.014  ##########################  
+        # {
+        #     "name": "noRigid1",
+        #     "precomputed": False,
+        #     "input_mode": "noRigid1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,
+        #     "mergeMask": False,
+        # },
         {
-            "name": "_013_04_traditionalDSA",
+            "name": "fluid2",
             "precomputed": False,
-            "input_mode": "tDSA",#smallMask
+            "input_mode": "fluid2",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll":True,
-            "mergeMask":False,
+            "inferenceAll": False,
+            "mergeMask": False,
         },
-        {
-            "name": "_013_05_orig",
-            "precomputed": False,
-            "input_mode": "orig",
-            "norm_method": norm_calculator.calculate_mean_variance,
-            "binarize": True,
-            "inferenceAll":True,
-            "mergeMask":False,
-        },
+        # 使用单视频进行优化，在无显著下降的情况下提高运行速度
     ]
+    ''' 将视频在这里进行解耦 '''
     
     configs1=[]
     configs2=[]
@@ -791,7 +816,6 @@ def main():
         else:
             configs2.append(c)
         
-    
     Main(config, model_manager, image_loader, norm_calculator).inference(
         configs1, config.root_path + "/", block_cath, threshold
     )#只推理有人工标注的图像
@@ -799,6 +823,6 @@ def main():
         configs2, config.root_path + "/", block_cath, threshold
     )#推理全部图像
 
-
 if __name__ == "__main__":
+    print("二、分割推理部分(代码分为三个阶段:视频解耦->分割推理->对比分析)")
     main()

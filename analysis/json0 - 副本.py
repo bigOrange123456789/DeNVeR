@@ -190,7 +190,7 @@ config_data0 = {
                 },
             ],
             "usedVideoId":
-                os.listdir("outputs/xca_dataset_sub1_copy/ground_truth")
+                None#os.listdir("outputs/xca_dataset_sub1_copy/ground_truth")
         }
 
 experiments=[]#{}
