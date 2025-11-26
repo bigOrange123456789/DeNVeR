@@ -4,7 +4,7 @@ my:
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath:  "../DeNVeR_in/xca_dataset"
+    datasetPath:  "../DeNVeR_in/xca_dataset_sub1"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

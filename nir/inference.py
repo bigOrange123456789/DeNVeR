@@ -414,13 +414,19 @@ class Main2:
     
     def _get_input_image(self, config, patient_id, video_id, frame_id):
         """根据配置获取输入图像"""
-        if config.get("precomputed", False):
+        if config.get("precomputed", True):
             # 预计算方法使用显示模式
             input_mode = config.get("input_mode_for_display", "orig")
         else:
-            # 模型推理方法使用自己的输入模式
+            # 没有进行预计算的时候，模型推理方法使用自己的输入模式
             input_mode = config["input_mode"]
         
+        # print(
+        #     "input_mode",input_mode, 
+        #     "patient_id:",patient_id, 
+        #     "video_id:",video_id, 
+        #     "frame_id",frame_id
+        # )
         return self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
     
     def _normalize_image(self, config, img, mean, std):
@@ -505,11 +511,12 @@ class Main2:
         
         return pred_tag1, pred_tag2
     
-    def __init__(self, config, model_manager, image_loader, norm_calculator):
+    def __init__(self, config, model_manager, image_loader, norm_calculator,usedVideoId):
         self.config = config
         self.model_manager = model_manager
         self.image_loader = image_loader
         self.norm_calculator = norm_calculator
+        self.usedVideoId = usedVideoId
         self.statistical_analyzer = StatisticalAnalyzer()
         self.visualizer = ResultVisualizer()
         self.saver = ResultSaver()
@@ -602,6 +609,126 @@ class Main2:
                         for config in configs:
                             num_video=num_video+1
         if configs:
+         with tqdm(total=num_video, desc="收集预测结果") as progress_bar:
+            for patient_id in patient_names:
+                """处理单个患者的所有配置预测结果"""
+                patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "decouple")
+                
+                video_names = [name for name in os.listdir(patient_gt_path) 
+                            if os.path.isdir(os.path.join(patient_gt_path, name))]
+                
+                for video_id in video_names:
+                    if "CATH" not in video_id:  # 只处理非导管视频
+                        for config in configs:
+                         if config["mergeMask"]:
+                            path_in = os.path.join(self.config.root_path, "outputs", config['name']+"-temp", video_id)
+                            path_out = os.path.join(self.config.root_path, "outputs", config['name'], video_id)
+                            PostProcessing(path_in, path_out,progress_bar)
+                            progress_bar.update(1)
+
+
+    def inference0(self, configs, save_path="", block_cath=False, threshold=0.85,onlyInferGT=True):    
+        """        
+        参数:
+            configs: 配置列表
+            threshold: 分割阈值
+            block_cath: 是否屏蔽导管区域
+            
+        返回:
+            dict: 包含所有配置预测结果的字典
+        """
+        if len(configs)==0: return
+        # 检查哪些配置需要模型
+        need_model = any(not config.get("precomputed", False) for config in configs)
+        
+        # 初始化模型（如果需要）
+        if need_model:
+            param_path = "../DeNVeR_in/models_config/freecos_Seg.pt"
+            model = self.model_manager.init_model(param_path)
+        else:
+            model = None
+        
+        # 获取所有患者
+        patient_names = self._get_patient_names()
+        
+        # 1.计算总图像数量
+        print("1/3 : 计算总图像数量")
+        # total_images = self._count_annotated_images(patient_names)
+        total_images = 0
+        for patient_id in patient_names:
+            if onlyInferGT:#***只收集有标注图片的预测结果***
+                patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
+            else: #推理全部
+                patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "images")
+                
+            video_names = [name for name in os.listdir(patient_gt_path) 
+                          if os.path.isdir(os.path.join(patient_gt_path, name))]
+            
+            for video_id in video_names:
+             if self.usedVideoId is None or video_id in self.usedVideoId:
+                if "CATH" not in video_id:  # 只统计非导管视频   
+                    # if onlyInferGT:#***只收集有标注图片的预测结果***
+                    #     video_path = os.path.join(patient_gt_path, video_id,"A.rigid.main_non1")#每个视频的全部关键帧
+                    # else: #推理全部
+                    #     video_path = os.path.join(patient_gt_path, video_id,"A.rigid.main_non1")
+                    video_path = os.path.join(patient_gt_path, video_id)
+                    total_images += len(os.listdir(video_path))
+                    print("os.listdir(video_path)",os.listdir(video_path))
+        print(f"总图像数量: {total_images}")
+        
+        # 2.推理分割每张图片
+        print("2/3 : 推理分割每张图片")
+        if True:
+         with tqdm(total=total_images, desc="收集预测结果") as progress_bar:
+            for patient_id in patient_names:
+                """处理单个患者的所有配置预测结果"""
+                # patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
+                patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "decouple")
+                
+                video_names = [name for name in os.listdir(patient_gt_path) 
+                            if os.path.isdir(os.path.join(patient_gt_path, name))]
+                
+                for video_id in video_names:
+                 if self.usedVideoId is None or video_id in self.usedVideoId:
+                    if "CATH" not in video_id:  # 只处理非导管视频
+                        if onlyInferGT:#***只收集有标注图片的预测结果***
+                            patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
+                        else: #推理全部
+                            patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "images")
+
+                        # 计算归一化参数（如果需要）
+                        normalization_params = {}
+                        for config in configs:
+                            if not config.get("precomputed", False):
+                                mean, std = self._get_normalization_params(config, patient_id, video_id)
+                                normalization_params[config["name"]] = (mean, std)
+
+                        video_names = [name for name in os.listdir(patient_gt_path) 
+                          if os.path.isdir(os.path.join(patient_gt_path, name))]
+                        for video_id in video_names:
+                         if self.usedVideoId is None or video_id in self.usedVideoId:
+                            if "CATH" not in video_id:  # 只统计非导管视频  
+                                video_path = os.path.join(patient_gt_path, video_id)
+                                for frame_id in os.listdir(video_path):
+                                    self._process_single_image_predictions(
+                                        patient_id, video_id, frame_id, configs, model, threshold, 
+                                        block_cath, normalization_params
+                                    )#path_save = os.path.join(self.config.root_path, "outputs", config['name']+"-orig", video_id)
+                                    progress_bar.update(1)
+                        
+        
+        print("3/3 : 根据需要对分割结果进行后处理")
+        num_video=0
+        for patient_id in patient_names:
+                patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "decouple")
+                video_names = [name for name in os.listdir(patient_gt_path) 
+                            if os.path.isdir(os.path.join(patient_gt_path, name))]
+                for video_id in video_names:
+                    if "CATH" not in video_id:  # 只处理非导管视频
+                        for config in configs:
+                         if config["mergeMask"]:
+                            num_video=num_video+1
+        if configs and num_video>0:
          with tqdm(total=num_video, desc="收集预测结果") as progress_bar:
             for patient_id in patient_names:
                 """处理单个患者的所有配置预测结果"""
@@ -805,6 +932,12 @@ def main():
         },
         # 使用单视频进行优化，在无显著下降的情况下提高运行速度
     ]
+    usedVideoId = [
+        'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
+        # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
+        # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
+        # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
+        ]
     ''' 将视频在这里进行解耦 '''
     
     configs1=[]
@@ -816,11 +949,18 @@ def main():
         else:
             configs2.append(c)
         
-    Main(config, model_manager, image_loader, norm_calculator).inference(
-        configs1, config.root_path + "/", block_cath, threshold
-    )#只推理有人工标注的图像
-    Main2(config, model_manager, image_loader, norm_calculator).inference(
-        configs2, config.root_path + "/", block_cath, threshold
+    # Main(config, model_manager, image_loader, norm_calculator).inference(
+    #     configs1, config.root_path + "/", block_cath, threshold
+    # )#只推理有人工标注的图像 #onlyInferGT=True
+    # Main2(config, model_manager, image_loader, norm_calculator).inference(
+    #     configs2, config.root_path + "/", block_cath, threshold
+    # )#推理全部图像
+
+    Main2(config, model_manager, image_loader, norm_calculator,usedVideoId).inference0(
+        configs1, config.root_path + "/", block_cath, threshold,onlyInferGT=True
+    )#推理全部图像
+    Main2(config, model_manager, image_loader, norm_calculator,usedVideoId).inference0(
+        configs2, config.root_path + "/", block_cath, threshold,onlyInferGT=False
     )#推理全部图像
 
 if __name__ == "__main__":
