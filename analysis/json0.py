@@ -188,6 +188,17 @@ config_data0 = {
                     "block_cath":False,
                     "threshold": 0.5,
                 },
+                ####################### 长视频子集合 xca_dataset_sub1 ####################### 
+                #########################  DeNVeR.015  ##########################  
+                {#测试刚体去噪的
+                    "name": "_015_01_noRigid1",
+                    "color":"#F0D3AC",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_015_01_noRigid1",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
             ],
             "usedVideoId":
                 os.listdir("outputs/xca_dataset_sub1_copy/ground_truth")

@@ -1,9 +1,5 @@
 import os
-import datetime
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-# from scipy import stats
 from PIL import Image
 from tqdm import tqdm
 import torch
@@ -13,8 +9,7 @@ from nir.new_batch_topK_lib import Config, ImageLoader, NormalizationCalculator,
 
 import cv2
 import numpy as np
-from pathlib import Path
-import argparse         
+from pathlib import Path     
 import os   
 class PostProcessing:
     def __init__(self, inpath, outpath, progress_bar):
@@ -145,7 +140,7 @@ class Main:
         """根据配置获取输入图像"""
         if config.get("precomputed", True):
             # 预计算方法使用显示模式
-            input_mode = config.get("input_mode_for_display", "orig")
+            input_mode = config.get("input_mode_for_display", "orig") #读取指定键的值，若键不存在则使用默认值
         else:
             # 没有进行预计算的时候，模型推理方法使用自己的输入模式
             input_mode = config["input_mode"]
@@ -284,7 +279,7 @@ class Main:
             if onlyInferGT:#***只收集有标注图片的预测结果***
                 patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
             else: #推理全部
-                patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "images")
+                patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "images")
                 
             video_names = [name for name in os.listdir(patient_gt_path) 
                           if os.path.isdir(os.path.join(patient_gt_path, name))]
@@ -319,7 +314,7 @@ class Main:
                         if onlyInferGT:#***只收集有标注图片的预测结果***
                             patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
                         else: #推理全部
-                            patient_gt_path = os.path.join(self.config.dataset_path, patient_id, "images")
+                            patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "images")
 
                         # 计算归一化参数（如果需要）
                         normalization_params = {}
@@ -489,6 +484,7 @@ def main():
         #     "binarize": True,
         #     "inferenceAll":False,
         # },
+        ####################### 改用长视频子集合测试(没有相机移动) ####################### 
         ##########################  DeNVeR.013  ##########################  
         # {
         #     "name": "_013_long01_noRigid1",
@@ -546,25 +542,69 @@ def main():
         #     "inferenceAll": False,
         #     "mergeMask": False,
         # },
-        {
-            "name": "fluid2",
+        # {
+        #     "name": "fluid2",
+        #     "precomputed": False,
+        #     "input_mode": "fluid2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,
+        #     "mergeMask": False,
+        # },
+        # 使用单视频进行优化，在无显著下降的情况下提高运行速度
+        ####################### 长视频子集合 xca_dataset_sub1 ####################### 
+        ##########################  DeNVeR.015  ##########################  
+        # {#测试刚体去噪的
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":4000,          #只兼容了startDecouple1
+        #     #     "tag":"A",#只兼容了startDecouple1
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_015_01_noRigid1",
+        #     "precomputed": False,
+        #     "input_mode": "noRigid1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,
+        #     "mergeMask": False,
+        # },
+        {#只训练2000批次
+            "decouple":{#解耦
+                ########################
+                "de-rigid":"1",
+                "epoch":2000,          #只兼容了startDecouple1
+                "tag":"A-01-epoch2000",#只兼容了startDecouple1
+                ########################
+                "de-soft":None,
+            },
+            "name": "_015_02_noRigid1(b2000)",
             "precomputed": False,
-            "input_mode": "fluid2",
+            "input_mode": "A-01-epoch2000.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,
             "mergeMask": False,
         },
-        # 使用单视频进行优化，在无显著下降的情况下提高运行速度
     ]
-    usedVideoId = [
-        'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
-        # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
-        # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
-        # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
-        ]
+    usedVideoId = None
+    # usedVideoId = [
+    #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
+    #     # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
+    #     # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
+    #     # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
+    #     ]
     ''' 将视频在这里进行解耦 '''
     
+    for c in configs:
+        if "decouple" in c:
+            c["decouple"]["name"]=c["name"]#用于给处理进度文件命名
+            denoising(c["decouple"],usedVideoId=usedVideoId)
+    print("视频解耦完成!")
+    # exit(0)
+
     configs1=[]
     configs2=[]
     for c in configs:
@@ -573,13 +613,6 @@ def main():
             configs1.append(c)
         else:
             configs2.append(c)
-        
-    # Main(config, model_manager, image_loader, norm_calculator).inference(
-    #     configs1, config.root_path + "/", block_cath, threshold
-    # )#只推理有人工标注的图像 #onlyInferGT=True
-    # Main2(config, model_manager, image_loader, norm_calculator).inference(
-    #     configs2, config.root_path + "/", block_cath, threshold
-    # )#推理全部图像
 
     main = Main(config, model_manager, image_loader, norm_calculator,usedVideoId)
     main.inference0(
@@ -591,4 +624,4 @@ def main():
 
 if __name__ == "__main__":
     print("二、分割推理部分(代码分为三个阶段:视频解耦->分割推理->对比分析)")
-    main()
+    main()#测试在训练过程中f1、recall、precise的变化

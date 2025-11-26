@@ -260,7 +260,7 @@ class Decouple_rigid(nn.Module):
         loss = loss_recon + loss_soft + loss_fluid + loss_rigid
 
         self.layers=layers
-        if not step % 2000:#200:
+        if not step % 500:#200:
             print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_soft=%0.8f, loss_fluid=%0.8f, loss_rigid=%0.4f" % (
                 step, loss, loss_recon, loss_soft , loss_fluid , loss_rigid))
             # print("i_r0:", i_r0.item(),"; i_s0:", i_s0.item(),"; i_f0:", i_f0.item(),"\ntemp",

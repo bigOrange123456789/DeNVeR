@@ -10,15 +10,10 @@ from PIL import Image
 from tqdm import tqdm
 import torch
 from torchvision import transforms
-# import torch.backends.cudnn as cudnn
 
-# Import custom modules
 from nir.new import startDecouple1, startDecouple3
 from free_cos.newTrain import initCSV, save2CVS, getIndicators
-# from nir.analysisOri import getModel
 from free_cos.ModelSegment import ModelSegment
-# from free_cos.main import mainFreeCOS
-# from preprocess.mySkeleton import getCatheter
 
 
 class Config:
@@ -34,7 +29,7 @@ class Config:
         with open(config_path, 'r', encoding='utf-8') as file:
             config = yaml.safe_load(file)
             self.root_path = config["my"]["filePathRoot"]
-            self.dataset_path_gt = config["my"]["datasetPath"]  # 真值标签路径
+            self.dataset_path_gt = config["my"]["datasetPath_gt"]  # 真值标签路径
             # self.dataset_path = os.path.join("..", "DeNVeR.008", "log_8", "dataset_decouple")  # 解耦数据路径
             # self.dataset_path = os.path.join(self.root_path, "dataset_decouple")
             self.dataset_path = config["my"]["datasetPath"]
@@ -55,6 +50,7 @@ class ImageLoader:
         # "fluid3": "log_12/dataset_decouple/{patient_id}/decouple/{video_id}/D.recon_non2/{frame_id}", #拟合去刚视频得到的血管(基于增大掩膜)
         "noRigid1": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non1/{frame_id}",
         "noRigid2": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non2/{frame_id}",
+        "A-01-epoch2000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch2000.rigid.main_non1/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"
     }
     
@@ -659,7 +655,13 @@ class ResultSaver:
         print("  4. 方法比较 - 简明的比较结果")
         print("  5. 图像路径 - 所有输入图像和ground truth的路径")
 
-def denoising():
+def denoising(arguments,usedVideoId=None):
+    if arguments==None:
+        arguments={
+            "de-rigid":"1",
+            "de-soft":"3",
+            "name":""
+        }
 # if False:#
 # if __name__ == "__main__":
     script_path = os.path.abspath(__file__)
@@ -667,7 +669,7 @@ def denoising():
     file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
     
     # 进度文件路径
-    progress_file = os.path.join(ROOT1, "progress_newBatch.json")
+    progress_file = os.path.join(ROOT1, "progress_newBatch"+arguments["name"]+".json")
     # 加载进度文件
     processed_videos = set()
     if os.path.exists(progress_file):
@@ -684,27 +686,37 @@ def denoising():
         config = yaml.safe_load(file)
         print("notes:",config["my"]["notes"])
         rootPath = config["my"]["filePathRoot"]
+        datasetPath0_gt=config["my"]["datasetPath_gt"]
         datasetPath0=config["my"]["datasetPath"]
+        # datasetPath0=config["my"]["datasetPath"]
+    #     config["my"]["datasetPath_rigid.in"]
+    #     datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset_sub1"
+    # datasetPath_rigid.out:  "log_15/xca_dataset_sub1"
+    # datasetPath_soft.in:  "log_15/xca_dataset_sub1"
+    # datasetPath_soft.out:  "log_15/xca_dataset_sub1"
 
         # datasetPath="../DeNVeR_in/xca_dataset"
         paramPath = "../DeNVeR_in/models_config/freecos_Seg.pt"
-        patient_names = [name for name in os.listdir(datasetPath0)
-                    if os.path.isdir(os.path.join(datasetPath0, name))]
+        patient_names = [name for name in os.listdir(datasetPath0_gt)
+                    if os.path.isdir(os.path.join(datasetPath0_gt, name))]
         CountSum = 0
         for patientID in patient_names:
-            patient_path = os.path.join(datasetPath0, patientID, "images")
+            patient_path = os.path.join(datasetPath0_gt, patientID, "images")
             video_names = [name for name in os.listdir(patient_path)
                         if os.path.isdir(os.path.join(patient_path, name))]
             CountSum = CountSum + len(video_names)
+        if not usedVideoId is None:
+            CountSum = len(usedVideoId)
         CountI = len(processed_videos)  # 从已处理的数量开始计数
         
         print(f"总视频数: {CountSum}, 已处理: {CountI}, 待处理: {CountSum - CountI}")
         
         for patientID in patient_names:
-            patient_path = os.path.join(datasetPath0, patientID, "images")
+            patient_path = os.path.join(datasetPath0_gt, patientID, "images")
             video_names = [name for name in os.listdir(patient_path)
                         if os.path.isdir(os.path.join(patient_path, name))]
             for videoId in video_names:
+             if usedVideoId is None or videoId in usedVideoId:
                 # 生成唯一标识符
                 video_key = f"{patientID}/{videoId}"
                 
@@ -712,15 +724,33 @@ def denoising():
                 if video_key in processed_videos:
                     continue
                 
-                inpath = os.path.join(datasetPath0, patientID, "images", videoId)
-                outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
-                outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#本地路径
-                print("outpath:",outpath)
+                import time
+                time0 = time.time()
+                inpath = os.path.join(
+                    config["my"]["datasetPath_rigid.in"],#datasetPath0,
+                    patientID, "images", videoId)
+                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
+                outpath = os.path.join(
+                    config["my"]["datasetPath_rigid.out"], #"log_15/xca_dataset_sub1", 
+                    patientID, "decouple", videoId)#本地路径
                 os.makedirs(outpath, exist_ok=True)
-                
-                startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+                if arguments["de-rigid"]=="1":#目标是将5分钟的解耦时间减少到1分钟
+                    startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
-                # startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+                print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+
+                time0 = time.time()
+                inpath = os.path.join(
+                    config["my"]["datasetPath_soft.in"],#datasetPath0,
+                    patientID, "images", videoId)
+                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
+                outpath = os.path.join(
+                    config["my"]["datasetPath_soft.out"], #"log_15/xca_dataset_sub1", 
+                    patientID, "decouple", videoId)#本地路径
+                os.makedirs(outpath, exist_ok=True)
+                if arguments["de-soft"]=="3":
+                    startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+                print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
                     
                 # 处理成功，更新进度
                 CountI += 1
@@ -731,6 +761,5 @@ def denoising():
                 with open(progress_file, 'w', encoding='utf-8') as f:
                     json.dump(progress_data, f, ensure_ascii=False, indent=2)    
                 print(f"{CountI}/{CountSum} {videoId} - 已完成")
-
 
 # from nir.new_batch_topK_lib import Config, ImageLoader, NormalizationCalculator, ModelManager, Evaluator, StatisticalAnalyzer, ResultVisualizer, ResultSaver, denoising

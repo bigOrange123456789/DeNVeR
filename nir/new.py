@@ -26,36 +26,15 @@ EpochNum = 4000 #6000#000 #5000 #3000
 # outpath = './nir/data/new_08'
 flagHadRigid=False #是否已经完成了刚体解耦
 
-def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
-    # config = { 
-    #     "A.mask.main_nr2":True,
-    #     "A.mask_nr2":True,
-    #     "A.mask_nr2_old":True,
-    #     "A.rigid":True,
-    #     "A.rigid.main":True,
-    #     "A.rigid.main_non1":True,
-    #     "A.rigid.main_non2":True,
-    #     "A.rigid_non2":True,
-    #     "A.rigid0":True,
-    #     "A.rigid1":True,
-    #     "orig":True,
-    # }
-    # needConfig = { #是否需要生成这些信息
-    #     "A.mask.main_nr2":True,
-    #     "A.mask_nr2":True,
-    #     "A.mask_nr2_old":True,
-    #     "A.rigid":True,
-    #     "A.rigid.main":True,
-    #     "A.rigid.main_non1":True,
-    #     "A.rigid.main_non2":True,
-    #     "A.rigid_non2":True,
-    #     "A.rigid0":True,
-    #     "A.rigid1":True,
-    #     "orig":True,
-    # }
-    # if config:
-    #     for id in config:
-    #         needConfig[id]=config[id]
+def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚体解耦
+    #设置参数
+    myEpochNum = EpochNum
+    tag = "A"
+    if not config is None:
+        if "epoch" in config:
+            myEpochNum = config ["epoch"]
+        if "tag" in config:
+            tag = config["tag"]
 
     if False:
         mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
@@ -65,7 +44,7 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
         myMain=Decouple_rigid(pathIn,hidden_features=256)
-        myMain.train(EpochNum) #EpochNum =5000
+        myMain.train(myEpochNum) 
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
@@ -88,21 +67,21 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
 
         video_pre, layers, p = myMain.getVideo(1)#使用局部形变
 
-        save1(p["o_rigid_all"], "A.rigid")#看一下刚体层的效果
+        save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
         for i in range(len(layers["r"])):
-            save1(layers["r"][i], "A.rigid" + str(i))
-        save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), "A.rigid_non2")
+            save1(layers["r"][i], tag+".rigid" + str(i))
+        save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
-        mainFreeCOS(paramPath,os.path.join(outpath, "A.rigid_non2"),os.path.join(outpath, "A.mask_nr2_old"))
-        check(os.path.join(outpath, "A.mask_nr2_old"),videoId,"A.nir.1.rigid_non2_old")
-        mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid_non2"), os.path.join(outpath, "A.mask_nr2"),needConnect=False)
+        mainFreeCOS(paramPath,os.path.join(outpath, tag+".rigid_non2"),os.path.join(outpath, tag+".mask_nr2_old"))
+        if False:check(os.path.join(outpath, tag+".mask_nr2_old"),videoId,tag+".nir.1.rigid_non2_old")
+        mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid_non2"), os.path.join(outpath, tag+".mask_nr2"),needConnect=False)
 
         rigidMain=layers["r"][myMain.getMainRigidIndex()]
-        save1(rigidMain, "A.rigid.main")
+        save1(rigidMain, tag+".rigid.main")
         main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
         # main_non1
         # main_non1[main_non1 > 1] = 1
-        save1(main_non1, "A.rigid.main_non1")#有黑点
+        save1(main_non1, tag+".rigid.main_non1")#有黑点
         # if True:#测试
         #     o = orig.cuda() / (rigidMain.abs() + 10 ** -10)
         #     print(type(o))
@@ -117,9 +96,9 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None):
         #     print("min_val",min_val)
         #     exit(0)
 
-        save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), "A.rigid.main_non2")
-        mainFreeCOS(paramPath, os.path.join(outpath, "A.rigid.main_non2"), os.path.join(outpath, "A.mask.main_nr2"))
-        check(os.path.join(outpath, "A.mask.main_nr2"), videoId, "A.mask.main_nr2")
+        save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
+        mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
+        check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
 
 ###############################################################################################################
 
@@ -489,7 +468,7 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):#用没有去除刚体的�
     if False: #效果不好
         from nir.myLib.ModelVessel import ModelVessel
         mySim1=ModelVessel(os.path.join(outpath,"recon_non2"),maskPath=maskPath) #只拟合血管区域
-        mySim1.train(EpochNum) # EpochNum =5000
+        mySim1.train(EpochNum) 
         video_pre1 = mySim1.getVideo()
         save1(video_pre1, "recon_non2_smooth_onlyVessel.01")
         # mainFreeCOS(paramPath, os.path.join(outpath, "recon_non2_smooth"), os.path.join(outpath, "mask2_"))
@@ -497,7 +476,7 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):#用没有去除刚体的�
 '''
     python -m nir.new
 '''
-def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解耦方法的区别是：拟合原视频 vs 拟合去刚视频
+def startDecouple3(videoId,paramPath,pathIn,outpath,mytag="C"):#2号解耦方法与3号解耦方法的区别是：拟合原视频 vs 拟合去刚视频
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
         o_scene = o_scene.cpu().detach().numpy()
@@ -525,22 +504,22 @@ def startDecouple3(videoId,paramPath,pathIn,outpath):#2号解耦方法与3号解
 
         video_pre, layers, p =myMain.getVideo()
 
-        save1(video_pre, "C.recon")
-        save1(orig.cuda()/(video_pre.abs()+10**-10), "C.recon_non")
-        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), "C.recon_non2")
-        save1(p["o_rigid_all"], "C.rigid")
-        save1(p["o_soft_all"], "C.soft")
+        save1(video_pre, mytag+".recon")
+        save1(orig.cuda()/(video_pre.abs()+10**-10), mytag+".recon_non")
+        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), mytag+".recon_non2")
+        save1(p["o_rigid_all"], mytag+".rigid")
+        save1(p["o_soft_all"], mytag+".soft")
 
         if len(layers["r"])>1:
          for i in range(len(layers["r"])):
-            save1(layers["r"][i], "C.rigid" + str(i))
+            save1(layers["r"][i], mytag+".rigid" + str(i))
         if len(layers["s"]) > 1:
          for i in range(len(layers["s"])):
-            save1(layers["s"][i], "C.soft" + str(i))
-        save1(layers["f"], "C.fluid")
+            save1(layers["s"][i], mytag+".soft" + str(i))
+        save1(layers["f"], mytag+".fluid")
 
-        mainFreeCOS(paramPath,os.path.join(outpath, "C.recon_non2"),os.path.join(outpath, "C.mask2"))
-        check(os.path.join(outpath, "C.mask2"),videoId,"C.nir.1.recon_non2")
+        mainFreeCOS(paramPath,os.path.join(outpath, mytag+".recon_non2"),os.path.join(outpath, mytag+".mask2"))
+        check(os.path.join(outpath, mytag+".mask2"),videoId,mytag+".nir.1.recon_non2")
 
 def startDecouple4(videoId,paramPath,outpath="",mytag="D",maskPath=""):#2号解耦方法与3号解耦方法的区别是什么？
     # mytag="D"
