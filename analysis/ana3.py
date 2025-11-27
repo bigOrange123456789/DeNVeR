@@ -7,6 +7,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+from scipy import stats  # 添加scipy用于T检验
 
 def load_and_binarize_image(image_path, threshold=0.5):
     """加载图像并二值化"""
@@ -205,7 +206,7 @@ def process_test_config(config):
             "auc": 0, "ap": 0, "maxDice": 0, "bestThreshold": 0.5
         }
     
-    return name, avg_metrics, image_results, (all_gt_probs, all_pred_probs)
+    return name, avg_metrics, image_results, (all_gt_probs, all_pred_probs), (all_dice, all_recall, all_precision, all_auc, all_ap, all_max_dice)
 
 def create_bar_chart(results, colors):
     """创建按指标分组的柱状图"""
@@ -328,8 +329,81 @@ def compute_curves(gt_probs, pred_probs):
     
     return fpr, tpr, roc_auc, precision, recall, ap_score
 
-from analysis.json0 import config_data 
+def perform_significance_test(all_metrics_data, alpha=0.05):
+    """
+    对多个实验的指标进行显著性检验
+    
+    Parameters:
+    - all_metrics_data: dict, 键为实验名称，值为包含6个指标列表的元组
+    - alpha: 显著性水平
+    
+    Returns:
+    - significance_results: dict, 包含6个指标的显著性检验结果
+    """
+    metrics_names = ['Dice', 'Recall', 'Precision', 'AUC', 'AP', 'maxDice']
+    experiment_names = list(all_metrics_data.keys())
+    n_experiments = len(experiment_names)
+    
+    significance_results = {}
+    
+    for metric_idx, metric_name in enumerate(metrics_names):
+        print(f"\n正在计算 {metric_name} 指标的显著性检验...")
+        
+        # 创建N*N的表格
+        significance_table = pd.DataFrame(index=experiment_names, columns=experiment_names, dtype=object)
+        p_value_table = pd.DataFrame(index=experiment_names, columns=experiment_names, dtype=float)
+        
+        # 填充表格
+        for i, exp1 in enumerate(experiment_names):
+            for j, exp2 in enumerate(experiment_names):
+                if i == j:
+                    significance_table.loc[exp1, exp2] = "-"
+                    p_value_table.loc[exp1, exp2] = 1.0
+                else:
+                    # 获取两个实验的该指标数据
+                    data1 = all_metrics_data[exp1][metric_idx]
+                    data2 = all_metrics_data[exp2][metric_idx]
+                    
+                    # 执行配对T检验
+                    t_stat, p_value = stats.ttest_rel(data1, data2)
+                    
+                    # 判断是否显著
+                    if p_value < alpha:
+                        significance = "显著"
+                    else:
+                        significance = "不显著"
+                    
+                    significance_table.loc[exp1, exp2] = f"{significance}(p={p_value:.4f})"
+                    p_value_table.loc[exp1, exp2] = p_value
+        
+        significance_results[metric_name] = {
+            'significance_table': significance_table,
+            'p_value_table': p_value_table
+        }
+        
+        print(f"\n{metric_name} 显著性检验结果:")
+        print(significance_table)
+    
+    return significance_results
 
+def save_significance_results(significance_results, output_dir="./outputs"):
+    """保存显著性检验结果到Excel文件"""
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    with pd.ExcelWriter(f"{output_dir}/significance_test_results.xlsx") as writer:
+        for metric_name, result in significance_results.items():
+            # 保存显著性表格
+            result['significance_table'].to_excel(writer, sheet_name=f"{metric_name}_显著性")
+            
+            # 保存p值表格
+            result['p_value_table'].to_excel(writer, sheet_name=f"{metric_name}_p值")
+    
+    print(f"\n显著性检验结果已保存到: {output_dir}/significance_test_results.xlsx")
+
+# from analysis.json0 import config_data 
+
+from analysis.json0 import config_data 
 def main():
     # 处理每个测试配置
     results = {}
@@ -337,12 +411,14 @@ def main():
     all_image_results = {}
     roc_data = {}
     pr_data = {}
+    all_metrics_data = {}  # 存储所有实验的所有指标数据
     
     for config in config_data["experiments"]:
-        name, metrics, image_results, curve_data = process_test_config(config)
+        name, metrics, image_results, curve_data, metrics_data = process_test_config(config)
         results[name] = metrics
         colors[name] = config["color"]
         all_image_results[name] = image_results
+        all_metrics_data[name] = metrics_data  # 保存每个实验的详细指标数据
         
         # 计算曲线数据
         gt_probs, pred_probs = curve_data
@@ -383,6 +459,17 @@ def main():
     # 生成PR曲线
     if pr_data:
         plot_pr_curves(pr_data, colors)
+    
+    # 进行显著性检验
+    print("\n" + "="*80)
+    print("SIGNIFICANCE TEST RESULTS")
+    print("="*80)
+    
+    if len(all_metrics_data) >= 2:  # 至少需要两个实验才能进行显著性检验
+        significance_results = perform_significance_test(all_metrics_data)
+        save_significance_results(significance_results)
+    else:
+        print("至少需要两个实验配置才能进行显著性检验")
 
 if __name__ == "__main__":
     main()

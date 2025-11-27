@@ -32,7 +32,6 @@ def calculate_metrics(gt, pred):
     # 展平数组
     gt_flat = gt.flatten()
     pred_flat = pred.flatten()
-    # if block_cath: cath_flat = ca
     
     # 计算TP, FP, FN
     tp = np.sum((gt_flat == 1) & (pred_flat == 1))

@@ -101,6 +101,7 @@ def process_test_config(config):
     
     print(f"Processing {name}...")
     print(f"GT path: {gt_path}")
+    # exit(0)
     print(f"Pred path: {pred_path}")
     if block_cath: print(f"cath_path: {cath_path}")
     
@@ -127,8 +128,9 @@ def process_test_config(config):
             pred_prob = load_prediction_probability(pred_path, videoId, frameId)
             
             if block_cath: 
-                print(cath_path, videoId+"CATH", frameId)
+                # print(cath_path, videoId+"CATH", frameId)
                 cath_img = load_and_binarize_image(os.path.join(cath_path, videoId+"CATH", frameId), None)
+                # print("cath_img",cath_img)
                 mask_cath = np.zeros_like(cath_img)
                 mask_vessel = np.zeros_like(cath_img)
                 mask_cath[cath_img>0.75]=1

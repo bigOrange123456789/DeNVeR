@@ -428,11 +428,13 @@ def main():
     # parser.add_argument('--output_dir', type=str, default='./comparison_results', help='Output directory for results')
     # parser.add_argument('--method1_name', type=str, default='Method1', help='Name of first method')
     # parser.add_argument('--method2_name', type=str, default='Method2', help='Name of second method')
+    name1="_015_01_noRigid1(b4000)-CATH"
+    name2="_015_02_noRigid1(b2000)-CATH"
     parser.add_argument('--excel1', 
-                        default='_013_long02_bigMaskFluid-CATH_results.xlsx',
+                        default=name1+'_results.xlsx',
                         type=str, help='Path to first Excel file')
     parser.add_argument('--excel2', 
-                        default='_013_long03_smallMaskFluid-CATH_results.xlsx',
+                        default=name2+'_results.xlsx',
                         type=str, help='Path to second Excel file')
     parser.add_argument('--metric', 
                         default='recall',

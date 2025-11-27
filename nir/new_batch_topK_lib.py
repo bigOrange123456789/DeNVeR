@@ -52,6 +52,7 @@ class ImageLoader:
         "noRigid2": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non2/{frame_id}",
         "A-01-epoch2000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch2000.rigid.main_non1/{frame_id}",
         "A-01-epoch1000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch1000.rigid.main_non1/{frame_id}",
+        "A-01-epoch500.rigid.main_non1": "{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch500.rigid.main_non1/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"
     }
     

@@ -250,9 +250,12 @@ def main():
 
 
     root_paths=[
-        "outputs/xca_dataset_sub1_decouple/A.rigid.main_non1",
         "outputs/xca_dataset_sub1_copy/images",
-        "outputs/xca_dataset_sub1_copy/ground_truth"#_CATH",
+        "outputs/xca_dataset_sub1_decouple/A.rigid.main_non1",
+        "outputs/xca_dataset_sub1_decouple/A-01-epoch1000.rigid.main_non1",
+        "outputs/xca_dataset_sub1_decouple/A-01-epoch500.rigid.main_non1",
+        
+        # "outputs/xca_dataset_sub1_copy/ground_truth"#_CATH",
         # "xca_dataset_decouple/A.rigid.main_non2",
     ]
     output_path="outputs/xca_dataset_sub1_merge"

@@ -293,7 +293,7 @@ class Main:
                     #     video_path = os.path.join(patient_gt_path, video_id,"A.rigid.main_non1")
                     video_path = os.path.join(patient_gt_path, video_id)
                     total_images += len(os.listdir(video_path))
-                    print("os.listdir(video_path)",os.listdir(video_path))
+                    # print("os.listdir(video_path)",os.listdir(video_path))
         print(f"总图像数量: {total_images}")
         
         # 2.推理分割每张图片
@@ -554,23 +554,23 @@ def main():
         # 使用单视频进行优化，在无显著下降的情况下提高运行速度
         ####################### 长视频子集合 xca_dataset_sub1 ####################### 
         ##########################  DeNVeR.015  ##########################  
-        # {#测试刚体去噪的
-        #     # "decouple":{#解耦
-        #     #     ########################
-        #     #     "de-rigid":"1",
-        #     #     "epoch":4000,          #只兼容了startDecouple1
-        #     #     "tag":"A",#只兼容了startDecouple1
-        #     #     ########################
-        #     #     "de-soft":None,
-        #     # },
-        #     "name": "_015_01_noRigid1",
-        #     "precomputed": False,
-        #     "input_mode": "noRigid1",
-        #     "norm_method": norm_calculator.calculate_mean_variance,
-        #     "binarize": True,
-        #     "inferenceAll": False,
-        #     "mergeMask": False,
-        # },
+        {#刚体去噪,训练4000批次
+            # "decouple":{#解耦
+            #     ########################
+            #     "de-rigid":"1",
+            #     "epoch":4000,          #只兼容了startDecouple1
+            #     "tag":"A",#只兼容了startDecouple1
+            #     ########################
+            #     "de-soft":None,
+            # },
+            "name": "_015_01_noRigid1",
+            "precomputed": False,
+            "input_mode": "noRigid1",
+            "norm_method": norm_calculator.calculate_mean_variance,
+            "binarize": True,
+            "inferenceAll": True,#False,
+            "mergeMask": False,
+        },
         # {#只训练2000批次
         #     # "decouple":{#解耦
         #     #     ########################
@@ -588,38 +588,38 @@ def main():
         #     "inferenceAll": False,
         #     "mergeMask": False,
         # },
-        # {#只训练1000批次
-        #     "decouple":{#解耦
-        #         ########################
-        #         "de-rigid":"1",
-        #         "epoch":1000,          #只兼容了startDecouple1
-        #         "tag":"A-01-epoch1000",#只兼容了startDecouple1
-        #         ########################
-        #         "de-soft":None,
-        #     },
-        #     "name": "_015_03_noRigid1(b1000)",
-        #     "precomputed": False,
-        #     "input_mode": "A-01-epoch1000.rigid.main_non1",
-        #     "norm_method": norm_calculator.calculate_mean_variance,
-        #     "binarize": True,
-        #     "inferenceAll": False,
-        #     "mergeMask": False,
-        # },
+        {#只训练1000批次
+            # "decouple":{#解耦
+            #     ########################
+            #     "de-rigid":"1",
+            #     "epoch":1000,          #只兼容了startDecouple1
+            #     "tag":"A-01-epoch1000",#只兼容了startDecouple1
+            #     ########################
+            #     "de-soft":None,
+            # },
+            "name": "_015_03_noRigid1(b1000)",
+            "precomputed": False,
+            "input_mode": "A-01-epoch1000.rigid.main_non1",
+            "norm_method": norm_calculator.calculate_mean_variance,
+            "binarize": True,
+            "inferenceAll": True,#False,
+            "mergeMask": False,
+        },
         {#只训练500批次
-            "decouple":{#解耦
-                ########################
-                "de-rigid":"1",
-                "epoch":500,          #只兼容了startDecouple1
-                "tag":"A-01-epoch500",#只兼容了startDecouple1
-                ########################
-                "de-soft":None,
-            },
-            "name": "_015_03_noRigid1(b500)",
+            # "decouple":{#解耦
+            #     ########################
+            #     "de-rigid":"1",
+            #     "epoch":500,          #只兼容了startDecouple1
+            #     "tag":"A-01-epoch500",#只兼容了startDecouple1
+            #     ########################
+            #     "de-soft":None,
+            # },
+            "name": "_015_04_noRigid1(b500)",
             "precomputed": False,
             "input_mode": "A-01-epoch500.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": False,
+            "inferenceAll": True,#False,
             "mergeMask": False,
         },
     ]
