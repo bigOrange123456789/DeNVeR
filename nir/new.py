@@ -81,7 +81,7 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚�
         main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
         # main_non1
         # main_non1[main_non1 > 1] = 1
-        save1(main_non1, tag+".rigid.main_non1")#有黑点
+        save1(main_non1, tag+".rigid.main_non1")#旧版这个结果有黑点、现在黑点解决了(是超过数据上限造成的)
         # if True:#测试
         #     o = orig.cuda() / (rigidMain.abs() + 10 ** -10)
         #     print(type(o))
@@ -98,7 +98,76 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚�
 
         save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
         mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
-        check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
+        if False:check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
+
+
+def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
+    #设置参数
+    myEpochNum = EpochNum
+    tag = "A"
+    if not config is None:
+        if "epoch" in config:
+            myEpochNum = config ["epoch"]
+        if "tag" in config:
+            tag = config["tag"]
+
+    if False:
+        mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
+        check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
+
+    # 刚体解耦
+    if not flagHadRigid:
+        from nir.myLib.Decouple_rigid import Decouple_rigid
+        myMain=Decouple_rigid(pathIn,hidden_features=256)
+        myMain.train(myEpochNum) 
+
+    def save1(o_scene, tag):
+        if o_scene==None or len(o_scene)==0: return
+        o_scene[o_scene>1]=1#添加这个操作来去除黑点，否则超过上限后颜色值会变为黑色
+        o_scene = o_scene.cpu().detach().numpy()
+        o_scene = (o_scene * 255).astype(np.uint8)
+        save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
+
+    # 基于去除刚体后的视频预测MASK
+    if not flagHadRigid: # False:
+     with torch.no_grad(): #
+        orig = myMain.v.video.clone()
+        orig = orig.permute(0, 2, 3, 1).detach().numpy()
+        orig = (orig * 255).astype(np.uint8)
+        save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
+
+        orig = myMain.v.video.clone()
+        N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+        orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
+
+        video_pre, layers, p = myMain.getVideo(1)#使用局部形变
+
+        # rigid结果 
+        if False: 
+            save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
+            for i in range(len(layers["r"])):
+                save1(layers["r"][i], tag+".rigid" + str(i))
+            save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
+
+        # rigid (推理分割图，并评估指标，推理分割图+连通后处理)
+        if False:
+            mainFreeCOS(paramPath,os.path.join(outpath, tag+".rigid_non2"),os.path.join(outpath, tag+".mask_nr2_old"))
+            check(os.path.join(outpath, tag+".mask_nr2_old"),videoId,tag+".nir.1.rigid_non2_old")
+            mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid_non2"), os.path.join(outpath, tag+".mask_nr2"),needConnect=False)
+
+        # main
+        rigidMain=layers["r"][myMain.getMainRigidIndex()]
+        save1(rigidMain, tag+".rigid.main")
+
+        # main_non1
+        main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
+        save1(main_non1, tag+".rigid.main_non1")#有黑点、黑点解决了(是超过数据上限造成的)
+
+        # main_non2 (推理分割图，并评估指标，存储分割图)
+        if False:
+            save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
+            mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
+            check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
 
 ###############################################################################################################
 

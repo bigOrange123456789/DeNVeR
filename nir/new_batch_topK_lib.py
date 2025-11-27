@@ -11,7 +11,7 @@ from tqdm import tqdm
 import torch
 from torchvision import transforms
 
-from nir.new import startDecouple1, startDecouple3
+from nir.new import startDecouple1,startDecouple1_sim, startDecouple3
 from free_cos.newTrain import initCSV, save2CVS, getIndicators
 from free_cos.ModelSegment import ModelSegment
 
@@ -51,6 +51,7 @@ class ImageLoader:
         "noRigid1": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non1/{frame_id}",
         "noRigid2": "{dataset_path}/{patient_id}/decouple/{video_id}/A.rigid.main_non2/{frame_id}",
         "A-01-epoch2000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch2000.rigid.main_non1/{frame_id}",
+        "A-01-epoch1000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch1000.rigid.main_non1/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"
     }
     
@@ -735,7 +736,7 @@ def denoising(arguments,usedVideoId=None):
                     patientID, "decouple", videoId)#本地路径
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-rigid"]=="1":#目标是将5分钟的解耦时间减少到1分钟
-                    startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+                    startDecouple1_sim(videoId, paramPath, inpath, outpath,config=arguments)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
 
@@ -750,7 +751,7 @@ def denoising(arguments,usedVideoId=None):
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-soft"]=="3":
                     startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
-                print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+                print(f"软体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
                     
                 # 处理成功，更新进度
                 CountI += 1

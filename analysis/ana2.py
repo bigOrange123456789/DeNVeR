@@ -127,6 +127,7 @@ def process_test_config(config):
             pred_prob = load_prediction_probability(pred_path, videoId, frameId)
             
             if block_cath: 
+                print(cath_path, videoId+"CATH", frameId)
                 cath_img = load_and_binarize_image(os.path.join(cath_path, videoId+"CATH", frameId), None)
                 mask_cath = np.zeros_like(cath_img)
                 mask_vessel = np.zeros_like(cath_img)

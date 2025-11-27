@@ -571,18 +571,52 @@ def main():
         #     "inferenceAll": False,
         #     "mergeMask": False,
         # },
-        {#只训练2000批次
+        # {#只训练2000批次
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":2000,          #只兼容了startDecouple1
+        #     #     "tag":"A-01-epoch2000",#只兼容了startDecouple1
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_015_02_noRigid1(b2000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-01-epoch2000.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,
+        #     "mergeMask": False,
+        # },
+        # {#只训练1000批次
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"1",
+        #         "epoch":1000,          #只兼容了startDecouple1
+        #         "tag":"A-01-epoch1000",#只兼容了startDecouple1
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_015_03_noRigid1(b1000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-01-epoch1000.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,
+        #     "mergeMask": False,
+        # },
+        {#只训练500批次
             "decouple":{#解耦
                 ########################
                 "de-rigid":"1",
-                "epoch":2000,          #只兼容了startDecouple1
-                "tag":"A-01-epoch2000",#只兼容了startDecouple1
+                "epoch":500,          #只兼容了startDecouple1
+                "tag":"A-01-epoch500",#只兼容了startDecouple1
                 ########################
                 "de-soft":None,
             },
-            "name": "_015_02_noRigid1(b2000)",
+            "name": "_015_03_noRigid1(b500)",
             "precomputed": False,
-            "input_mode": "A-01-epoch2000.rigid.main_non1",
+            "input_mode": "A-01-epoch500.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,
@@ -598,6 +632,8 @@ def main():
     #     ]
     ''' 将视频在这里进行解耦 '''
     
+    print("代码分为三个阶段:视频解耦->分割推理->对比分析")
+    print("一、视频解耦部分")
     for c in configs:
         if "decouple" in c:
             c["decouple"]["name"]=c["name"]#用于给处理进度文件命名
@@ -605,6 +641,7 @@ def main():
     print("视频解耦完成!")
     # exit(0)
 
+    print("二、分割推理部分")
     configs1=[]
     configs2=[]
     for c in configs:
@@ -623,5 +660,4 @@ def main():
     )#推理全部图像
 
 if __name__ == "__main__":
-    print("二、分割推理部分(代码分为三个阶段:视频解耦->分割推理->对比分析)")
     main()#测试在训练过程中f1、recall、precise的变化

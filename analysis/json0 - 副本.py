@@ -168,6 +168,7 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },
                 ####################### 改用原数据集的测试效果 ####################### 
+                ##########################  DeNVeR.014  ##########################  
                 {#整个数据集的结果和局部数据的结果保持一致，这不合理。
                  #这太诡异了，整体指标和局部的指标相同，好像数据内的信息都是均匀分布一样。我不相信有这种巧合。
                  #好吧，我相信了，这似乎就是巧合
@@ -185,6 +186,16 @@ config_data0 = {
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
                     "pred_path":"outputs/xca_dataset_result/fluid2",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                #########################  DeNVeR.015  ##########################  
+                {#测试刚体去噪的
+                    "name": "_015_01_noRigid1",
+                    "color":"#F0D3AC",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_015_01_noRigid1",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
