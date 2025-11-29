@@ -105,11 +105,14 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     #设置参数
     myEpochNum = EpochNum
     tag = "A"
+    useSmooth=False
     if not config is None:
         if "epoch" in config:
             myEpochNum = config ["epoch"]
         if "tag" in config:
             tag = config["tag"]
+        if "useSmooth"in config:
+            useSmooth=True
 
     if False:
         mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
@@ -118,7 +121,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     # 刚体解耦
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
-        myMain=Decouple_rigid(pathIn,hidden_features=256)
+        myMain=Decouple_rigid(pathIn,hidden_features=256,useSmooth=useSmooth)
         myMain.train(myEpochNum) 
 
     def save1(o_scene, tag):
@@ -143,8 +146,12 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         video_pre, layers, p = myMain.getVideo(1)#使用局部形变
 
         # rigid结果 
-        if False: 
+        if True: 
             save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
+            save1(
+                orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
+                tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
+        if False:
             for i in range(len(layers["r"])):
                 save1(layers["r"][i], tag+".rigid" + str(i))
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
@@ -168,6 +175,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
             mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
             check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
+
+
 
 ###############################################################################################################
 

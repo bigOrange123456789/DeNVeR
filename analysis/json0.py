@@ -1,51 +1,52 @@
 import os
+# from confs.json import config_data_base #现在精力充沛，等之后比较困的时候再整理代码，将训练json和测试json合并到一起
 config_data0 = {
             "experiments" : [
-                ##########################  DeNVeR.011  ##########################  
-                # {
-                #     "name":"_011_continuity_01(orig)-temp",#(orig)
-                #     "color":"#C2185B",
-                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_01-temp",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
                 ####################### 长视频子集合 xca_dataset_sub1 ####################### 
-                #########################  DeNVeR.015  ##########################  
-                {#epoch:4000
-                    "name": "_015_01_noRigid1(b4000)",
-                    "color":"#F0D3AC",
-                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub1_result/_015_01_noRigid1",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                # {#epoch:2000
-                #     "name": "_015_02_noRigid1(b2000)",
-                #     "color":"#F0D3BC",
+                # {
+                #     "name":"_013_05_orig", #使用没有去噪图像的分割的效果 
+                #     "color":"#F0D37C",
                 #     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
                 #     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_sub1_result/_015_02_noRigid1(b2000)",
+                #     "pred_path":"outputs/xca_dataset_sub1_result/_013_05_orig",
                 #     "block_cath":False,
                 #     "threshold": 0.5,
                 # },
-                {#epoch:1000
-                    "name": "_015_03_noRigid1(b1000)",
-                    "color":"#F7C3CC",
+                #########################  DeNVeR.015  ##########################  
+                # {#epoch:1000
+                #     "name": "_015_03_noRigid1(b1000)",
+                #     "color":"#F7C3CC",
+                #     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sub1_result/_015_03_noRigid1(b1000)",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
+                #########################  DeNVeR.016  ##########################  
+                {#smooth
+                    "name": "_016_01_noRigid1(b1000)[smooth]",
+                    "color":"#97C3EC",
                     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub1_result/_015_03_noRigid1(b1000)",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_016_01_noRigid1(b1000)",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
-                {#epoch:500
-                    "name": "_015_04_noRigid1(b500)",
-                    "color":"#A7C3DC",
+                {#smooth 使用全部刚体
+                    "name": "_016_01_noAllRigid1(b1000)[smooth]",
+                    "color":"#97C3EC",
                     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub1_result/_015_04_noRigid1(b500)",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_016_01_noRigidAll1(b1000)",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                {#smooth、epoch4000
+                    "name": "_016_02_noRigid1(b4000)[smooth]",
+                    "color":"#97B3FC",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_016_02_noRigid1(b4000)",
                     "block_cath":False,
                     "threshold": 0.5,
                 },

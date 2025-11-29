@@ -53,6 +53,7 @@ class ImageLoader:
         "A-01-epoch2000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch2000.rigid.main_non1/{frame_id}",
         "A-01-epoch1000.rigid.main_non1":"{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch1000.rigid.main_non1/{frame_id}",
         "A-01-epoch500.rigid.main_non1": "{dataset_path}/{patient_id}/decouple/{video_id}/A-01-epoch500.rigid.main_non1/{frame_id}",
+        "A-02-smooth.rigid.main_non1": "{dataset_path}/{patient_id}/decouple/{video_id}/A-02-smooth.rigid.main_non1/{frame_id}",
         "pred": "{dataset_path}/{patient_id}/decouple/{video_id}/A.mask.main_nr2.cf/filter/{frame_id}"
     }
     
@@ -70,10 +71,18 @@ class ImageLoader:
                 frame_id=frame_id
             )
             return self._load_single_image(img_path)
-        elif tag.startswith("mix"):
+        elif tag.startswith("mix"): #将几种方法进行混合加载
             return self._load_mixed_image(tag, patient_id, video_id, frame_id)
         else:
-            raise ValueError(f"未知的标签类型: {tag}")
+            IMAGE_PATH="{dataset_path}/{patient_id}/decouple/{video_id}/"+tag+"/{frame_id}"
+            img_path = IMAGE_PATH.format(
+                dataset_path=self.dataset_path,
+                patient_id=patient_id,
+                video_id=video_id,
+                frame_id=frame_id
+            )
+            return self._load_single_image(img_path)
+            #raise ValueError(f"未知的标签类型: {tag}")
     
     def _load_single_image(self, img_path):
         """加载单张图像"""

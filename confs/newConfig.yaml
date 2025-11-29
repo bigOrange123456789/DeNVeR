@@ -1,15 +1,15 @@
 my:
-    filePathRoot: "log_15"
-    notes: "simplified de-rigid"
+    filePathRoot: "log_16"
+    notes: "smooth loss function of global move in De-rigid"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
     datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset_sub1"
-    datasetPath_rigid.out:  "log_15/xca_dataset_sub1"
-    datasetPath_soft.in:  "log_15/xca_dataset_sub1"
-    datasetPath_soft.out:  "log_15/xca_dataset_sub1"
+    datasetPath_rigid.out:  "log_16/xca_dataset_sub1"
+    datasetPath_soft.in:  "log_16/xca_dataset_sub1"
+    datasetPath_soft.out:  "log_16/xca_dataset_sub1"
     datasetPath_gt:  "../DeNVeR_in/xca_dataset_sub1"
-    datasetPath:  "log_15/xca_dataset_sub1"
+    datasetPath:  "log_16/xca_dataset_sub1"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

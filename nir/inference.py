@@ -554,23 +554,23 @@ def main():
         # 使用单视频进行优化，在无显著下降的情况下提高运行速度
         ####################### 长视频子集合 xca_dataset_sub1 ####################### 
         ##########################  DeNVeR.015  ##########################  
-        {#刚体去噪,训练4000批次
-            # "decouple":{#解耦
-            #     ########################
-            #     "de-rigid":"1",
-            #     "epoch":4000,          #只兼容了startDecouple1
-            #     "tag":"A",#只兼容了startDecouple1
-            #     ########################
-            #     "de-soft":None,
-            # },
-            "name": "_015_01_noRigid1",
-            "precomputed": False,
-            "input_mode": "noRigid1",
-            "norm_method": norm_calculator.calculate_mean_variance,
-            "binarize": True,
-            "inferenceAll": True,#False,
-            "mergeMask": False,
-        },
+        # {#刚体去噪,训练4000批次
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":4000,          #只兼容了startDecouple1
+        #     #     "tag":"A",#只兼容了startDecouple1
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_015_01_noRigid1",
+        #     "precomputed": False,
+        #     "input_mode": "noRigid1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#False,
+        #     "mergeMask": False,
+        # },
         # {#只训练2000批次
         #     # "decouple":{#解耦
         #     #     ########################
@@ -588,40 +588,152 @@ def main():
         #     "inferenceAll": False,
         #     "mergeMask": False,
         # },
-        {#只训练1000批次
-            # "decouple":{#解耦
-            #     ########################
-            #     "de-rigid":"1",
-            #     "epoch":1000,          #只兼容了startDecouple1
-            #     "tag":"A-01-epoch1000",#只兼容了startDecouple1
-            #     ########################
-            #     "de-soft":None,
-            # },
-            "name": "_015_03_noRigid1(b1000)",
+        # {#只训练1000批次
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":1000,          #只兼容了startDecouple1
+        #     #     "tag":"A-01-epoch1000",#只兼容了startDecouple1
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_015_03_noRigid1(b1000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-01-epoch1000.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#只训练500批次
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":500,          #只兼容了startDecouple1
+        #     #     "tag":"A-01-epoch500",#只兼容了startDecouple1
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_015_04_noRigid1(b500)",
+        #     "precomputed": False,
+        #     "input_mode": "A-01-epoch500.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#False,
+        #     "mergeMask": False,
+        # },
+        ##########################  DeNVeR.016  ##########################  
+        # {#进行刚体平滑测试
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"1",
+        #         "epoch":1000,          #只兼容了startDecouple1
+        #         "tag":"A-02-smooth",#只兼容了startDecouple1
+        #         "useSmooth":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_016_01_noRigid1(b1000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-02-smooth.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#测试总刚体去噪效果是否更好: 基于主刚体层(old) vs 基于总刚体层(now)
+        #     # "decouple":{#解耦
+        #     #     ########################
+        #     #     "de-rigid":"1",
+        #     #     "epoch":1000,          #只兼容了startDecouple1
+        #     #     "tag":"A-02-smooth",#只兼容了startDecouple1
+        #     #     "useSmooth":True,
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     "name": "_016_01_noRigidAll1(b1000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-02-smooth.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#测试不同训练批次的影响 #对相机运动的视频应该会有影响
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"1",
+        #         "epoch":4000,          #只兼容了startDecouple1
+        #         "tag":"A-02-smooth-e4000",#只兼容了startDecouple1
+        #         "useSmooth":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_016_02_noRigid1(b4000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-02-smooth-e4000.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        ##########################  DeNVeR.017(测试smooth损失对运动数据集的影响)  ##########################  
+        {#在相机运动的场景下测试
+            "decouple":{#解耦
+                ########################
+                "de-rigid":"1",
+                "epoch":2000,          #只兼容了startDecouple1
+                "tag":"A-02-smooth-e2000",#只兼容了startDecouple1
+                "useSmooth":True,
+                ########################
+                "de-soft":None,
+            },
+            "name": "_017_01_nr(b2000)smooth",
             "precomputed": False,
-            "input_mode": "A-01-epoch1000.rigid.main_non1",
+            "input_mode": "A-02-smooth-e2000.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": True,#False,
+            "inferenceAll": False,#True,#False,
             "mergeMask": False,
         },
-        {#只训练500批次
-            # "decouple":{#解耦
-            #     ########################
-            #     "de-rigid":"1",
-            #     "epoch":500,          #只兼容了startDecouple1
-            #     "tag":"A-01-epoch500",#只兼容了startDecouple1
-            #     ########################
-            #     "de-soft":None,
-            # },
-            "name": "_015_04_noRigid1(b500)",
+        {#在相机运动的场景下测试
+            "decouple":{#解耦
+                ########################
+                "de-rigid":"1",
+                "epoch":2000,          #只兼容了startDecouple1
+                "tag":"A-02-e2000",#只兼容了startDecouple1
+                "useSmooth":False,
+                ########################
+                "de-soft":None,
+            },
+            "name": "_017_02_nr(b2000)",
             "precomputed": False,
-            "input_mode": "A-01-epoch500.rigid.main_non1",
+            "input_mode": "A-02-e2000.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": True,#False,
+            "inferenceAll": False,#True,#False,
             "mergeMask": False,
         },
+    ]#不要重复做实验，要相信之前的结果
+    [#没有进行的测试
+        # {#测试不同的平滑权重的影响（因为最终收敛到0了(在2000epoch之内)，所以我感觉权重影响不大）
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"1",
+        #         "epoch":1000,          #只兼容了startDecouple1
+        #         "tag":"A-03-smooth-e1000",#只兼容了startDecouple1
+        #         "useSmooth":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_016_02_noRigid1(b4000)",
+        #     "precomputed": False,
+        #     "input_mode": "A-02-smooth-e4000.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
     ]
     usedVideoId = None
     # usedVideoId = [

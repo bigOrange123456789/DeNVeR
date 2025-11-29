@@ -428,8 +428,11 @@ def main():
     # parser.add_argument('--output_dir', type=str, default='./comparison_results', help='Output directory for results')
     # parser.add_argument('--method1_name', type=str, default='Method1', help='Name of first method')
     # parser.add_argument('--method2_name', type=str, default='Method2', help='Name of second method')
-    name1="_015_01_noRigid1(b4000)-CATH"
-    name2="_015_02_noRigid1(b2000)-CATH"
+    # name1="_015_01_noRigid1(b4000)-CATH"
+    # name2="_015_02_noRigid1(b2000)-CATH"
+
+    name1="_016_01_noRigid1(b1000)[smooth]"+"-CATH"
+    name2="_016_01_noAllRigid1(b1000)[smooth]"+"-CATH"
     parser.add_argument('--excel1', 
                         default=name1+'_results.xlsx',
                         type=str, help='Path to first Excel file')
@@ -437,7 +440,7 @@ def main():
                         default=name2+'_results.xlsx',
                         type=str, help='Path to second Excel file')
     parser.add_argument('--metric', 
-                        default='recall',
+                        default='dice',
                         type=str, help='Metric column name (e.g., dice, recall, precision)')
     parser.add_argument('--k', 
                         default=10,
@@ -449,7 +452,7 @@ def main():
     parser.add_argument('--pred_path1', type=str, help='Path to method1 prediction masks')
     parser.add_argument('--pred_path2', type=str, help='Path to method2 prediction masks')
     parser.add_argument('--output_dir', type=str, 
-                        default='./outputs', 
+                        default='./outputs/compare', 
                         help='Output directory for results')
     parser.add_argument('--method1_name', type=str, default='Method1', help='Name of first method')
     parser.add_argument('--method2_name', type=str, default='Method2', help='Name of second method')

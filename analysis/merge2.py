@@ -189,6 +189,68 @@ def main():
         "outputs/xca_dataset_sub1_decouple/A-01-epoch500.rigid.main_non1",
         "outputs/xca_dataset_sub1_result/_015_04_noRigid1(b500)",
 
+    ]
+
+
+
+    layout = [
+        [0,1,2],
+        [3,4,5],
+        [6,7,8]
+        # [0, 2, 4, 6],  # 第一行：原视频、方法1、方法2
+        # [1, 3, 5, 7]      # 第二行：方法3、方法4
+    ]
+    
+    root_paths = [
+        "outputs/xca_dataset_sub1_copy/images",
+        "outputs/xca_dataset_sub1_copy/images",
+        # "outputs/xca_dataset_sub1_copy/ground_truth",
+        "outputs/xca_dataset_sub1_result/_013_05_orig", # 训练批次:4000epoch
+
+        # 无平滑
+        "outputs/xca_dataset_sub1_decouple/A-01-epoch1000.rigid.main",#刚体层
+        "outputs/xca_dataset_sub1_decouple/A-01-epoch1000.rigid.main_non1",#去刚层
+        "outputs/xca_dataset_sub1_result/_015_03_noRigid1(b1000)",#分割结果
+
+
+        # 有平滑
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.main",#刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.main_non1",#去刚层
+        "outputs/xca_dataset_sub1_result/_016_01_noRigid1(b1000)",#分割结果
+
+        # "outputs/xca_dataset_sub1_decouple/A-01-epoch500.rigid.main_non1",
+        # "outputs/xca_dataset_sub1_result/_015_04_noRigid1(b500)",
+
+    ]
+
+    layout = [
+        [0,1,2],
+        [3,4,5],
+        [6,7,8]
+        # [0, 2, 4, 6],  # 第一行：原视频、方法1、方法2
+        # [1, 3, 5, 7]      # 第二行：方法3、方法4
+    ]
+    
+    root_paths = [
+        "outputs/xca_dataset_sub1_copy/images",
+        "outputs/xca_dataset_sub1_copy/images",
+        # "outputs/xca_dataset_sub1_copy/ground_truth",
+        "outputs/xca_dataset_sub1_result/_013_05_orig", # 训练批次:4000epoch
+
+        # # 无平滑
+        # "outputs/xca_dataset_sub1_decouple/A-01-epoch1000.rigid.main",#刚体层
+        # "outputs/xca_dataset_sub1_decouple/A-01-epoch1000.rigid.main_non1",#去刚层
+        # "outputs/xca_dataset_sub1_result/_015_03_noRigid1(b1000)",#分割结果
+
+        # 有平滑、主刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.main",#刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.main_non1",#去刚层
+        "outputs/xca_dataset_sub1_result/_016_01_noRigid1(b1000)",#分割结果
+
+        # 有平滑、全部刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",#全刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.non1",#去全刚层
+        "outputs/xca_dataset_sub1_result/_016_01_noRigidAll1(b1000)",#分割结果
 
     ]
     output_path = "outputs/xca_dataset_sub1_merge"
