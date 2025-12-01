@@ -11,7 +11,7 @@ from tqdm import tqdm
 import torch
 from torchvision import transforms
 
-from nir.new import startDecouple1,startDecouple1_sim, startDecouple3
+from nir.new import startDecouple1,startDecouple1_sim, startDecouple2, startDecouple2_sim, startDecouple3
 from free_cos.newTrain import initCSV, save2CVS, getIndicators
 from free_cos.ModelSegment import ModelSegment
 
@@ -666,7 +666,7 @@ class ResultSaver:
         print("  4. 方法比较 - 简明的比较结果")
         print("  5. 图像路径 - 所有输入图像和ground truth的路径")
 
-def denoising(arguments,usedVideoId=None):
+def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
     if arguments==None:
         arguments={
             "de-rigid":"1",
@@ -747,6 +747,12 @@ def denoising(arguments,usedVideoId=None):
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-rigid"]=="1":#目标是将5分钟的解耦时间减少到1分钟
                     startDecouple1_sim(videoId, paramPath, inpath, outpath,config=arguments)  # 去除刚体层
+                elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
+                    origVideoPath=os.path.join(
+                        dataset_path_gt,
+                        patientID, "images", videoId
+                        )
+                    startDecouple2_sim(videoId, paramPath, inpath, outpath,config=arguments,origVideoPath=origVideoPath)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
                 print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
 

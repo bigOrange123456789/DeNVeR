@@ -253,7 +253,23 @@ def main():
         "outputs/xca_dataset_sub1_result/_016_01_noRigidAll1(b1000)",#分割结果
 
     ]
+
     output_path = "outputs/xca_dataset_sub1_merge"
+
+
+    layout = [
+        [0, 1, 2, 3],  
+    ]
+    
+    root_paths = [
+        "outputs/xca_dataset_sub2_copy/images",#原视频
+        "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",        # 主刚体层
+        "outputs/xca_dataset_sub2_decouple/A-02-smooth0.1.rigid.main",    # 平滑刚体、低约束权重
+        "outputs/xca_dataset_sub2_decouple/A-02-smooth-e2000.rigid.main", # 平滑刚体、高约束权重
+    ]
+
+    output_path = "outputs/xca_dataset_sub2_merge"
+
 
     print("开始合并视频帧...")
     print(f"输入路径: {root_paths}")

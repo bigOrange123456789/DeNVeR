@@ -227,7 +227,7 @@ config_data0 = {
                     "threshold": 0.5,
                 },
                 #########################  DeNVeR.016  ##########################  
-                {#epoch:1000
+                {#smooth
                     "name": "_016_01_noRigid1(b1000)[smooth]",
                     "color":"#97C3EC",
                     "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
@@ -236,6 +236,26 @@ config_data0 = {
                     "block_cath":False,
                     "threshold": 0.5,
                 },
+                {#smooth 使用全部刚体
+                    "name": "_016_01_noAllRigid1(b1000)[smooth]",
+                    "color":"#97C3EC",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_016_01_noRigidAll1(b1000)",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                {#smooth、epoch4000
+                    "name": "_016_02_noRigid1(b4000)[smooth]",
+                    "color":"#97B3FC",
+                    "gt_path":"outputs/xca_dataset_sub1_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub1_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub1_result/_016_02_noRigid1(b4000)",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                ####################### 改用sub2数据集 ####################### 
+                ##########################  DeNVeR.017  ##########################  
             ],
             "usedVideoId":
                 None#os.listdir("outputs/xca_dataset_sub1_copy/ground_truth")

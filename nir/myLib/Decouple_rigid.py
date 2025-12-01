@@ -51,12 +51,12 @@ class Layer_rigid(nn.Module):
                                  outermost_linear=True)
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())
-    def forward(self,xyt,stage):
+    def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
         t = xyt[:, [-1]]
         h_global = self.g_global(t)
         loss_smooth = torch.tensor(0.0)
         if self.useSmooth:
-            loss_smooth = jacobian(h_global, t).abs().mean()# if self.useSmooth else 0
+            loss_smooth = loss_smooth + jacobian(h_global, t).abs().mean()# if self.useSmooth else 0
         ############################################################
         # xy_ = xyt[:, :-1] + h_global #+ h_local
         if self.useMatrix: #True
@@ -91,10 +91,12 @@ class Layer_rigid(nn.Module):
         else: #不使用变换矩阵
             xy_ = xyt[:, :-1] + h_global
         ############################################################
-        if stage==0:#纹理学习，不分析局部位移  #不使用局部位移
+        if not openLocalDeform:#stage==0:#纹理学习，不分析局部位移  #不使用局部位移
             h_local = torch.tensor(0.0)# h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
         else:#只分析局部位移，不学习整体运动和纹理
             h_local = self.g_local(xyt)
+            if self.useSmooth:#局部形变也要平滑
+                loss_smooth = loss_smooth + jacobian(h_local, xyt).abs().mean()# if self.useSmooth else 0
             h_local = 2 * torch.sigmoid(h_local) - 1
             h_local = h_local * self.deformationSize
             xy_ = xy_ + h_local
@@ -127,7 +129,7 @@ class Decouple_rigid(nn.Module):
         # return x
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
-    def __init__(self, path,hidden_features=128,useSmooth=False):
+    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,weight_smooth=1):
         super().__init__()
         v = VideoFitting(path,useMask=False,maskPath=None)
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
@@ -146,6 +148,9 @@ class Decouple_rigid(nn.Module):
         self.ground_truth=ground_truth
         self.mask=mask
         self.useSmooth=useSmooth#一个布尔参数，用来决定本次测试是否使用基于雅可比矩阵的平滑损失函数
+        self.openLocalDeform=openLocalDeform
+        self.weight_smooth=weight_smooth
+
 
         #######################################################################
 
@@ -243,8 +248,10 @@ class Decouple_rigid(nn.Module):
             "loss_smooth":loss_smooth,
         }#输出三样东西：重构结果、分层结果、相关参数
 
-    def loss(self, xyt, step, start, end,stage=0):
-        o, layers, p = self.forward(xyt,stage)#纹理学习
+    # def loss(self, xyt, step, start, end,stage=0):
+    #     o, layers, p = self.forward(xyt,stage)#纹理学习
+    def loss(self, xyt, step, start, end,openLocalDeform):
+        o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
         #局部
 
         eps=10**-10
@@ -285,7 +292,7 @@ class Decouple_rigid(nn.Module):
 
 
 
-        loss = loss_recon + loss_soft + loss_fluid + loss_rigid + loss_smooth
+        loss = loss_recon + loss_soft + loss_fluid + loss_rigid + loss_smooth*self.weight_smooth
 
         self.layers = layers
         # if not loss_smooth==0:#不对劲，很不对劲，这里的平滑损失貌似一直为0 #如果梯度一直为0，说明刚体没有没有任何运动
@@ -323,7 +330,7 @@ class Decouple_rigid(nn.Module):
             end = min(start + batch_size, len(model_input))
 
             xyt = model_input[start:end].requires_grad_()
-            loss = self.loss(xyt, step,start,end,stage=0)#离谱，stage竟然为0
+            loss = self.loss(xyt, step,start,end,self.openLocalDeform)#离谱，stage竟然为0
 
             optim.zero_grad()
             loss.backward()

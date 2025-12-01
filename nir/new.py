@@ -10,7 +10,7 @@ import torch.nn as nn
 import itertools
 import math
 
-from free_cos.main import mainFreeCOS
+from free_cos.main import mainFreeCOS, mainFreeCOS_sim
 from eval.eval import Evaluate
 
 from nir.model import Siren
@@ -106,13 +106,23 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     myEpochNum = EpochNum
     tag = "A"
     useSmooth=False
+    openLocalDeform=False
+    weight_smooth=1
     if not config is None:
         if "epoch" in config:
             myEpochNum = config ["epoch"]
         if "tag" in config:
             tag = config["tag"]
         if "useSmooth"in config:
-            useSmooth=True
+            useSmooth=config["useSmooth"]
+        if "openLocalDeform"in config:
+            openLocalDeform=config["openLocalDeform"]
+        if "weight_smooth" in config:
+            weight_smooth=config["weight_smooth"]
+    # print(weight_smooth,config["weight_smooth"])
+    # print("config",config)
+    # exit(0)
+
 
     if False:
         mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
@@ -121,7 +131,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     # 刚体解耦
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
-        myMain=Decouple_rigid(pathIn,hidden_features=256,useSmooth=useSmooth)
+        myMain=Decouple_rigid(pathIn,hidden_features=256,useSmooth=useSmooth,openLocalDeform=openLocalDeform,weight_smooth=weight_smooth)
         myMain.train(myEpochNum) 
 
     def save1(o_scene, tag):
@@ -137,7 +147,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         orig = myMain.v.video.clone()
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
-        save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
+        if False: #这里是输入的视频不是用于分割的视频
+            save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
         orig = myMain.v.video.clone()
         N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
@@ -474,7 +485,7 @@ class Decouple(nn.Module):
                     l[i] = torch.stack(l[i], dim=0)
                 return l
 
-            if self.NUM_soft == 0 and self.NUM_figid == 0:
+            if self.NUM_soft == 0 and self.NUM_figid == 0:#软体层个数和刚体层个数都为0
                 layers = {
                     "r": [],
                     "s": [],
@@ -491,12 +502,12 @@ class Decouple(nn.Module):
                     "f": torch.stack(layers_frames["f"], dim=0)
                 }
                 p = {
-                    "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
+                    "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),#会增加一个新的维度，从而扩展张量的维度。所有输入的张量必须具有相同的形状。
                     "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
                 }
             return video_pre, layers, p
 
-def startDecouple2(videoId,paramPath,pathIn,outpath):#用没有去除刚体的数据进行拟合
+def startDecouple2(videoId,paramPath,pathIn,outpath):#用视频学习网络进行拟合
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
         o_scene = o_scene.cpu().detach().numpy()
@@ -515,6 +526,117 @@ def startDecouple2(videoId,paramPath,pathIn,outpath):#用没有去除刚体的�
 
     # 输出解耦效果
     if True:# False:
+     with torch.no_grad(): #
+        orig = myMain.v.video.clone()
+        N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+        orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
+
+        video_pre, layers, p =myMain.getVideo()
+
+        save1(video_pre, "recon")
+        save1(orig.cuda()/(video_pre.abs()+10**-10), "recon_non")
+        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), "recon_non2")
+        save1(p["o_rigid_all"], "rigid")
+        save1(p["o_soft_all"], "soft")
+
+        if len(layers["r"])>1:
+         for i in range(len(layers["r"])):
+            save1(layers["r"][i], "rigid" + str(i))
+        if len(layers["s"]) > 1:
+         for i in range(len(layers["s"])):
+            save1(layers["s"][i], "soft" + str(i))
+        save1(layers["f"], "fluid")
+
+        mainFreeCOS(paramPath,os.path.join(outpath, "recon_non2"),os.path.join(outpath, "mask2"))
+        check(os.path.join(outpath, "mask2"),videoId,"nir.1.recon_non2")
+        if False:
+            mainFreeCOS(paramPath, os.path.join(outpath, "recon_non3"), os.path.join(outpath, "mask3"))
+            check(os.path.join(outpath, "mask3"), videoId, "nir.1.recon_non3")
+
+    # 拟合解耦出来的血管纹理
+    if False: #效果不好
+        from nir.myLib.ModelVessel import ModelVessel
+        mySim1=ModelVessel(os.path.join(outpath,"recon_non2"),maskPath=maskPath) #只拟合血管区域
+        mySim1.train(EpochNum) 
+        video_pre1 = mySim1.getVideo()
+        save1(video_pre1, "recon_non2_smooth_onlyVessel.01")
+        # mainFreeCOS(paramPath, os.path.join(outpath, "recon_non2_smooth"), os.path.join(outpath, "mask2_"))
+        # check(os.path.join(outpath, "mask2_"), videoId, "nir.1.recon_non2_smooth")
+
+# def startDecouple2_sim(videoId,paramPath,pathIn,outpath):#用没有去除刚体的数据进行拟合
+def startDecouple2_sim(videoId,paramPath,pathIn,outpath,config=None,origVideoPath=None):
+    #设置参数
+    myEpochNum = EpochNum
+    tag = "A"
+    useSmooth=False
+    openLocalDeform=False
+    weight_smooth=1
+    if not config is None:
+        if "epoch" in config:
+            myEpochNum = config ["epoch"]
+        if "tag" in config:
+            tag = config["tag"]
+        if "useSmooth"in config:
+            useSmooth=config["useSmooth"]
+        if "openLocalDeform"in config:
+            openLocalDeform=config["openLocalDeform"]
+        if "weight_smooth" in config:
+            weight_smooth=config["weight_smooth"]
+
+    def save1(o_scene, tag):
+        if o_scene==None or len(o_scene)==0: return
+        o_scene = o_scene.cpu().detach().numpy()
+        o_scene = (o_scene * 255).astype(np.uint8)
+        save2img(o_scene[:, :, :, 0], os.path.join(outpath, tag))
+
+    #分割原始数据中的血管
+    maskPath=os.path.join(outpath, tag+".orig_mask")
+    if True:
+        # print("maskPath",maskPath)
+        mainFreeCOS_sim(paramPath,origVideoPath,maskPath)
+        # exit(0)
+
+    # 解耦出血管层
+    if True:
+        # script_path = os.path.abspath(__file__)
+        # ROOT = os.path.dirname(script_path)
+        # maskPath = os.path.join(ROOT,"..",outpath, "A.mask.main_nr2","filter")
+        # os.makedirs(os.path.join(ROOT,"..",outpath), exist_ok=True)
+        # check(maskPath+"/..", videoId, "A.mask_nir2")
+        from nir.myLib.Decouple import Decouple
+        myMain = Decouple(#startDecouple2使用视频抽取模型，而startDecouple2_sim中软体、刚体、流体都有
+            pathIn,
+            maskPath=maskPath,
+            hidden_features=256*4)
+        myMain.train(myEpochNum) #EpochNum =5000
+
+    # 输出解耦效果
+    if True:# False:
+     with torch.no_grad(): #
+        orig = myMain.v.video.clone()
+        N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+        orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
+
+        video_pre, layers, p =myMain.getVideo()
+
+        save1(video_pre, tag+".recon")
+        save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
+        save1(p["o_rigid_all"], tag+"rigid")
+        # print("rigid_all",type(p["o_rigid_all"]))
+        save1(orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non")
+        save1(p["o_soft_all"], tag+".soft")
+
+        # if len(layers["r"])>1:
+        #  for i in range(len(layers["r"])):
+        #     save1(layers["r"][i], "rigid" + str(i))
+        # if len(layers["s"]) > 1:
+        #  for i in range(len(layers["s"])):
+        #     save1(layers["s"][i], "soft" + str(i))
+        # save1(layers["f"], "fluid")
+
+        # mainFreeCOS(paramPath,os.path.join(outpath, "recon_non2"),os.path.join(outpath, "mask2"))
+        # check(os.path.join(outpath, "mask2"),videoId,"nir.1.recon_non2")
+    if False: #旧的输出版本
      with torch.no_grad(): #
         orig = myMain.v.video.clone()
         N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度

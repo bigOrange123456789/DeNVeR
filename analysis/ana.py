@@ -59,17 +59,18 @@ def getNameList():
     video_dict = df.set_index('videoId')[['long', 'short']].to_dict('index')
     return video_dict
 
-
-
-def process_test_config(config, usedVideoId):
-    video_dict = getNameList()
-    # print(video_dict)
-    def get_video_info(video_id):
+video_dict = getNameList()
+def get_video_info(video_id):
         """
         根据 videoId 返回对应的 long 和 short 值
         返回格式：{'long': 值, 'short': 值} 或 None（如果未找到）
         """
         return video_dict.get(str(video_id))
+
+def process_test_config(config, usedVideoId,DataFiltering=None):
+    
+    # print(video_dict)
+    
 
     """处理单个测试配置"""
     name = config["name"]
@@ -97,6 +98,11 @@ def process_test_config(config, usedVideoId):
       short0 = get_video_info(videoId)["short"]
     #  exit(0)
       for frameId in os.listdir(gt_path+"/"+videoId):
+       flag =True#使用全部数据
+       if DataFiltering in ["T","Move","FrontBack"]:
+        flag= (long0==DataFiltering)
+        # print(long0,DataFiltering,flag)
+       if flag:
       #if long0=="T" and short0=="T":
       #if long0=="Move" and short0=="Move":
         # print(long0, short0)
@@ -143,7 +149,7 @@ def process_test_config(config, usedVideoId):
     
     return name, avg_metrics
 
-def create_bar_chart(results, colors):
+def create_bar_chart(results, colors,DataFiltering=None):
     """创建按指标分组的柱状图"""
     metrics = ['Dice', 'Recall', 'Precision']
     print("results.keys()",results.keys())
@@ -178,9 +184,9 @@ def create_bar_chart(results, colors):
                    f'{value:.3f}', ha='center', va='bottom', fontsize=9)
     
     # 设置图形属性
-    ax.set_xlabel('Metrics')
-    ax.set_ylabel('Scores')
-    ax.set_title('Segmentation Performance Metrics Comparison')
+    # ax.set_xlabel('Metrics')
+    # ax.set_ylabel('Scores')
+    ax.set_title('Segmentation Performance Metrics Comparison.(DataFiltering='+str(DataFiltering)+")")
     ax.set_xticks(x)
     ax.set_xticklabels(metrics) #显示指标名称
     ax.legend()#显示每个颜色的含义
@@ -203,7 +209,7 @@ def main():
     colors = {}
     
     for config in config_data["experiments"]:
-        name, metrics = process_test_config(config, config_data["usedVideoId"])
+        name, metrics = process_test_config(config, config_data["usedVideoId"],DataFiltering=config_data["DataFiltering"])
         results[name] = metrics
         colors[name] = config["color"]
         print("name:",name)
@@ -223,7 +229,7 @@ def main():
         print()
     
     # 生成柱状图
-    create_bar_chart(results, colors)
+    create_bar_chart(results, colors,DataFiltering=config_data["DataFiltering"])
     print("Bar chart saved as 'segmentation_metrics_comparison.png'")
 
 if __name__ == "__main__":

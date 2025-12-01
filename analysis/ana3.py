@@ -91,8 +91,8 @@ def load_prediction_probability(pred_path, videoId, frameId):
         return pred_img
     except:
         return None
-
-def process_test_config(config):
+from analysis.ana import get_video_info
+def process_test_config(config, usedVideoId,DataFiltering=None):
     """处理单个测试配置"""
     name = config["name"]
     gt_path = config["gt_path"]
@@ -124,6 +124,12 @@ def process_test_config(config):
     all_pred_probs = []
     
     for videoId in os.listdir(gt_path):
+     long0 = get_video_info(videoId)["long"]
+     flag =True#使用全部数据
+     if DataFiltering in ["T","Move","FrontBack"]:
+        flag= (long0==DataFiltering)
+        # print(long0,DataFiltering,flag)
+     if flag:
         for frameId in os.listdir(gt_path+"/"+videoId):
             filename = frameId
             gt_img = load_and_binarize_image(os.path.join(gt_path, videoId, frameId), 0.5)
@@ -208,7 +214,7 @@ def process_test_config(config):
     
     return name, avg_metrics, image_results, (all_gt_probs, all_pred_probs), (all_dice, all_recall, all_precision, all_auc, all_ap, all_max_dice)
 
-def create_bar_chart(results, colors):
+def create_bar_chart(results, colors,DataFiltering=None):
     """创建按指标分组的柱状图"""
     metrics = ['Dice', 'Recall', 'Precision', 'AUC', 'AP', 'maxDice']
     test_names = list(results.keys())
@@ -241,9 +247,10 @@ def create_bar_chart(results, colors):
                    f'{value:.3f}', ha='center', va='bottom', fontsize=8)
     
     # 设置图形属性
-    ax.set_xlabel('Metrics')
-    ax.set_ylabel('Scores')
-    ax.set_title('Segmentation Performance Metrics Comparison')
+    # ax.set_xlabel('Metrics')
+    # ax.set_ylabel('Scores')
+    # ax.set_title('Segmentation Performance Metrics Comparison')
+    ax.set_title('Segmentation Performance Metrics Comparison.(DataFiltering='+str(DataFiltering)+")")
     ax.set_xticks(x)
     ax.set_xticklabels(metrics)
     ax.legend()
@@ -386,7 +393,7 @@ def perform_significance_test(all_metrics_data, alpha=0.05):
     
     return significance_results
 
-def save_significance_results(significance_results, output_dir="./outputs"):
+def save_significance_results(significance_results, output_dir="./outputs/compare"):
     """保存显著性检验结果到Excel文件"""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -414,7 +421,7 @@ def main():
     all_metrics_data = {}  # 存储所有实验的所有指标数据
     
     for config in config_data["experiments"]:
-        name, metrics, image_results, curve_data, metrics_data = process_test_config(config)
+        name, metrics, image_results, curve_data, metrics_data = process_test_config(config, config_data["usedVideoId"],DataFiltering=config_data["DataFiltering"])
         results[name] = metrics
         colors[name] = config["color"]
         all_image_results[name] = image_results
@@ -450,7 +457,7 @@ def main():
         print()
     
     # 生成柱状图
-    create_bar_chart(results, colors)
+    create_bar_chart(results, colors, DataFiltering=config_data["DataFiltering"])
     
     # 生成ROC曲线
     if roc_data:
