@@ -151,7 +151,6 @@ class Decouple_rigid(nn.Module):
         self.openLocalDeform=openLocalDeform
         self.weight_smooth=weight_smooth
 
-
         #######################################################################
 
         # 一、软体
@@ -177,7 +176,6 @@ class Decouple_rigid(nn.Module):
         # self.f2 = Siren(in_features=3, out_features=1, hidden_features=hidden_features,
         #            hidden_layers=4, outermost_linear=True)
         # self.f2.cuda()
-
         self.parameters=[
             # self.f2.parameters()
         ] #+ self.f_soft.parameters #+ self.f_rigid.parameters
@@ -185,6 +183,7 @@ class Decouple_rigid(nn.Module):
             self.parameters = self.parameters + self.f_rigid_list[i].parameters
         for i in range(self.NUM_soft):
             self.parameters = self.parameters + self.f_soft_list[i].parameters
+        
     def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
         N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
         n = N//2

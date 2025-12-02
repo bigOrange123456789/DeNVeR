@@ -620,7 +620,8 @@ def startDecouple2_sim(videoId,paramPath,pathIn,outpath,config=None,origVideoPat
         video_pre, layers, p =myMain.getVideo()
 
         save1(video_pre, tag+".recon")
-        save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
+        # save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
+        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
         save1(p["o_rigid_all"], tag+"rigid")
         # print("rigid_all",type(p["o_rigid_all"]))
         save1(orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non")

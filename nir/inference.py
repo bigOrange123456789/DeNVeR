@@ -765,19 +765,29 @@ def main():
                 ########################
                 "de-soft":None,
             },
-            "name": "_017_05_rigid.non(singleStage)",
+            "name": "_017_05_rigid.non(doubleStage)",
             "precomputed": False,
-            "input_mode": "B.rigid_non",
+            "input_mode": "B.rigid_non",#基于去刚的解耦效果
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,#True,#False,
             "mergeMask": False,
         },
-        {# 将解耦方案变为单阶段方案
-            #复用前面的视频解耦结果
-            "name": "_017_06_recon.non(singleStage)",
+        # {# 将解耦方案变为单阶段方案
+        #     #复用前面的视频解耦结果（效果超级差、不知道是不是视频流体层的原因）
+        #     "name": "_017_06_recon.non(doubleStage)",
+        #     "precomputed": False,
+        #     "input_mode": "B.recon_non",#基于流体层的解耦效果
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        {# 测试原视频不去噪的分割效果
+            #复用前面的视频解耦结果（效果超级差、不知道是不是视频流体层的原因）
+            "name": "_017_07_orig(sub2)",
             "precomputed": False,
-            "input_mode": "B.recon_non",
+            "input_mode": "orig",#基于流体层的解耦效果
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,#True,#False,

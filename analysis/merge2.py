@@ -258,18 +258,95 @@ def main():
 
 
     layout = [
-        [0, 1, 2, 3],  
+        [0, 2, 4, 6, 8],  
+        [1, 3, 5, 7, 9],  
     ]
     
     root_paths = [
+
         "outputs/xca_dataset_sub2_copy/images",#原视频
+        "outputs/xca_dataset_sub1_copy/ground_truth",
+        
         "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",        # 主刚体层
-        "outputs/xca_dataset_sub2_decouple/A-02-smooth0.1.rigid.main",    # 平滑刚体、低约束权重
-        "outputs/xca_dataset_sub2_decouple/A-02-smooth-e2000.rigid.main", # 平滑刚体、高约束权重
+        "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main_non1",   
+
+        # 有平滑、全部刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",#全刚体层
+        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.non1",#去全刚层
+        
+        "outputs/xca_dataset_sub2_decouple/Brigid",        # 两阶段刚体层（两阶段的刚体看起来比主刚体要好）
+        "outputs/xca_dataset_sub2_decouple/B.rigid_non", 
+        
+        # "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
+        # "outputs/xca_dataset_sub2_decouple/B.soft_non",
+
+        "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
+        "outputs/xca_dataset_sub2_decouple/B.recon_non",
+
     ]
 
     output_path = "outputs/xca_dataset_sub2_merge"
 
+    # root_paths_config = [
+
+    #     "",
+    #     "outputs/xca_dataset_sub2_copy/images",#原视频
+    #     # "outputs/xca_dataset_sub1_copy/ground_truth",#真值
+        
+    #     "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",        # 主刚体层
+    #     # {
+    #     #     "type": "div", 
+    #     #     "name": "method3-method4", 
+    #     #     "paths": [
+    #     #         "outputs/xca_dataset_sub2_copy/images",
+    #     #         "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",
+    #     #     ]
+    #     # },
+    #     "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main_non1",   
+        
+
+    #     # 有平滑、全部刚体层
+    #     "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",#全刚体层
+    #     # {
+    #     #     "type": "div", 
+    #     #     "name": "method3-method4", 
+    #     #     "paths": [
+    #     #         "outputs/xca_dataset_sub2_copy/images",
+    #     #         "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",
+    #     #     ]
+    #     # },
+    #     "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.non1",#去全刚层
+        
+    #     "outputs/xca_dataset_sub2_decouple/Brigid",        # 两阶段刚体层（两阶段的刚体看起来比主刚体要好）
+    #     # {
+    #     #     "type": "div", 
+    #     #     "name": "method3-method4", 
+    #     #     "paths": [
+    #     #         "outputs/xca_dataset_sub2_copy/images",
+    #     #         "outputs/xca_dataset_sub1_decouple/Brigid",
+    #     #     ]
+    #     # },
+    #     "outputs/xca_dataset_sub2_decouple/B.rigid_non", 
+        
+    #     # "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
+    #     # "outputs/xca_dataset_sub2_decouple/B.soft_non",
+
+    #     "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
+    #     # {
+    #     #     "type": "mul", 
+    #     #     "name": "method3-method4", 
+    #     #     "paths": [
+    #     #         'outputs/xca_dataset_sub2_decouple/B.soft',
+    #     #         'outputs/xca_dataset_sub2_decouple/Brigid',
+    #     #     ]
+    #     # },
+    #     "outputs/xca_dataset_sub2_decouple/B.recon_non",
+
+    # ]
+    # layout = [
+    #     [0, 2, 4, 6, 8],  
+    #     [1, 3, 5, 7, 9],  
+    # ]
 
     print("开始合并视频帧...")
     print(f"输入路径: {root_paths}")

@@ -415,6 +415,9 @@ def create_comparison_summary(merged_df, metric, method1_name="Method1", method2
 
 from analysis.json0 import config_data 
 def main():
+    if not len(config_data["experiments"])==2:
+        print("analysis/json0.py 中参数列表中实验的个数必须为2!!!!")
+        exit(0)
     # 设置参数解析
     parser = argparse.ArgumentParser(description='Compare two experiment results and visualize differences')
     # parser.add_argument('--excel1', type=str, required=True, help='Path to first Excel file')
@@ -431,8 +434,14 @@ def main():
     # name1="_015_01_noRigid1(b4000)-CATH"
     # name2="_015_02_noRigid1(b2000)-CATH"
 
-    name1="_016_01_noRigid1(b1000)[smooth]"+"-CATH"
-    name2="_016_01_noAllRigid1(b1000)[smooth]"+"-CATH"
+    name1=config_data["experiments"][0]["name"]#"_017_02_nr(b2000)"#"_017_05_rigid.non(doubleStage)"
+    # name1 = "_016_01_noRigid1(b1000)[smooth]"+"-CATH"
+    name2=config_data["experiments"][1]["name"]#"_017_07_orig(sub2)"
+    # name2 = "_016_01_noAllRigid1(b1000)[smooth]"+"-CATH"
+    # name1 = name1+"-CATH"
+    # name2 = name2+"-CATH"
+    print("name1",name1)
+    print("name2",name2)
     parser.add_argument('--excel1', 
                         default=name1+'_results.xlsx',
                         type=str, help='Path to first Excel file')
@@ -446,7 +455,8 @@ def main():
                         default=10,
                         type=int, help='Number of top cases to display for each category')
     parser.add_argument('--original_path', 
-                        default='./outputs/xca_dataset_sub1_copy/images',
+                        # default='./outputs/xca_dataset_sub1_copy/images',
+                        default='./outputs/xca_dataset_sub2_copy/images',
                         type=str, help='Path to original images')
     parser.add_argument('--gt_path', type=str, help='Path to ground truth masks')
     parser.add_argument('--pred_path1', type=str, help='Path to method1 prediction masks')
@@ -467,7 +477,7 @@ def main():
     config1={}
     config2={}
     for i in config_data["experiments"]:
-        print("i name",i["name"],i["name"]==name1,name1)
+        print("i name",i["name"],i["name"]==name1,i["name"],name1)
         if i["name"]==name1: 
             config1=i
         if i["name"]==name2: 
