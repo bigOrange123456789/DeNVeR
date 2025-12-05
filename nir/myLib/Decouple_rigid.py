@@ -14,7 +14,7 @@ from free_cos.main import mainFreeCOS
 from eval.eval import Evaluate
 
 from nir.model import Siren
-from nir.util import get_mgrid, jacobian
+from nir.util import get_mgrid, jacobian, hessian, hessian_vectorized
 from nir.util import Dataset,ToTensor
 
 from nir.myLib.Decouple import Decouple
@@ -23,8 +23,16 @@ from nir.myLib.mySave import check,save2img,save0
 from nir.myLib.Layer import Layer
 class Layer_rigid(nn.Module):
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
-                 deformationSize=3*0.004,hidden_features=128,
-                 useSmooth=False # 是否计算平滑损失函数
+                 deformationSize=3*0.004,
+                 hidden_features=128,
+                 hidden_layers1=4,
+                 hidden_layers2=4,
+                 hidden_features1=128,
+                 hidden_features2=128,
+                 useSmooth=False, # 是否计算平滑损失函数
+                 stillness=False, # 是否静止不动
+                 v=None,#原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
+                 interval=1.0,
                  ):
         super().__init__()
         self.useGlobal=useGlobal
@@ -33,15 +41,18 @@ class Layer_rigid(nn.Module):
         self.useDeformation=useDeformation
         self.deformationSize=deformationSize
         self.useSmooth=useSmooth
+        self.interval=interval
+        self.stillness=stillness
+        self.v=v #原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
         self.f_2D = Siren(in_features=2, out_features=1,
-                          hidden_features=hidden_features, hidden_layers=4,
+                          hidden_features=hidden_features1, hidden_layers=hidden_layers1,
                           outermost_linear=True)
         self.f_2D.cuda()
         self.parameters = [self.f_2D.parameters()]
         if self.useGlobal:
             self.g_global = Siren(in_features=1, out_features=4 if self.useMatrix else 2,
                                   # hidden_features=16, hidden_layers=2,
-                                  hidden_features=hidden_features, hidden_layers=4,
+                                  hidden_features=hidden_features2, hidden_layers=hidden_layers2,
                                   outermost_linear=True)
             self.parameters.append(self.g_global.parameters())
             self.g_global.cuda()
@@ -52,54 +63,160 @@ class Layer_rigid(nn.Module):
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())
     def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
-        t = xyt[:, [-1]]
-        h_global = self.g_global(t)
-        loss_smooth = torch.tensor(0.0)
-        if self.useSmooth:
-            loss_smooth = loss_smooth + jacobian(h_global, t).abs().mean()# if self.useSmooth else 0
-        ############################################################
-        # xy_ = xyt[:, :-1] + h_global #+ h_local
-        if self.useMatrix: #True
-            c =h_global
-            u = xyt[:, 0]
-            v = xyt[:, 1]
-            if c.shape[1]==6:
-                new_u = c[:,0] * u + c[:,1] * u + c[:,2]
-                new_v = c[:,3] * v + c[:,4] * v + c[:,5]
-            else:#4
-                # 提取参数 (忽略可能的第五个参数)
-                tx = c[:, 0]  # X轴位移
-                ty = c[:, 1]  # Y轴位移
-                rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
-                scale = torch.tensor(1)#c[:, 3]  # 放缩因子
-                # 计算旋转和放缩后的坐标
-                cos_theta = torch.cos(rotation)
-                sin_theta = torch.sin(rotation)
-                # 向量化计算所有点
-                u=scale*u
-                v=scale*v
-                new_u = (u * cos_theta - v * sin_theta) + tx
-                new_v = (u * sin_theta + v * cos_theta) + ty
+        if self.stillness: #静止不动
+            xy_ = xyt[:, :-1]
+            h_local = torch.zeros_like(xy_)   #torch.tensor(0.0)
+            h_global =torch.zeros_like(xy_)   #torch.tensor(0.0)
+            loss_smooth =torch.tensor(0.0)
+        else:
+            t = xyt[:, [-1]]
+            h_global = self.g_global(t)
+            loss_smooth = torch.tensor(0.0)
+            
+            '''
+                print("h_global:",type(h_global),h_global.shape)
+                print("t:",type(t),t.shape)
+                print("self.useSmooth:",self.useSmooth)
+                j0=jacobian(h_global, t)
+                print("j0:",type(j0),j0.shape)
+                h0=hessian_vectorized(h_global, t)
+                print("h0",type(h0),h0.shape)
+                exit(0)
+            
+                h_global: <class 'torch.Tensor'> torch.Size([32768, 4])
+                t: <class 'torch.Tensor'> torch.Size([32768, 1])
+                self.useSmooth: 2
+                j0: <class 'torch.Tensor'> torch.Size([32768, 4, 1])
+                h0 <class 'torch.Tensor'> torch.Size([32768, 4, 1, 1])
+            '''
+            if self.useSmooth:#>0
+                if self.useSmooth==1: #运动速度趋于0 #失败:无法迫使刚体正确运动
+                    loss_smooth = loss_smooth + jacobian(h_global, t).abs().mean()
+                elif self.useSmooth==2: #加速度趋于0
+                    loss_smooth = loss_smooth + hessian_vectorized(h_global, t).abs().mean()
+                elif self.useSmooth==3:#全局运动趋向于固定
+                    N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                    interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    speed = (data_behind-data0)/interval0
+                    loss_smooth = ( speed**2 ).mean() 
+                elif self.useSmooth==4: # 二阶导数
+                    N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                    interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    # data_front = self.g_global(t+interval0)#[:,:2] #前面
+                    data_front = self.g_global(t-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    loss_smooth = (acceleration**2).mean() 
+                elif self.useSmooth==5: # 加速度÷速度 #没有正确运动、反而出现了晃动问题
+                    N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                    interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    # data_front = self.g_global(t+interval0)#[:,:2] #前面
+                    data_front = self.g_global(t-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    speed = (data_behind-data0)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                    eps = 10**-10
+                    loss_smooth = ((#静止的时候就不能受力？哪有这样的道理
+                        acceleration/(torch.sigmoid(speed).clone().detach()+eps)
+                        )**2).mean()
+                    # loss_smooth = ((
+                    #     acceleration/(torch.sigmoid(speed+2).clone().detach()+eps)
+                    #     )**2).mean()
+                # elif self.useSmooth==6: # 加速度÷速度 #没有正确运动、反而出现了晃动问题
+                #     N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                #     interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                #     # torch.rand((), device=xyt.device)
+                #     data0 = self.g_global(t)# h_global#[:,:2] #只有前两列被用到了，后两列没有用到
+                #     data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                #     data_front = self.g_global(t-interval0)#[:,:2] #前面
+                #     acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                #     speed = (data_behind-data0)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                #     eps = 10**-10
+                #     loss_smooth = ((#静止的时候就不能受力？哪有这样的道理
+                #         acceleration/(torch.sigmoid(speed+2).clone().detach()+eps)
+                #         )**2).mean()
+                elif self.useSmooth==6: # 加速度÷速度 #没有正确运动、反而出现了晃动问题
+                    N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                    interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                    t_new = t + torch.rand((), device=xyt.device)*2/(N-1) #时间序列添加随机扰动
+                    data0 = self.g_global(t_new)# h_global#[:,:2] #只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t_new+interval0)#[:,:2] #后面
+                    data_front = self.g_global(t_new-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    speed = (data_behind-data0)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                    eps = 10**-10
+                    loss_smooth = ((#静止的时候就不能受力？哪有这样的道理
+                        acceleration/(torch.sigmoid(speed+2).clone().detach()+eps)
+                        )**2).mean()
+                # elif self.useSmooth==7: # 多尺度斜率恒定的约束
+                #     N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+                #     interval0 = torch.tensor(self.interval, device=xyt.device)*2/(N-1)
+                #     data0 = h_global
+                #     data_behind = self.g_global(t-interval0) #后面
+                #     speed0 = (data0-data_behind)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                #     num=3
+                #     # speedList=[]
+                #     loss_smooth = 0
+                #     for i0 in range(num):
+                #         i = i0+1
+                #         data_front = self.g_global(t+(i+1)*interval0)#[:,:2] #后面
+                #         speed1 = (data_front-data0)/interval0
+                #         loss_smooth = loss_smooth + ( speed1 - speed0 )**2
 
-                h_global = torch.cat([
-                    c[:, [0]],
-                    c[:, [1]]
-                ], dim=-1)
-            # 组合成新坐标张量
-            new_uv = torch.stack([new_u, new_v], dim=1)
-            xy_ = new_uv
-        else: #不使用变换矩阵
-            xy_ = xyt[:, :-1] + h_global
-        ############################################################
-        if not openLocalDeform:#stage==0:#纹理学习，不分析局部位移  #不使用局部位移
-            h_local = torch.tensor(0.0)# h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
-        else:#只分析局部位移，不学习整体运动和纹理
-            h_local = self.g_local(xyt)
-            if self.useSmooth:#局部形变也要平滑
-                loss_smooth = loss_smooth + jacobian(h_local, xyt).abs().mean()# if self.useSmooth else 0
-            h_local = 2 * torch.sigmoid(h_local) - 1
-            h_local = h_local * self.deformationSize
-            xy_ = xy_ + h_local
+                #     eps = 10**-10
+                #     loss_smooth = ((
+                #         acceleration/(torch.sigmoid(speed+2).clone().detach()+eps)
+                #         )**2).mean()
+
+            ############################################################
+            # xy_ = xyt[:, :-1] + h_global #+ h_local
+            if self.useMatrix: #True
+                c =h_global
+                u = xyt[:, 0]
+                v = xyt[:, 1]
+                if c.shape[1]==6: # 6个自由度的全局变换
+                    new_u = c[:,0] * u + c[:,1] * u + c[:,2]
+                    new_v = c[:,3] * v + c[:,4] * v + c[:,5]
+                else: # 4个自由度的全局变换 (后面可能添加5个自由度的模式)
+                    # 提取参数 (忽略可能的第五个参数)
+                    tx = c[:, 0]  # X轴位移 #范围大致是[-1,+1],不严格
+                    ty = c[:, 1]  # Y轴位移
+                    #实际上没有使用旋转自由度和缩放自由度
+                    rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度) 
+                    scale = torch.tensor(1)#c[:, 3]  # 放缩因子
+                    # 计算旋转和放缩后的坐标
+                    cos_theta = torch.cos(rotation)
+                    sin_theta = torch.sin(rotation)
+                    # 向量化计算所有点
+                    u=scale*u
+                    v=scale*v
+                    new_u = (u * cos_theta - v * sin_theta) + tx
+                    new_v = (u * sin_theta + v * cos_theta) + ty
+
+                    h_global = torch.cat([
+                        c[:, [0]],
+                        c[:, [1]]
+                    ], dim=-1)
+                # 组合成新坐标张量
+                new_uv = torch.stack([new_u, new_v], dim=1)
+                xy_ = new_uv
+            else: #不使用变换矩阵 #两个自由度的模式
+                xy_ = xyt[:, :-1] + h_global
+            ############################################################
+            if not openLocalDeform:#stage==0:#纹理学习，不分析局部位移  #不使用局部位移
+                h_local = torch.tensor(0.0)# h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
+            else:#只分析局部位移，不学习整体运动和纹理
+                h_local = self.g_local(xyt)
+                if False:
+                 if self.useSmooth:#局部形变也要平滑
+                    loss_smooth = loss_smooth + jacobian(h_local, xyt).abs().mean()# if self.useSmooth else 0
+                h_local = 2 * torch.sigmoid(h_local) - 1
+                h_local = h_local * self.deformationSize
+                xy_ = xy_ + h_local
         color = torch.sigmoid(self.f_2D(xy_))
         return color,{
             "xy_":xy_,
@@ -129,9 +246,14 @@ class Decouple_rigid(nn.Module):
         # return x
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
-    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,weight_smooth=1):
+    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,weight_smooth=1,stillness=False,stillnessFristLayer=True,
+                 NUM_soft=0,NUM_rigid=2,useMask=False,openReconLoss_rigid=False,lossType=1,
+                 maskPath=None,
+                 interval=1.0,#计算平滑损失时的偏导数计算中的步长
+                #  useMatrix=True,#整体运动最好不直接用矩阵，矩阵优化的分析较为复杂
+                 ):
         super().__init__()
-        v = VideoFitting(path,useMask=False,maskPath=None)
+        v = VideoFitting(path,useMask=useMask,maskPath=maskPath)
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
         model_input, ground_truth, mask = next(iter(videoloader))
         model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
@@ -150,27 +272,35 @@ class Decouple_rigid(nn.Module):
         self.useSmooth=useSmooth#一个布尔参数，用来决定本次测试是否使用基于雅可比矩阵的平滑损失函数
         self.openLocalDeform=openLocalDeform
         self.weight_smooth=weight_smooth
+        self.stillness=stillness#是否静止不动
+        self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
+        self.lossType=lossType
 
         #######################################################################
 
         # 一、软体
-        self.NUM_soft = 0#2 # 软体层的数据
+        self.NUM_soft = NUM_soft#0#2 # 软体层的数据
         self.f_soft_list = []
         for i in range(self.NUM_soft):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
             self.f_soft_list.append(Layer(useGlobal=False, hidden_features=512))
         # 二、刚体
-        self.NUM_figid = 2#20 # 刚体层的数据
+        self.NUM_rigid = NUM_rigid#2#20 # 刚体层的数据
         self.f_rigid_list=[]
-        for i in range(self.NUM_figid):
+        for i in range(self.NUM_rigid):
             # self.f_rigid_list.append(Layer(useDeformation=True,hidden_features=512,deformationSize=1.5))
             if False: self.f_rigid_list.append(Layer(useLocal=False, hidden_features=512))
             if False: self.f_rigid_list.append(Layer_rigid(useLocal=False, hidden_features=128,useMatrix=False))
             self.f_rigid_list.append(Layer_rigid(
                 useLocal=True, deformationSize=3*(2/(self.v.video.size()[2] - 1)),
-                hidden_features=128, useMatrix=True, #整体变换用矩阵、有局部形变，这个版本的刚体去除真高级
-                useSmooth=self.useSmooth
+                hidden_features=128, useMatrix=True,
+                useSmooth=self.useSmooth,
+                stillness=stillness,
+                v=self.v,
+                interval=interval
             ))
+        if self.NUM_rigid>0:
+            self.f_rigid_list[0].stillness=stillnessFristLayer
             # useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False
         # 三、流体
         # self.f2 = Siren(in_features=3, out_features=1, hidden_features=hidden_features,
@@ -179,7 +309,7 @@ class Decouple_rigid(nn.Module):
         self.parameters=[
             # self.f2.parameters()
         ] #+ self.f_soft.parameters #+ self.f_rigid.parameters
-        for i in range(self.NUM_figid):
+        for i in range(self.NUM_rigid):
             self.parameters = self.parameters + self.f_rigid_list[i].parameters
         for i in range(self.NUM_soft):
             self.parameters = self.parameters + self.f_soft_list[i].parameters
@@ -198,12 +328,12 @@ class Decouple_rigid(nn.Module):
     def getMainRigidIndex(self):#获取全局形变最少的刚体层
         i=0
         s=10**10
-        for i0 in range(self.NUM_figid):
+        for i0 in range(self.NUM_rigid):
             s0 = self.getMoveDis(i0)
             if s0<s:
                 s=s0
                 i=i0
-        return i
+        return i 
 
     def forward(self,xyt,stage): # soft, rigid, fluid
         # 1.刚体
@@ -213,7 +343,7 @@ class Decouple_rigid(nn.Module):
         h_global_list=[]
         h_global = torch.tensor(0.0)
         loss_smooth = torch.tensor(0.0)
-        for i in range(self.NUM_figid):
+        for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
             o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,stage)#因为这的stage为0，所以并没有真正使用软体形变
             o_rigid_all = o_rigid_all*o_rigid0
@@ -247,21 +377,36 @@ class Decouple_rigid(nn.Module):
             "loss_smooth":loss_smooth,
         }#输出三样东西：重构结果、分层结果、相关参数
 
-    # def loss(self, xyt, step, start, end,stage=0):
-    #     o, layers, p = self.forward(xyt,stage)#纹理学习
-    def loss(self, xyt, step, start, end,openLocalDeform):
+    def loss(self, xyt, step, start, end,openLocalDeform,lossParam):
+        if self.lossType==1:
+            return self.loss1(xyt, step, start, end,openLocalDeform)
+        elif self.lossType==2:
+            return self.loss2(xyt, step, start, end,openLocalDeform,lossParam)
+
+    def loss1(self, xyt, step, start, end,openLocalDeform):
         o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
         #局部
 
+        # 一、整体重构损失 loss=M*(S*R-O)
         eps=10**-10
         loss_recon = torch.log(
             (self.ground_truth[start:end].abs()+eps)/(o.abs()+eps)
         ).abs()
-        if False: #self.v.useMask:
+        # print("useMask",self.v.useMask)
+        # exit(0)
+        if self.v.useMask:#if False: #self.v.useMask:
             loss_recon = loss_recon*self.mask[start:end]
             loss_recon = loss_recon.sum()/(self.mask[start:end].sum()+1e-8)
         else:
             loss_recon = loss_recon.mean()
+        
+        # 二、刚体重构损失 loss=(R-O)
+        loss_recon_rigid=0
+        if self.openReconLoss_rigid:
+            loss_recon_rigid = torch.log(
+                (self.ground_truth[start:end].abs()+eps)/(p["o_rigid_all"].abs()+eps)
+            ).abs()
+            loss_recon_rigid = loss_recon_rigid.mean()
         # loss_recon = ((o - ground_truth[start:end]) ** 2).mean() * (10**5)
         if False:# 不对血管区域进行重建监督
             loss_recon = (((1.0-o_fluid)*(o - ground_truth[start:end])) ** 2).mean()*10.
@@ -270,10 +415,10 @@ class Decouple_rigid(nn.Module):
         # 一、刚体
         loss_rigid = 0 #刚体的局部位移尽量小
         if False:
-            for i in range(self.NUM_figid):
+            for i in range(self.NUM_rigid):
                 loss_rigid = loss_rigid + p["h_local_list"][i].abs().mean()  # 刚体的局部位移尽量少
             loss_rigid = loss_rigid + (p["o_rigid_all"]-0).abs().mean()#刚体层级尽量暗一些
-        loss_rigid = 0 # loss_rigid * weight_init[0]/self.NUM_figid #(10**2)
+        loss_rigid = 0 
         # 二、软体
         loss_soft = 0 # (1. - p["o_soft_all"]).abs().mean() * weight_init[1] #(0.1) # 软体的暗度
         # 三、流体 # 减少流体的信息量
@@ -282,7 +427,7 @@ class Decouple_rigid(nn.Module):
         
         loss_smooth=0 # 刚体整体运动的平滑损失
         if self.useSmooth:
-            # for i in range(self.NUM_figid):
+            # for i in range(self.NUM_rigid):
             #     h = p["h_global_list"][i]#全局位移(包括旋转、放缩)参数
             #     t = xyt[:, [-1]]#全局位移只受到时间的影响
             #     loss_smooth = loss_smooth+jacobian(h, t).abs().mean()#全局位移的变化尽量平缓
@@ -291,7 +436,7 @@ class Decouple_rigid(nn.Module):
 
 
 
-        loss = loss_recon + loss_soft + loss_fluid + loss_rigid + loss_smooth*self.weight_smooth
+        loss = loss_recon + loss_recon_rigid + loss_soft + loss_fluid + loss_rigid + loss_smooth*self.weight_smooth
 
         self.layers = layers
         # if not loss_smooth==0:#不对劲，很不对劲，这里的平滑损失貌似一直为0 #如果梯度一直为0，说明刚体没有没有任何运动
@@ -303,11 +448,11 @@ class Decouple_rigid(nn.Module):
             # print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_soft=%0.8f, loss_fluid=%0.8f, loss_rigid=%0.4f" % (
             #     step, loss, loss_recon, loss_soft , loss_fluid , loss_rigid))
             if self.useSmooth:
-                print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_rigid=%0.4f, loss_smooth=%0.4f" % (
-                    step, loss, loss_recon, loss_rigid, loss_smooth))
+                print("Step [%04d]: loss=%0.8f, recon=%0.8f, recon2=%0.8f, loss_rigid=%0.4f, loss_smooth=%0.4f" % (
+                    step, loss, loss_recon, loss_recon_rigid, loss_rigid, loss_smooth))
             else:
-                print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_rigid=%0.4f" % (
-                    step, loss, loss_recon, loss_rigid))
+                print("Step [%04d]: loss=%0.8f, recon=%0.8f, recon2=%0.8f, loss_rigid=%0.4f" % (
+                    step, loss, loss_recon, loss_recon_rigid, loss_rigid))
             # print("i_r0:", i_r0.item(),"; i_s0:", i_s0.item(),"; i_f0:", i_f0.item(),"\ntemp",
             #       [temp[0].item(),temp[1].item(),temp[2].item()])
             # print("i_r",i_r.item(), "\twr", wr.item()) # i_f为0
@@ -317,7 +462,99 @@ class Decouple_rigid(nn.Module):
             # exit(0)
         return loss
 
-    def train(self,total_steps):
+    def loss2_old(self, xyt, step, start, end,openLocalDeform):
+        o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
+        #局部
+
+        eps=10**-10
+        R=p["o_rigid_all"]
+        S=p["o_soft_all"]
+        R_clone = R.detach().clone() # 避免梯度回传
+        S_clone = S.detach().clone()
+        # 一、软体有遮挡重构损失 loss=M*(S*R-O)
+        loss_recon_soft = torch.log(
+            (self.ground_truth[start:end].abs()+eps)/((S*R_clone).abs()+eps)
+        ).abs()
+        loss_recon_soft = loss_recon_soft*self.mask[start:end]
+        loss_recon_soft = loss_recon_soft.sum()/(self.mask[start:end].sum()+1e-8)
+
+        
+        # 二、刚体无遮挡重构损失 loss=(R-O)
+        loss_recon_rigid = torch.log(
+                (self.ground_truth[start:end].abs()+eps)/((S_clone*R).abs()+eps)
+            ).abs()
+        loss_recon_rigid = loss_recon_rigid.mean()
+        
+        # 三、平滑损失
+        loss_smooth=0 # 刚体整体运动的平滑损失
+        if self.useSmooth:
+            loss_smooth = p["loss_smooth"] # 权重为 1
+
+        loss = loss_recon_soft + loss_recon_rigid + loss_smooth*self.weight_smooth
+
+        self.layers = layers
+        if not step % 100:
+            if self.useSmooth:
+                print("Step [%04d]: loss=%0.8f, recon_soft=%0.8f, recon_rigid=%0.8f, loss_smooth=%0.4f" % (
+                    step, loss, loss_recon_soft, loss_recon_rigid, loss_smooth))
+            else:
+                print("Step [%04d]: loss=%0.8f, recon_soft=%0.8f, recon_rigid=%0.8f" % (
+                    step, loss, loss_recon_soft, loss_recon_rigid))
+
+        return loss
+
+    def loss2(self, xyt, step, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}):
+        o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
+
+        eps=10**-10
+        R=p["o_rigid_all"]
+        S=p["o_soft_all"]
+        R_clone = R.detach().clone() # 避免梯度回传
+        S_clone = S.detach().clone()
+        def getData(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
+            if s0=="S,R" or s0=="R,S":  return S*R  #刚体软件都优化
+            elif s0=="S":  return S*R_clone #只优化软体层
+            elif s0=="R":  return S_clone*R #只优化刚体层
+            # elif s0=="SC*RC":  return S_clone*R_clone
+            else: print("Decouple_rigid中loss函数参数错误")
+        # 一、软体有遮挡重构损失 loss=M*(S*R-O)
+        loss_recon_mask = torch.tensor(0.0)
+        if not lossParam["rm"] is None:
+            rm_in=getData(lossParam["rm"])
+            loss_recon_mask = torch.log(
+                (self.ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
+            ).abs()
+            loss_recon_mask = loss_recon_mask*self.mask[start:end]
+            loss_recon_mask = loss_recon_mask.sum()/(self.mask[start:end].sum()+1e-8)
+        
+        # 二、刚体无遮挡重构损失 loss=(R-O)
+        loss_recon_all = torch.tensor(0.0)
+        if not lossParam["ra"] is None:
+            ra_in=getData(lossParam["ra"])
+            loss_recon_all = torch.log(
+                    (self.ground_truth[start:end].abs()+eps)/((ra_in).abs()+eps)
+                ).abs()
+            loss_recon_all = loss_recon_all.mean()
+        
+        # 三、平滑损失
+        loss_smooth=0 # 刚体整体运动的平滑损失
+        if self.useSmooth:
+            loss_smooth = p["loss_smooth"] # 权重为 1
+
+        loss = loss_recon_mask + loss_recon_all + loss_smooth*self.weight_smooth
+
+        self.layers = layers
+        if not step % 100:
+            if self.useSmooth:
+                print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, loss_smooth=%0.4f" % (
+                    step, loss, loss_recon_mask, loss_recon_all, loss_smooth))
+            else:
+                print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
+                    step, loss, loss_recon_mask, loss_recon_all))
+
+        return loss
+
+    def train(self,total_steps,paramLoss):
         model_input = self.model_input
 
         optim = torch.optim.Adam(lr=1e-4, params = itertools.chain.from_iterable(self.parameters))
@@ -329,13 +566,13 @@ class Decouple_rigid(nn.Module):
             end = min(start + batch_size, len(model_input))
 
             xyt = model_input[start:end].requires_grad_()
-            loss = self.loss(xyt, step,start,end,self.openLocalDeform)#离谱，stage竟然为0
+            loss = self.loss(xyt, step,start,end,self.openLocalDeform,paramLoss)#离谱，stage竟然为0
 
             optim.zero_grad()
             loss.backward()
             optim.step()
 
-        # for i in range(self.NUM_figid): # 遍历全部的刚体层
+        # for i in range(self.NUM_rigid): # 遍历全部的刚体层
         #     f_2D = self.f_rigid_list[i].f_2D # 一个刚体层的纹理
         #     for param in f_2D.parameters():
         #         param.requires_grad = False  # 关闭梯度计算
@@ -416,5 +653,4 @@ class Decouple_rigid(nn.Module):
                 # "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
             }
             return video_pre, layers, p
-
 

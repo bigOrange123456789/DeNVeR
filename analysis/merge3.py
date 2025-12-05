@@ -5,30 +5,109 @@ from pathlib import Path
 # import argparse
 # import sys
 
+
+def create_placeholder_barChart(width, height, method_name="unknown",
+                             dice=0.0, pr=0.0, recall=0.0):
+    """
+    返回一张 BGR 图像：白底，上方居中显示方法名，下方画三指标柱状图
+    指标范围 0~1
+    """
+    img = np.full((height, width, 3), 255, dtype=np.uint8)
+
+    # 1. 顶部写方法名
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    if False:
+        txt = f"method: {method_name}"
+        fs, th = 0.6, 2
+        (tw, thg), _ = cv2.getTextSize(txt, font, fs, th)
+        cv2.putText(img, txt, ((width - tw) // 2, 30),
+                    font, fs, (0, 0, 0), th, cv2.LINE_AA)
+
+    # 2. 柱状图区域
+    margin = 40          # 左右留空
+    bar_w = 40           # 单柱像素宽
+    gap = 30             # 柱间空隙
+    bottom_y = height - 40
+    max_h = height - 100  # 图最大高度
+
+    xs = []              # 每柱中心 x
+    n = 3
+    total_w = n * bar_w + (n - 1) * gap
+    start_x = (width - total_w) // 2
+    for i in range(n):
+        xs.append(start_x + i * (bar_w + gap) + bar_w // 2)
+
+    vals = [dice, pr, recall]
+    # print("vals",vals)
+    colors = [(39, 174, 96),   # Dice 绿
+              (33, 150, 243),  # PR   蓝
+              (255, 152, 0)]   # Rec  橙
+    labels = ["Dice", "Precision", "Recall"]
+
+    # 画柱
+    for x, v, c in zip(xs, vals, colors):
+        h = int(v * max_h)
+        top = bottom_y - h
+        cv2.rectangle(img,
+                      (x - bar_w // 2, top),
+                      (x + bar_w // 2, bottom_y),
+                      c, -1, cv2.LINE_AA)
+        # 顶端写数值
+        # txt_val = f"{v:.2f}"
+        # (tw2, _), _ = cv2.getTextSize(txt_val, font, 0.45, 1)
+        # cv2.putText(img, txt_val, (x - tw2 // 2, top - 5),
+        #             font, 0.45, (0, 0, 0), 1, cv2.LINE_AA)
+        font_scale = 0.7 #0.45
+        txt_val = f"{v:.2f}"
+        (tw2, th2), _ = cv2.getTextSize(txt_val, font, font_scale, 1)
+        cv2.putText(img, txt_val,
+                    (x - tw2 // 2, top - 5),
+                    font, font_scale, (0, 0, 0), 1, cv2.LINE_AA)
+
+    # 画坐标轴
+    if False:cv2.line(img, (margin, bottom_y), (width - margin, bottom_y), (0, 0, 0), 2)
+    # y 轴刻度
+    if False:
+     for y_tick in [0.0, 0.5, 1.0]:
+        y_pos = bottom_y - int(y_tick * max_h)
+        cv2.line(img, (margin - 5, y_pos), (margin, y_pos), (0, 0, 0), 1)
+        txt = f"{y_tick:.1f}"
+        (tw3, _), _ = cv2.getTextSize(txt, font, 0.4, 1)
+        cv2.putText(img, txt, (margin - tw3 - 8, y_pos + 4),
+                    font, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+
+    # 底部标签
+    for x, lab in zip(xs, labels):
+        (tw4, _), _ = cv2.getTextSize(lab, font, 0.5, 1)
+        cv2.putText(img, lab, (x - tw4 // 2, bottom_y + 20),
+                    font, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+
+    return img
 def create_placeholder_image(width, height, method_name="unknown"):
     """创建占位图片显示'no data'文字"""
     # 创建黑色背景
-    img = np.zeros((height, width, 3), dtype=np.uint8)
+    img = np.zeros((height, width, 3), dtype=np.uint8)+255
     
-    # 添加文字
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    text = f"no data: {method_name}"
-    
-    # 计算文字大小和位置
-    font_scale = 0.6
-    thickness = 2
-    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-    
-    # 确保文字不会超出图片边界
-    max_width = width - 20
-    if text_size[0] > max_width:
-        font_scale = font_scale * max_width / text_size[0]
+    if True:
+        # 添加文字
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text = f"no data: {method_name}"
+        
+        # 计算文字大小和位置
+        font_scale = 0.6
+        thickness = 2
         text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-    
-    text_x = (width - text_size[0]) // 2
-    text_y = (height + text_size[1]) // 2
-    
-    cv2.putText(img, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness)
+        
+        # 确保文字不会超出图片边界
+        max_width = width - 20
+        if text_size[0] > max_width:
+            font_scale = font_scale * max_width / text_size[0]
+            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+        
+        text_x = (width - text_size[0]) // 2
+        text_y = (height + text_size[1]) // 2
+        
+        cv2.putText(img, text, (text_x, text_y), font, font_scale, (0, 0, 0), thickness)
     
     return img
 
@@ -156,13 +235,59 @@ def add_frame_info_to_image(image, frame_id, video_id):
     
     # return img_with_text
 
+tempSave={}
+def getMetric(excel_path,VideoId,frameId):
+    import pandas as pd
+    # ========== 1. 一次性把文件读成 DataFrame ==========
+    # excel_path = 'your_file.xlsx'          # 换成自己的路径
+    if excel_path in tempSave:
+        df = tempSave[excel_path]
+    else:
+        df = pd.read_excel(excel_path)         # 默认会把第一行当表头
+        tempSave[excel_path] = df
+    row = df[(df["frameId"] == frameId+".png") & (df["videoId"] == VideoId)]
+    if row.empty:
+        return None, None, None
+    else:
+        data = row.iloc[0][["dice", "precision", "recall"]].tolist()
+        # print("data",data)
+        # exit(0)
+        return data[0], data[1], data[2]
+    # ========== 2. 建立“联合主键”索引，保证查找 O(1) ==========
+    df = df.set_index(['videoId', 'frameId'], verify_integrity=True)
+    # verify_integrity=True 会自动检查 (VideoId,frameId) 是否唯一
+
+    # ========== 3. 封装一个查询函数 ==========
+    def query(VideoId, frameId):
+        row = df.loc[(VideoId, frameId)]   # 精确匹配
+        return float(row['dice']), float(row['precision']), float(row['recall'])
+
+    # ========== 4. 使用示例 ==========
+    # try:
+    #     dice, pr, sn = query(VideoId='A001', frameId=123)
+    #     print(f'dice={dice}, pr={pr}, sn={sn}')
+    # except KeyError:
+    #     print('(VideoId, frameId) 组合不存在')
+    return query(VideoId=VideoId, frameId=frameId)
+
 def load_and_process_image(method_info, video_id, frame_id, base_width, base_height):
     """
     根据方法信息加载并处理图片
     """
     method_type = method_info['type']
-    method_name = method_info['name']
+    if 'name' in method_info:
+        method_name = method_info['name']
+    else:
+        method_name="unknown"
     paths = method_info['paths']
+
+    # print("method_type",method_type)
+    if method_type == "metric" :
+        # print("video_id, frame_id",video_id, frame_id)
+        dice, pr , sn =getMetric(paths[0],video_id,frame_id)
+        # print("dice, pr , sn",dice, pr , sn)
+        # exit(0)
+        return None, {"dice":dice, "precision":pr, "recall":sn}#"dice:"+str(dice)+"pr:"+str(pr)+"sn:"+str(sn)
     
     # 加载原始图片
     images = []
@@ -202,6 +327,10 @@ def load_and_process_image(method_info, video_id, frame_id, base_width, base_hei
     elif method_type == 'mul':
         if len(images) == 2:
             result = images[0] * images[1]
+    
+    elif method_type == 'div':
+        if len(images) == 2:
+            result = images[0] / ( images[1] + 10**-10 )
 
     elif method_type == 'm*0.5':
         if len(images) == 1:
@@ -216,7 +345,7 @@ def merge_video_frames_with_layout(root_paths_config, output_path, layout):
     
     # 解析方法配置
     methods = parse_root_paths(root_paths_config)
-    print(methods)
+    # print(methods)
     
     if not methods:
         print("错误：未找到有效的方法配置")
@@ -264,18 +393,32 @@ def merge_video_frames_with_layout(root_paths_config, output_path, layout):
                 for method_index in row_indices:
                     if method_index < len(methods):
                         method_info = methods[method_index]
-                        method_name = method_info['name']
+                        # method_name = method_info['name']
                         
                         # 加载并处理图片
                         img, processed_name = load_and_process_image(
                             method_info, video_id, frame_id, base_width, base_height
                         )
                         
+                        # print("processed_name",
+                        #       processed_name,type(processed_name),
+                        #       isinstance(processed_name,str))
                         if img is not None:
                             row_images.append(img)
-                        else:
+                        elif isinstance(processed_name,str): # or processed_name["dice"]:
                             # 图片不存在或处理失败，创建占位图片
                             placeholder = create_placeholder_image(base_width, base_height, processed_name)
+                            row_images.append(placeholder)
+                        else:
+                            # placeholder = create_placeholder_image(base_width, base_height, processed_name)
+                            # print(processed_name["dice"],processed_name["dice"] is None)
+                            if processed_name["dice"] is None:
+                                placeholder = create_placeholder_image(base_width, base_height, "unkonwn")
+                            else:
+                                placeholder = create_placeholder_barChart(base_width, base_height, method_name="unknown",
+                                dice=processed_name["dice"], 
+                                pr=processed_name["precision"], 
+                                recall=processed_name["recall"])#"dice":dice, "precision":pr, "recall"
                             row_images.append(placeholder)
                     else:
                         # 索引超出范围，创建空白占位
@@ -302,84 +445,198 @@ def merge_video_frames_with_layout(root_paths_config, output_path, layout):
         
         print(f"视频 {video_id} 处理完成")
 
+
+
+        
+
 # 示例使用方式
 def main():
 
 
     root_paths_config = [
 
-        "outputs/xca_dataset_sub2_copy/images",#原视频
-        "outputs/xca_dataset_sub2_copy/images",#原视频
-        # "outputs/xca_dataset_sub1_copy/ground_truth",#真值
-        "outputs/xca_dataset_sub2_result/_017_07_orig(sub2)",   
-        
-        "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",        # 主刚体层
-        # {
-        #     "type": "div", 
-        #     "name": "method3-method4", 
-        #     "paths": [
-        #         "outputs/xca_dataset_sub2_copy/images",
-        #         "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main",
-        #     ]
-        # },
-        "outputs/xca_dataset_sub2_decouple/A-02-e2000.rigid.main_non1",  
-        "outputs/xca_dataset_sub2_result/_017_02_nr(b2000)",   
-
-        
-
-        # 有平滑、全部刚体层
-        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",#全刚体层
-        # {
-        #     "type": "div", 
-        #     "name": "method3-method4", 
-        #     "paths": [
-        #         "outputs/xca_dataset_sub2_copy/images",
-        #         "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid",
-        #     ]
-        # },
-        "outputs/xca_dataset_sub1_decouple/A-02-smooth.rigid.non1",#去全刚层
-        "outputs/xca_dataset_sub2_result/_017_02_nr(b2000)",   
-        
-        "outputs/xca_dataset_sub2_decouple/Brigid",        # 两阶段刚体层（两阶段的刚体看起来比主刚体要好）
-        # {
-        #     "type": "div", 
-        #     "name": "method3-method4", 
-        #     "paths": [
-        #         "outputs/xca_dataset_sub2_copy/images",
-        #         "outputs/xca_dataset_sub1_decouple/Brigid",
-        #     ]
-        # },
-        "outputs/xca_dataset_sub2_decouple/B.rigid_non", 
-        "outputs/xca_dataset_sub2_result/_017_05_rigid.non(doubleStage)",   
-        
-        # "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
-        # "outputs/xca_dataset_sub2_decouple/B.soft_non",
-
-        # "outputs/xca_dataset_sub2_decouple/B.soft",        # 两阶段软体层
+        # [0]
+        "outputs/xca_dataset_sub3_copy/images",#原视频
+        "outputs/xca_dataset_sub3_copy/ground_truth",#真值
+        # "outputs/xca_dataset_sub3_copy/images",#原视频
+        "outputs/xca_dataset_sub2_result/_017_07_orig(sub2)",    
         {
-            "type": "mul", 
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_017_07_orig(sub2)"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },   
+             
+
+        # [1]
+        {
+            "type": "div", 
             "name": "method3-method4", 
             "paths": [
-                'outputs/xca_dataset_sub2_decouple/B.soft',
-                'outputs/xca_dataset_sub2_decouple/Brigid',
+                "outputs/xca_dataset_sub3_copy/images",
+                "outputs/xca_dataset_sub3_inputs/_018_01",
             ]
         },
-        "outputs/xca_dataset_sub2_decouple/B.recon_non",
+        "outputs/xca_dataset_sub3_inputs/_018_01",
+        "outputs/xca_dataset_sub3_result/_018_01",   
+        {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_018_01"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },  
+
+        # [2]
         # {
-        #     "type": "m*0.5", 
+        #     "type": "div", 
         #     "name": "method3-method4", 
         #     "paths": [
-        #         'outputs/xca_dataset_sub2_decouple/B.recon_non',
+        #         "outputs/xca_dataset_sub3_copy/images",
+        #         "outputs/xca_dataset_sub3_inputs/_018_02_NumR1",
         #     ]
         # },
-        "outputs/xca_dataset_sub2_result/_017_06_recon.non(doubleStage)",   
+        "outputs/xca_dataset_sub3_decouple/A-stillness.rigid.main",
+        "outputs/xca_dataset_sub3_inputs/_018_02_NumR1",
+        "outputs/xca_dataset_sub3_result/_018_02_NumR1",  
+        {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_018_02_NumR1"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
+
+
+        # [3]
+        "outputs/xca_dataset_sub3_decouple/A-still0-move1.rigid.main", #解耦噪声
+        "outputs/xca_dataset_sub3_inputs/_018_03_stillFrist",   #去噪输入
+        "outputs/xca_dataset_sub3_result/_018_03_stillFrist",   #分割结果
+        {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_018_03_stillFrist"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
 
     ]
+    for i in [
+        ["A-e2e.rigid.main","_018_04_end2end"], #4
+        ["A-e2e.recon","_018_05_end2endRecon"], #5
+        ["Am-e2e.rigid.main","_018_06_end2end.m"], #6
+        ["Am-e2e.recon","_018_07_end2endRecon.m"], #7
+        ["Am-e2e.recon","_018_08_end2endRecon1.m"],#8
+        ["Am-rlr.rigid.main","_018_09_reconLossRigid"], #9
+        ["Am-rlr.rigid.main","_018_10_reconLossRigid"],#10
+        ["Am-rlr.recon","_018_11_reconLossRigid_rs"],#11
+        ["Am-rlr.recon","_018_12_reconLossRigid_rs2"],#12
+        ["Am-loss2.rigid.main","_018_13_loss2"],#13
+        ["Am-loss2.recon","_018_14_loss2_reon1"],#14
+        ["Am-loss2-smooth.rigid.main","_018_15_loss2_smooth"],#15
+        ["Am-smooth-9.rigid.main","_018_24_smooth"],#24
+    ]:
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_decouple/"+i[0]
+        )
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_inputs/"+i[1]
+        )
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_result/"+i[1] 
+        )
+        root_paths_config.append(
+            {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+i[1]
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
+        )
+
+    # layout = [
+    #     [1, 3, 6,  9, 12, 15, 18, 21],  
+    #     [0, 4, 7, 10, 13, 16, 19, 22],  
+    #     [2, 5, 8, 11, 14, 17, 20, 23],  
+    # ]
+    # layout = [
+    #     [12, 15, 18, 21],  
+    #     [13, 16, 19, 22],  
+    #     [14, 17, 20, 23],  
+    # ]
+    # layout = [
+    #     [16,20,24,28],  
+    #     [17,21,25,29],  
+    #     [18,22,26,30], 
+    #     [19,23,27,31],  
+    # ]
+    # layout = [
+    #     [1,4, 8,12],  
+    #     [0,5, 9,13],  
+    #     [2,6,10,14],  
+    #     [3,7,11,15],  
+    # ]
+    # layout = [
+    #     [4*9+0,4*10+0,4*11+0,4*12+0],  
+    #     [4*9+1,4*10+1,4*11+1,4*12+1],  
+    #     [4*9+2,4*10+2,4*11+2,4*12+2],  
+    #     [4*9+3,4*10+3,4*11+3,4*12+3],  
+    # ]
     layout = [
-        [0, 3, 6, 9, 12],  
-        [1, 4, 7, 10, 13],  
-        [2, 5, 8, 11, 14],  
+        [4*13+0,4*14+0],  
+        [4*13+1,4*14+1],  
+        [4*13+2,4*14+2],  
+        [4*13+3,4*14+3],  
     ]
+    layout = [
+        [4*0+0,4*4+0,4*13+0,4*15+0],  
+        [4*0+1,4*4+1,4*13+1,4*15+1],  
+        [4*0+2,4*4+2,4*13+2,4*15+2],  
+        [4*0+3,4*4+3,4*13+3,4*15+3],  
+    ]
+
+    # layout=[]
+    # for i0 in range(4):
+    #     row=[]
+    #     for j0 in range(15):
+    #         row.append(
+    #             j0*4+i0
+    #         )
+    #     layout.append(row)
+    
+    # layout=[]
+    # for i0 in range(1):
+    #     row=[]
+    #     for j0 in range(15):
+    #     #  if j0<5:
+    #     #  if 5<j0 and j0<10:
+    #     #  if j0>10:
+    #         row.append(
+    #             j0*4+i0
+    #         )
+    #     layout.append(row)
+    
+    layout = [
+        [0,1,2,3,4,15],
+        [5,6,7,8,9,16],
+        [10,11,12,13,14,16]
+    ]
+    layout = [
+        [0,10,6,16]
+    ]
+    for i in range(len(layout)):
+        for j in range(len(layout[i])):
+            # print(i,j,"layout[i,j]:",layout[i][j])
+            layout[i][j] = layout[i][j]*4 #解耦噪声
+
+
+    print(len(root_paths_config))
 
     
     output_path = "outputs/merge"

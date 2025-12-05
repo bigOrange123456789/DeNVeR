@@ -108,6 +108,15 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     useSmooth=False
     openLocalDeform=False
     weight_smooth=1
+    stillness=False
+    NUM_rigid = 2 #刚体层数量
+    NUM_soft = 0
+    stillnessFristLayer =stillness
+    useMask = False
+    openReconLoss_rigid = False
+    lossParam = None
+    interval = 1.0
+    # useMatrix = True
     if not config is None:
         if "epoch" in config:
             myEpochNum = config ["epoch"]
@@ -119,20 +128,61 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             openLocalDeform=config["openLocalDeform"]
         if "weight_smooth" in config:
             weight_smooth=config["weight_smooth"]
+        if "stillness" in config:
+            stillness = config["stillness"]
+        if "NUM_rigid" in config:
+            NUM_rigid = config["NUM_rigid"]
+        if "stillnessFristLayer" in config:
+            stillnessFristLayer=config["stillnessFristLayer"]
+        else:
+            stillnessFristLayer=stillness
+        if "NUM_soft" in config:
+            NUM_soft = config["NUM_soft"]
+        if "useMask" in config:
+            useMask = config["useMask"]
+        if "openReconLoss_rigid" in config:
+            openReconLoss_rigid = config["openReconLoss_rigid"]
+        if "lossType" in config:
+            lossType = config["lossType"]
+        if "lossParam" in config:
+            lossParam = config["lossParam"]
+        # if "useMatrix" in config:
+        #     useMatrix = config["useMatrix"]
+        if "interval" in config:
+            interval = config["interval"]
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
     # exit(0)
 
 
-    if False:
-        mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
-        check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
+    # if False:
+    # if useMask and not os.path.exists(os.path.join(outpath, "mask_nir0")):
+    #     mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
+    #     # check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
+    #分割原始数据中的血管
+    maskPath=os.path.join(outpath, tag+".orig_mask")
+    if useMask and not os.path.exists(maskPath):
+        mainFreeCOS_sim(paramPath,pathIn,maskPath)
 
     # 刚体解耦
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
-        myMain=Decouple_rigid(pathIn,hidden_features=256,useSmooth=useSmooth,openLocalDeform=openLocalDeform,weight_smooth=weight_smooth)
-        myMain.train(myEpochNum) 
+        myMain=Decouple_rigid(pathIn,hidden_features=256,
+                              useSmooth=useSmooth,
+                              openLocalDeform=openLocalDeform,
+                              weight_smooth=weight_smooth,
+                              stillness=stillness,
+                              stillnessFristLayer=stillnessFristLayer,
+                              NUM_rigid=NUM_rigid,
+                              NUM_soft=NUM_soft,
+                              useMask=useMask,
+                              openReconLoss_rigid=openReconLoss_rigid,
+                              maskPath=maskPath,
+                              lossType=lossType,
+                              # useMatrix=useMatrix,
+                              interval=interval,
+                              )
+        myMain.train(myEpochNum,lossParam) 
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
@@ -147,7 +197,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         orig = myMain.v.video.clone()
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
-        if False: #这里是输入的视频不是用于分割的视频
+        # if True: #这里是输入的视频不是用于分割的视频
+        if not os.path.exists(os.path.join(outpath, 'orig')):#如果原始数据还没有复制过来
             save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
         orig = myMain.v.video.clone()
@@ -162,7 +213,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             save1(
                 orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                 tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
-        if False:
+        if False:#输出全部的刚体层
             for i in range(len(layers["r"])):
                 save1(layers["r"][i], tag+".rigid" + str(i))
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
@@ -174,18 +225,23 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid_non2"), os.path.join(outpath, tag+".mask_nr2"),needConnect=False)
 
         # main
-        rigidMain=layers["r"][myMain.getMainRigidIndex()]
-        save1(rigidMain, tag+".rigid.main")
+        if False:
+            rigidMain=layers["r"][myMain.getMainRigidIndex()]
+            save1(rigidMain, tag+".rigid.main")
 
-        # main_non1
-        main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
-        save1(main_non1, tag+".rigid.main_non1")#有黑点、黑点解决了(是超过数据上限造成的)
+            # main_non1
+            main_non1 = orig.cuda() / (rigidMain.abs() + 10 ** -10)
+            save1(main_non1, tag+".rigid.main_non1")#有黑点、黑点解决了(是超过数据上限造成的)
 
         # main_non2 (推理分割图，并评估指标，存储分割图)
+        if False:save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
         if False:
-            save1(0.5 * orig.cuda() / (rigidMain.abs() + 10 ** -10), tag+".rigid.main_non2")
             mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
             check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
+        
+        save1(video_pre, tag+".recon")
+        save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
+        if False:save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
 
 
 

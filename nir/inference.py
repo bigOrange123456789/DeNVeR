@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from pathlib import Path     
 import os   
+
 class PostProcessing:
     def __init__(self, inpath, outpath, progress_bar):
         self.inpath =inpath
@@ -138,6 +139,12 @@ class Main:
     
     def _get_input_image(self, config, patient_id, video_id, frame_id):
         """根据配置获取输入图像"""
+        def s(image):
+            from torchvision.utils import save_image
+            path_save = os.path.join(self.config.root_path, "inputs", config['name'], video_id)
+            os.makedirs(path_save, exist_ok=True)
+            save_image(image, os.path.join(path_save,frame_id))
+
         if config.get("precomputed", True):
             # 预计算方法使用显示模式
             input_mode = config.get("input_mode_for_display", "orig") #读取指定键的值，若键不存在则使用默认值
@@ -151,7 +158,10 @@ class Main:
         #     "video_id:",video_id, 
         #     "frame_id",frame_id
         # )
-        return self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
+        # return self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
+        img = self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
+        s(img)#保存到inputs文件夹中
+        return img
     
     def _normalize_image(self, config, img, mean, std):
         """根据配置对图像进行归一化"""
@@ -366,6 +376,8 @@ class Main:
                             PostProcessing(path_in, path_out,progress_bar)
                             progress_bar.update(1)
 
+        # print("4/4 : 整理保存分割器的输入")
+
     def _process_single_image_predictions(self, patient_id, video_id, frame_id, configs, 
                                         model, threshold, block_cath, normalization_params):
         """处理单张图像的所有配置预测结果"""
@@ -386,7 +398,43 @@ class Main:
             
             # 获取预测结果
             self._get_prediction2(config, model, img_norm, threshold, patient_id, video_id, frame_id)
-            
+
+import os
+import shutil
+
+def copy_file_contents(src_folder, dest_folder,newName):
+    # 确保源文件夹存在
+    if not os.path.exists(src_folder):
+        print(f"源文件夹 {src_folder} 不存在，请检查路径！")
+        return
+    # 如果目标文件夹不存在，则创建它
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    if os.path.isfile(src_folder): # 如果是文件，则直接复制
+        src_item_path = src_folder 
+        dest_item_path = os.path.join( dest_folder,newName ) 
+        shutil.copy2(src_item_path, dest_item_path)  # copy2 会保留文件的元数据
+
+def myCopy(folder_path,folder2_path,tag):
+    # folder_path = "xca_dataset_sub2" 
+    # folder2_path = "xca_dataset_sub2_copy" 
+    for userId in os.listdir(folder_path):
+        path_gt_user=folder_path+"/"+userId+"/decouple"#/CVAI-1207LAO44_CRA29"
+        path_gt_user2=folder2_path+"/"+userId+"/decouple"#/CVAI-1207LAO44_CRA29"
+        videoId_list=os.listdir(path_gt_user)
+        for videoId in videoId_list:
+                path_gt_video=os.path.join(path_gt_user,videoId)
+                
+                if len(videoId.split("CATH"))==1:
+                    source_path = os.path.join(folder_path+"/"+userId+"/decouple",videoId, tag)
+                    dest_path = os.path.join(folder2_path, tag, videoId)
+                    for frameId in os.listdir(source_path):
+                        copy_file_contents(
+                            os.path.join(source_path, frameId), 
+                            dest_path, 
+                            frameId
+                        )
+
 def main(): 
     """主函数"""
     # 2025.11.26-15:59:做了一个诡异的梦
@@ -753,29 +801,29 @@ def main():
         #     "inferenceAll": False,#True,#False,
         #     "mergeMask": False,
         # },
-        {# 将解耦方案变为单阶段方案
-            "decouple":{#解耦
-                ########################
-                "de-rigid":"2_sim",
-                "epoch":2000,          #只兼容了startDecouple1
-                "tag":"B",#只兼容了startDecouple1
-                "useSmooth":True,
-                "weight_smooth":0.1,
-                "openLocalDeform":False,#True,
-                ########################
-                "de-soft":None,
-            },
-            "name": "_017_05_rigid.non(doubleStage)",
-            "precomputed": False,
-            "input_mode": "B.rigid_non",#基于去刚的解耦效果
-            "norm_method": norm_calculator.calculate_mean_variance,
-            "binarize": True,
-            "inferenceAll": False,#True,#False,
-            "mergeMask": False,
-        },
-        # {# 将解耦方案变为单阶段方案
+        # {# 将解耦方案变为段到段方案
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"2_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"B",#只兼容了startDecouple1
+        #         "useSmooth":True,
+        #         "weight_smooth":0.1,
+        #         "openLocalDeform":False,#True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_017_05_rigid.non(end2end)",
+        #     "precomputed": False,
+        #     "input_mode": "B.rigid_non",#基于去刚的解耦效果
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 将解耦方案变为端到端方案
         #     #复用前面的视频解耦结果（效果超级差、不知道是不是视频流体层的原因）
-        #     "name": "_017_06_recon.non(doubleStage)",
+        #     "name": "_017_06_recon.non(end2end)",
         #     "precomputed": False,
         #     "input_mode": "B.recon_non",#基于流体层的解耦效果
         #     "norm_method": norm_calculator.calculate_mean_variance,
@@ -783,17 +831,624 @@ def main():
         #     "inferenceAll": False,#True,#False,
         #     "mergeMask": False,
         # },
-        {# 测试原视频不去噪的分割效果
-            #复用前面的视频解耦结果（效果超级差、不知道是不是视频流体层的原因）
-            "name": "_017_07_orig(sub2)",
+        # {# 测试原视频不去噪的分割效果
+        #     #复用前面的视频解耦结果（效果超级差、不知道是不是视频流体层的原因）
+        #     "name": "_017_07_orig(sub2)",
+        #     "precomputed": False,
+        #     "input_mode": "orig",#基于流体层的解耦效果
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        ####################### 长视频子集合 xca_dataset_sub3 ####################### 
+        ##########################  DeNVeR.018(尝试解决两大难点)   ##########################  
+        # {#刚体层完全静止 2Rt
+        #     "decouple":{#解耦
+        #         ########################
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A-stillness2",#只兼容了startDecouple1
+        #         "useSmooth":False,
+        #         "stillness":True,#刚体层完全静止
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_01",
+        #     "precomputed": False,
+        #     "input_mode": "A-stillness2.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": False,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层完全静止并且只有一个刚体层(查全率下降) #1Rt
+        #     "decouple":{#解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A-stillness1",#只兼容了startDecouple1
+        #         "useSmooth":False,
+        #         "stillness":True,#刚体层完全静止
+        #         # "NUM_soft":0,
+        #         "NUM_rigid":1,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_02_NumR1",
+        #     "precomputed": False,
+        #     "input_mode": "A-stillness1.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#1层刚体层（有整体运动、无局部运动） #1Rm 
+        #     "decouple":{#解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A-still0-move1",#只兼容了startDecouple1
+        #         "useSmooth":False,
+        #         "stillnessFristLayer":False,
+        #         "stillness":True,#刚体层完全静止
+        #         # "NUM_soft":0,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_03_stillFrist",
+        #     "precomputed": False,
+        #     "input_mode": "A-still0-move1.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层 有整体运动的单层 ） #1Rm 
+        #     "decouple":{#解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A-still0-move1",#只兼容了startDecouple1
+        #         "useSmooth":False,
+        #         "stillnessFristLayer":False,
+        #         "stillness":False,#
+        #         # "NUM_soft":0,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_03_stillFrist",
+        #     "precomputed": False,
+        #     "input_mode": "A-still0-move1.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层+软体层(基于刚体) #只有整体运动 # 1Rm+1S -> non_rigid
+        #     "decouple":{#解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A-e2e",#只兼容了startDecouple1
+        #         "useSmooth":False,#不平滑
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_04_end2end",
+        #     "precomputed": False,
+        #     "input_mode": "A-e2e.rigid.main_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层+软体层(基于重构) #只有整体运动 # 1Rm+1S -> non_recon
+        #     "name": "_018_05_end2endRecon",
+        #     "precomputed": False,
+        #     "input_mode": "A-e2e.recon_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用MASK # M(1Rm+1S) -> non_rigid
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-e2e",#只兼容了startDecouple1
+        #         "useSmooth":False,#不平滑
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "useMask":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_06_end2end.m",
+        #     "precomputed": False,
+        #     "input_mode": "Am-e2e.rigid.main_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层+软体层(基于重构)+使用MASK # M(1Rm+1S) -> non_recon2
+        #     "name": "_018_07_end2endRecon.m",
+        #     "precomputed": False,
+        #     "input_mode": "Am-e2e.recon_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#刚体层+软体层(基于重构)+使用MASK # M(1Rm+1S) -> non_recon2
+        #     "name": "_018_08_end2endRecon1.m",
+        #     "precomputed": False,
+        #     "input_mode": "Am-e2e.recon_non",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#双重构损失：总重构损失 + 刚体层重构损失
+        #     "decouple":{#解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-rlr",#只兼容了startDecouple1
+        #         "useSmooth":False,#不平滑
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "useMask":True,
+        #         "openReconLoss_rigid":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_09_reconLossRigid",
+        #     "precomputed": False,
+        #     "input_mode": "Am-rlr.rigid.main_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {
+        #     "name": "_018_10_reconLossRigid",
+        #     "precomputed": False,
+        #     "input_mode": "Am-rlr.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {
+        #     "name": "_018_11_reconLossRigid_rs",
+        #     "precomputed": False,
+        #     "input_mode": "Am-rlr.recon_non",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {
+        #     "name": "_018_12_reconLossRigid_rs2",
+        #     "precomputed": False,
+        #     "input_mode": "Am-rlr.recon_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用MASK # M(1Rm+1S) -> non_rigid
+        #     # '''
+        #     #     1R+1S
+        #     #     最好的工作:_018_06_end2end
+        #     #         刚体重构损失: 优化刚体层。无MASK遮挡 loss=(S*R-O)
+        #     #     上次的工作:_018_09 (效果较差)
+        #     #         总重构损失: 优化刚+软层。加MASK遮挡 loss=M*(S*R-O)
+        #     #         刚体重构损失: 优化刚体层。无MASK遮挡 loss=M*(R-O)
+        #     #     更新的工作：
+        #     # '''
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-loss2",#只兼容了startDecouple1
+        #         "useSmooth":False,#不平滑
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_13_loss2",#刚体重构损失考虑、但是不考虑
+        #     "precomputed": False,
+        #     "input_mode": "Am-loss2.rigid.main_non2",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用MASK # M(1Rm+1S) -> non_rigid
+        #     "name": "_018_14_loss2_reon1",
+        #     "precomputed": False,
+        #     "input_mode": "Am-loss2.recon_non",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用平滑损失函数
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-loss2-smooth",#只兼容了startDecouple1
+        #         "useSmooth":True,#False,#不平滑
+        #         "weight_smooth":0.1,
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_15_loss2_smooth",
+        #     "precomputed": False,
+        #     "input_mode": "Am-loss2-smooth.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用基于加速度的平滑损失函数
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-loss2-smooth-a",#只兼容了startDecouple1
+        #         "useSmooth":2,#True,#False,#不平滑
+        #         "weight_smooth":0.1,
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_16_loss2_smooth_a",
+        #     "precomputed": False,
+        #     "input_mode": "Am-loss2-smooth-a.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#使用基于加速度的平滑损失函数 #复现成功、效果极佳
+        #     # "decouple":{ # 解耦
+        #     #     "de-rigid":"1_sim",
+        #     #     "epoch":2000,          #只兼容了startDecouple1
+        #     #     "tag":"Am-raRS",#只兼容了startDecouple1
+        #     #     "useSmooth":False,#True,#False,#不平滑
+        #     #     "weight_smooth":0.1,
+        #     #     "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #     #     "stillness":False,#不取消运动约束
+        #     #     "NUM_soft":1,
+        #     #     "NUM_rigid":1,#只有一个运动的刚体
+        #     #     "lossType":2,
+        #     #     # "lossParam":{"rm":"S","ra":"R"},
+        #     #     "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #     #     "useMask":True, #只有lossType==1的时候才有效
+        #     #     ########################
+        #     #     "de-soft":None,
+        #     # },
+        #     # "name": "_018_17_bestMetric", #复现指标上的最佳效果
+        #     # "precomputed": False,
+        #     # "input_mode": "Am-raRS.rigid.main_non1",
+        #     # "norm_method": norm_calculator.calculate_mean_variance,
+        #     # "binarize": True,
+        #     # "inferenceAll": True,#True,#False,
+        #     # "mergeMask": False,
+        # },
+        # {#整体运动最好不要直接用矩阵,矩阵的运动分析比较复杂
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth3",#只兼容了startDecouple1
+        #         "useSmooth":3, #使用3号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":0.1,
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         # "lossParam":{"rm":"S","ra":"R"},
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_17_smooth3", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "smooth3.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 使用割线斜率作为导数 #分割指标和之前没啥变化、(其它:刚体层的阴影明显增强)
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth3",#只兼容了startDecouple1
+        #         "useSmooth":3, #使用3号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":0.1,
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         # "lossParam":{"rm":"S","ra":"R"},
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_17_smooth3", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth3.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 超高的一致性权重 
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth3-2",#只兼容了startDecouple1
+        #         "useSmooth":3, #使用3号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":1000,#0.1,
+        #         "interval":1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_18_bigWeight", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth3-2.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 用二阶导数而不是一阶导作为平滑损失 
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-4",#只兼容了startDecouple1
+        #         "useSmooth":4, #使用4号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":100,#0.1,
+        #         "interval":1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_19_acceleration", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-4.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 用二阶导数而不是一阶导作为平滑损失 #将割线的计算步长设置为0.5
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-4",#只兼容了startDecouple1
+        #         "useSmooth":4, #使用4号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":100,#0.1,
+        #         "interval":1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_19_acceleration", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-4.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {#将割线的计算步长设置为0.5
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-5",#只兼容了startDecouple1
+        #         "useSmooth":4, #使用4号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":40,#0.1,
+        #         "interval":0.5,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_20_acceleration2", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-5.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 将割线的计算步长设置为0.1
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-6",#只兼容了startDecouple1
+        #         "useSmooth":4, #使用4号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":40,#0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_21_acceleration3", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-6.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 使用5号平滑损失
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-7",#只兼容了startDecouple1
+        #         "useSmooth":5, #使用5号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":40,#0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_22_smooth5", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-7.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 降低平滑损失函数 #有晃动问题
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-8",#只兼容了startDecouple1
+        #         "useSmooth":5, #使用5号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_23_smooth", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-8.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 降低平滑损失函数 #没有必要添加整体运动的平滑约束，因为他整体上是正确的
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-smooth-9",#只兼容了startDecouple1
+        #         "useSmooth":6, #使用6号平滑损失函数=>全局运动趋向于固定
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_24_smooth", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-smooth-9.rigid.main_non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        {# 打开刚体的局部形变
+            "decouple":{ # 解耦
+                "de-rigid":"1_sim",
+                "epoch":2000,          #只兼容了startDecouple1
+                "tag":"Am-10",#只兼容了startDecouple1
+                "useSmooth":False, #不进行平滑约束
+                "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+                "interval":0.1,#将计算平滑损失的步长由1改为0.5
+                "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+                "stillness":False,#不取消运动约束
+                "NUM_soft":1,
+                "NUM_rigid":1,#只有一个运动的刚体
+                "lossType":2,
+                "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+                "useMask":True, #只有lossType==1的时候才有效
+                "openLocalDeform":True,
+                ########################
+                "de-soft":None,
+            },
+            "name": "_018_25_", #复现指标上的最佳效果
             "precomputed": False,
-            "input_mode": "orig",#基于流体层的解耦效果
+            "input_mode": "Am-10.rigid.main_non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": False,#True,#False,
+            "inferenceAll": True,#True,#False,
             "mergeMask": False,
         },
+        #### .复现整体运动最合理的版本. ####
     ]#不要重复做实验，要相信之前的结果
+    #软体使用刚体的全局运动
     [#没有进行的测试
         # {#测试不同的平滑权重的影响（因为最终收敛到0了(在2000epoch之内)，所以我感觉权重影响不大）
         #     "decouple":{#解耦

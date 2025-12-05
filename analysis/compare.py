@@ -472,8 +472,8 @@ def main():
     name2 = args.excel2.split("_results.xlsx")[0]
     args.method1_name = name1
     args.method2_name = name2
-    args.excel1 = "outputs/"+args.excel1
-    args.excel2 = "outputs/"+args.excel2
+    args.excel1 = "outputs/metric/"+args.excel1
+    args.excel2 = "outputs/metric/"+args.excel2
     config1={}
     config2={}
     for i in config_data["experiments"]:

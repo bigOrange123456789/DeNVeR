@@ -673,6 +673,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
             "de-soft":"3",
             "name":""
         }
+    
 # if False:#
 # if __name__ == "__main__":
     script_path = os.path.abspath(__file__)
@@ -745,7 +746,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
                     config["my"]["datasetPath_rigid.out"], #"log_15/xca_dataset_sub1", 
                     patientID, "decouple", videoId)#本地路径
                 os.makedirs(outpath, exist_ok=True)
-                if arguments["de-rigid"]=="1":#目标是将5分钟的解耦时间减少到1分钟
+                if arguments["de-rigid"]=="1_sim":#目标是将5分钟的解耦时间减少到1分钟
                     startDecouple1_sim(videoId, paramPath, inpath, outpath,config=arguments)  # 去除刚体层
                 elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
                     origVideoPath=os.path.join(

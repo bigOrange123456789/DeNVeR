@@ -85,6 +85,98 @@ def jacobian(y, x):
     jacobian_mat = torch.stack(jacobian_list, dim=1)
     return jacobian_mat
 
+def hessian(y, x):
+    """
+    计算二阶导数（Hessian矩阵）
+    参数：
+        y: 输出张量，形状为 (B, N)
+        x: 输入张量，形状为 (B, M) 或 (M,)
+    返回：
+        二阶导数（Hessian矩阵），形状为 (B, N, M, M)
+    """
+    # 计算一阶雅可比矩阵
+    jac = jacobian(y, x)  # 形状: (B, N, M)
+    
+    B, N, M = jac.shape
+    
+    # 初始化Hessian矩阵
+    hessian_list = []
+    
+    for i in range(N):
+        # 对每个输出分量的梯度计算雅可比
+        grad_i = jac[:, i, :]  # 第i个输出分量的梯度，形状: (B, M)
+        
+        # 为每个样本计算Hessian
+        sample_hessians = []
+        for b in range(B):
+            # 对每个样本单独计算
+            hessian_i = jacobian(grad_i[b:b+1], x[b:b+1])  # 形状: (1, M, M)
+            sample_hessians.append(hessian_i.squeeze(0))  # 形状: (M, M)
+        
+        # 堆叠所有样本
+        hessian_i_all = torch.stack(sample_hessians, dim=0)  # 形状: (B, M, M)
+        hessian_list.append(hessian_i_all)
+    
+    # 堆叠所有输出分量
+    hessian_mat = torch.stack(hessian_list, dim=1)  # 形状: (B, N, M, M)
+    return hessian_mat
+
+def hessian_vectorized(y, x):
+    """
+    向量化计算二阶导数
+    参数：
+        y: 输出张量，形状为 (B, N)
+        x: 输入张量，形状为 (B, M)
+    返回：
+        二阶导数（Hessian矩阵），形状为 (B, N, M, M)
+    """
+    # 前置检查
+    if not x.requires_grad:
+        x.requires_grad_(True)
+    
+    if y.grad_fn is None:
+        B, N = y.shape
+        M = x.shape[-1]
+        return torch.zeros(B, N, M, M, device=y.device, dtype=y.dtype)
+    
+    B, N = y.shape
+    M = x.shape[-1]
+    
+    # 初始化Hessian矩阵
+    hessian_mat = torch.zeros(B, N, M, M, device=y.device, dtype=y.dtype)
+    
+    # 为每个输出分量计算Hessian
+    for i in range(N):
+        # 计算一阶导数
+        grad_i = torch.autograd.grad(
+            outputs=y[:, i].sum(),  # 标量才能计算梯度
+            inputs=x,
+            create_graph=True,
+            retain_graph=True,
+            allow_unused=True
+        )[0]
+        
+        if grad_i is None:
+            continue
+        
+        # 为每个输入维度计算二阶导数
+        for j in range(M):
+            grad_ij = grad_i[:, j]  # 形状: (B,)
+            
+            # 计算二阶导数
+            grad2_ij = torch.autograd.grad(
+                outputs=grad_ij.sum(),
+                inputs=x,
+                retain_graph=True,
+                create_graph=False,  # 如果不需要三阶导数，设为False
+                allow_unused=True
+            )[0]
+            
+            if grad2_ij is not None:
+                hessian_mat[:, i, j, :] = grad2_ij
+    
+    return hessian_mat
+
 class VideoFitting(Dataset):
     def __init__(self, path, transform=None):
         super().__init__()

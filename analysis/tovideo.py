@@ -90,15 +90,20 @@ def main():
     else:
         print("转换失败！")
 
-if __name__ == "__main__":
-    pathPre = "outputs/xca_dataset_sub2_merge/"
-    videoId = "CVAI-2174RAO28_CAU29" # "CVAI-2177RAO32_CRA28"
+def start(videoId):
+# if __name__ == "__main__":
+    pathPre = "outputs/merge/"
+    # videoId = "CVAI-1207LAO44_CRA29" # "CVAI-2177RAO32_CRA28"
     # 直接运行示例
     images_to_video_advanced(
         image_folder=pathPre+videoId,#"./images",
         output_video=pathPre+videoId+".mp4",#"my_video.mp4",
-        fps=25
+        fps=10#25
     )
     
     # 或者使用命令行参数
     # main()
+
+start("CVAI-1207LAO44_CRA29")
+start("CVAI-1253LAO0_CAU29")
+start("CVAI-2174LAO42_CRA18")

@@ -298,7 +298,7 @@ def save_to_excel(image_results, experiment_name):
     df = df[columns]
     
     # 保存到Excel
-    filename = f"./outputs/{experiment_name}_results.xlsx"
+    filename = f"./outputs/metric/{experiment_name}_results.xlsx"
     df.to_excel(filename, index=False)
     print(f"Results saved to {filename}")
 

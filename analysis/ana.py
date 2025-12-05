@@ -209,7 +209,11 @@ def main():
     colors = {}
     
     for config in config_data["experiments"]:
-        name, metrics = process_test_config(config, config_data["usedVideoId"],DataFiltering=config_data["DataFiltering"])
+        name, metrics = process_test_config(config, 
+                                            config_data["usedVideoId"],
+                                            DataFiltering=config_data["DataFiltering"],
+                                            
+                                            )
         results[name] = metrics
         colors[name] = config["color"]
         print("name:",name)
