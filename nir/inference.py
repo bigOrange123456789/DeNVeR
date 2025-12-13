@@ -1419,35 +1419,461 @@ def main():
         #     "inferenceAll": True,#True,#False,
         #     "mergeMask": False,
         # },
-        {# 打开刚体的局部形变
+        # {# 打开刚体的局部形变
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"Am-10",#只兼容了startDecouple1
+        #         "useSmooth":False, #不进行平滑约束
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         "openLocalDeform":True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_018_25_", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "Am-10.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        #### .复现整体运动最合理的版本. ####
+        ####################### xca_dataset_sub4(用于分析刚体层解耦造成的运动伪影) ####################### 
+        # 如何让解耦过程变成正交的
+        ##########################  DeNVeR.019(尝试解决两大难点)   ##########################  
+        # {
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A19-best",#只兼容了startDecouple1
+        #         "useSmooth":False, #不进行平滑约束
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         "openLocalDeform":False,#True,
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_019_01_bestMetric", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "A19-best.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        # {# 打开刚体的局部形变
+        #     "decouple":{ # 解耦
+        #         "de-rigid":"1_sim",
+        #         "epoch":2000,          #只兼容了startDecouple1
+        #         "tag":"A19-best",#只兼容了startDecouple1
+        #         "useSmooth":False, #不进行平滑约束
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "stillnessFristLayer":False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#不取消运动约束
+        #         "NUM_soft":1,
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+        #         "openLocalDeform":False,#True,
+        #         "configRigid":{
+        #             'hidden_layers_map':4,
+        #             'hidden_layers_global':4,
+        #             'hidden_layers_local':4,
+        #             'hidden_features_map':128,
+        #             'hidden_features_global':128,
+        #             'hidden_features_local':128,
+        #         },
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_019_01_bestMetric", #复现指标上的最佳效果
+        #     "precomputed": False,
+        #     "input_mode": "A19-best.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        #### 一组功能验证测试 ####
+        # {# 完美拟合纹理（提高模型对纹理的拟合程度）
+        #     "decouple":{ # 解耦
+        #         "tag":"A19-config",#只兼容了startDecouple1
+        #         "de-rigid":"1_sim",#去噪框架
+        #         "epoch":2000,          #只兼容了startDecouple1
+                
+        #         # 1 模型本身
+        #         # 1.1 刚体模块
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "configRigid":{ #单个刚体层的参数
+        #                 # 能够完全重构图片 (epoch=2000: loss=0.00002341)
+        #                 # "loss_recon_all_type":"MSE",
+        #                 # 'hidden_layers_map':2,
+        #                 # 'hidden_features_map': 2*4*512,
+
+        #                 # 不能完全重构图片 (epoch=2000: loss=0.025)
+        #                 # "loss_recon_all_type":"myLog", #是损失函数的问题
+        #                 # 'hidden_layers_map':2,
+        #                 # 'hidden_features_map': 2*4*512,
+        #             # 纹理
+        #             'hidden_layers_map':2,#1,#2,#4,#32,#4,
+        #             'hidden_features_map': 2*4*512,#2*4*512,#16*4*512,#128,#512, #128,
+        #             # 'hidden_features_map': 512, #将隐含层特征维度变为1/8
+        #             # 整体运动
+        #             'hidden_layers_global':4,
+        #             'hidden_features_global':128,
+        #             # 局部运动
+        #             'hidden_layers_local':4,
+        #             'hidden_features_local':128,
+        #         }, 
+        #         "configRigids":{ # 整个刚体层模块的参数
+        #             "loss_recon_all_type":"MSE",#{"myLog" 学习能力不如MSE, "MSE", "atten_d"}
+        #         }, #
+        #         "openLocalDeform":False,#True,
+        #         "stillness":True,#False,#不取消运动约束
+        #         "stillnessFristLayer":True,#False,#并无意义，要和stillness保持一致
+        #         # 1.2 软体模块
+        #         "NUM_soft":0,#1,
+                
+
+        #         # 2.损失函数
+        #         "useSmooth":False, #不进行平滑约束
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "lossType":2,
+        #         "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         "useMask":True, #只有lossType==1的时候才有效
+
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_019_02_updateConfig", #提高模型的拟合能力
+        #     "precomputed": False,
+        #     "input_mode": "A19-config.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
+        {# 完美拟合视频（提高模型对视频的拟合程度）
             "decouple":{ # 解耦
-                "de-rigid":"1_sim",
-                "epoch":2000,          #只兼容了startDecouple1
-                "tag":"Am-10",#只兼容了startDecouple1
+                "tag":"A19-config",#只兼容了startDecouple1
+                "de-rigid":"1_sim",#去噪框架
+                "epoch":4000,          #只兼容了startDecouple1 #recon_all=0.00011
+                
+                # 1 模型本身
+                # 1.1 刚体模块
+                "NUM_rigid":0,#只有一个运动的刚体
+                "configRigid":{ #单个刚体层的参数
+                        # 能够完全重构图片 (epoch=2000: loss=0.00002341)
+                        # "loss_recon_all_type":"MSE",
+                        # 'hidden_layers_map':2,
+                        # 'hidden_features_map': 2*4*512,
+
+                        # 不能完全重构图片 (epoch=2000: loss=0.025)
+                        # "loss_recon_all_type":"myLog", #是损失函数的问题
+                        # 'hidden_layers_map':2,
+                        # 'hidden_features_map': 2*4*512,
+                    # 纹理
+                    'hidden_layers_map':2,#1,#2,#4,#32,#4,
+                    'hidden_features_map': 2*4*512,#2*4*512,#16*4*512,#128,#512, #128,
+                    # 'hidden_features_map': 512, #将隐含层特征维度变为1/8
+                    # 整体运动
+                    'hidden_layers_global':4,
+                    'hidden_features_global':128,
+                    # 局部运动
+                    'hidden_layers_local':4,
+                    'hidden_features_local':128,
+                }, 
+                "configRigids":{ # 整个刚体层模块的参数
+                    "loss_recon_all_type":"MSE",#{"myLog" 学习能力不如MSE, "MSE", "atten_d"} #我猜测均方误差更关注背景、注意力损失更关注血管
+                }, 
+                "openLocalDeform":False,#True,
+                "stillness":True,#False,#不取消运动约束
+                "stillnessFristLayer":True,#False,#并无意义，要和stillness保持一致
+                # 1.2 软体模块
+                "NUM_soft":0,#1,
+                "configSofts":{ # 软体
+                    "layer":{
+                        # 纹理
+                        'hidden_layers_map':2,#1,#2,#4,#32,#4,
+                        'hidden_features_map': 512, #将隐含层特征维度变为1/8
+                        # 整体运动
+                        'hidden_layers_global':4,
+                        'hidden_features_global':128,
+                        # 局部运动
+                        'hidden_layers_local':4,
+                        'hidden_features_local':128,
+                    }
+                },
+                # 1.3 流体模块
+                "NUM_fluid":4, # 0.00019 -> 0.00016、0.00015
+                "configFluids":{ #参数数量
+
+                    # "hidden_features":512,
+                    # "hidden_layers":4,
+
+                    # "hidden_features":2*4*512,
+                    # "hidden_layers":4,
+                    
+                    # "hidden_features":2*4*512,
+                    # "hidden_layers":4*4,
+                    # 93分钟，#层数太多会无法拟合
+
+                    # "hidden_features":15*512, 
+                    # "hidden_layers":2,
+                    # 显存溢出
+
+                    # "hidden_features":12*512, 
+                    # "hidden_layers":2,
+                    # 27 min # 整体拟合效果还不错，无法拟合血管
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":12,
+                    # "use_residual":True,
+                    # 梯度消失 # 不能说明Res结构用处不大，因为参数数量减少了 
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":2*6*6, #72层
+                    # "use_residual":True, 
+                    # 梯度爆炸，输出数据变为Nan
+
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":12,
+                    # "use_residual":True,
+                    # "posEnc":{
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":4, #1
+                    # },
+                    # 5 min 梯度消失
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":11,
+                    # "use_residual":True/False, #没啥用 #带宽不够、信息传不过来
+                    # "posEnc":False,
+                    # 5 min 梯度消失
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":2,
+                    # "use_residual":False,
+                    # "posEnc":False,
+                    # 1 min 正确、模糊、血管拟合不好
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":6, 
+                    # "use_residual":False,
+                    # "posEnc":False,
+                    # # 3 min 正确、更清晰一些、血管拟合不好
+
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":10,#9,#6,#2 
+                    # "use_residual":False,
+                    # "posEnc":False,
+                    # 3~5 min 正确、更清晰一些、血管拟合不好
+
+                    # "hidden_features":2*512, 
+                    # "hidden_layers":11, 
+                    # "use_residual":False, 
+                    # "posEnc":{ #能够缓解梯度消失
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":4, #1
+                    # },
+                    # 5 min 没有梯度消失、但是效果很不好
+
+                    # "hidden_features": 3*512,  #能够缓解梯度消失
+                    # "hidden_layers":11, 
+                    # "use_residual":False, 
+                    # "posEnc":False,
+                    # 能够正常拟合
+
+                    # "hidden_features": 512, 
+                    # "hidden_layers":16, 
+                    # "use_residual":False, 
+                    # "posEnc":False,
+                    # 3 min, 能够正确拟合，没有梯度消失
+
+                    # "hidden_features": 256, 
+                    # "hidden_layers":64, 
+                    # "use_residual":False, 
+                    # "posEnc":False,
+                    # 5 min, 不能正确拟合，出现了梯度消失
+
+                    # "hidden_features": 256, 
+                    # "hidden_layers": 64, 
+                    # "use_residual": True, #残差机制避免了梯度下降、但是没能提高重构质量
+                    # "posEnc": False,
+                    # 5 min, 不能正确拟合，没有梯度消失
+
+                    # "hidden_features": 2*256, 
+                    # "hidden_layers": 16, 
+                    # "use_residual": False, 
+                    # "posEnc": False,
+                    # recon_all=0.00029728 #能拟合，但拟合的不好
+
+                    # "hidden_features": 2*256, 
+                    # "hidden_layers": 16, 
+                    # "use_residual": False, 
+                    # "posEnc":{ #使用后对损失函数影响不大
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":4, #1
+                    # },
+                    # 3 min, recon_all=0.00027176
+
+                    # "hidden_features": 4*256, #增加后反而无法拟合了
+                    # "hidden_layers": 16, 
+                    # "use_residual": False, 
+                    # "posEnc":False, 
+                    # recon_all=0.00259008 无法拟合
+
+
+                    # "hidden_features": 15*256, 
+                    # "hidden_layers": 12、2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":4, #1
+                    # },
+                    # recon_all=0.0026 无法拟合,梯度消失
+
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    # },
+                    # 3 min, recon_all=0.00018120
+
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":4, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    # },
+                    # recon_all=0.00022805 #略有下降
+
+
+                    "hidden_features": 7*256, 
+                    "hidden_layers": 2, 
+                    "use_residual": False, # 似乎还有负面作用
+                    "posEnc":{ # 无显著作用
+                        "num_freqs_pos":10, #3
+                        "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    }, #recon_all=0.00019
+
+                }, # 现在的首要问题是无损失地拟合出来视频
+
+                # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
-                "stillnessFristLayer":False,#并无意义，要和stillness保持一致
-                "stillness":False,#不取消运动约束
-                "NUM_soft":1,
-                "NUM_rigid":1,#只有一个运动的刚体
                 "lossType":2,
-                "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+                "lossParam":{"rm":None,"ra":"F"},#最佳效果
+                # "lossParam":{"rm":None,"ra":"f01"},
                 "useMask":True, #只有lossType==1的时候才有效
-                "openLocalDeform":True,
+
                 ########################
                 "de-soft":None,
             },
-            "name": "_018_25_", #复现指标上的最佳效果
+            "name": "_019_02_updateConfig", #提高模型的拟合能力
             "precomputed": False,
-            "input_mode": "Am-10.rigid.main_non1",
+            "input_mode": "A19-config.rigid.non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#True,#False,
             "mergeMask": False,
         },
-        #### .复现整体运动最合理的版本. ####
+        # {# 复现8号实验的解耦效果
+        #     # 刚体平滑滤波模块 #在纹理空间上进行平滑
+        #     "decouple":{ # 解耦
+        #         "tag":"A19-config", # 只兼容了startDecouple1
+        #         "de-rigid":"1_sim", # 去噪框架
+        #         "epoch":2000,          # 只兼容了startDecouple1
+                
+        #         # 1.模型本身
+        #         # 1.1 刚体模块
+        #         "NUM_rigid":1,#只有一个运动的刚体
+        #         "configRigid":{ #单个刚体层的参数
+        #             # 纹理 { 能够拟合单张纹理的神经网络: (2, 2*4*512, MSE) }
+        #             'hidden_layers_map':2, #1, #2, #4, #32, #4,
+        #             # 'hidden_features_map': 2*4*512, #2*4*512,#16*4*512,#128,#512, #128,
+        #             'hidden_features_map': 2*4*512, #
+        #             # 整体运动 #能够模拟大致数据
+        #             'hidden_layers_global':4,
+        #             'hidden_features_global':128,
+        #             # 局部运动
+        #             'hidden_layers_local':4,
+        #             'hidden_features_local':128,
+        #         },  
+        #         "openLocalDeform":False,#True,#False,#True,
+        #         "stillnessFristLayer":False,#True,#False,#并无意义，要和stillness保持一致
+        #         "stillness":False,#True,#False,#不取消运动约束
+        #         # 1.2 软体模块
+        #         "NUM_soft":1,
+        #         "configSofts":{ # 软体
+        #             "layer":{
+        #                 # 纹理
+        #                 'hidden_layers_map':2,#1,#2,#4,#32,#4,
+        #                 'hidden_features_map': 512, #将隐含层特征维度变为1/8
+        #                 # 整体运动
+        #                 'hidden_layers_global':4,
+        #                 'hidden_features_global':128,
+        #                 # 局部运动
+        #                 'hidden_layers_local':4,
+        #                 'hidden_features_local':128,
+        #             }
+        #         },
+
+        #         # 2.损失函数
+        #         # "lossParam":{"rm":None,"ra":"R,S"},#最佳效果
+        #         # "lossParam":{"rm":"S","ra":"R"},
+        #         "lossParam":{"rm":"R,S","ra":None},
+        #         "configRigids":{ # 整个刚体层模块的参数
+        #             # 为啥要把重构损失放到这里
+        #             "loss_recon_all_type":"MSE",#{"myLog" 学习能力不如MSE, "MSE", "atten_d"}
+        #         }, 
+        #         "useSmooth":False, #不进行平滑约束
+        #         "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+        #         "interval":0.1,#将计算平滑损失的步长由1改为0.5
+        #         "lossType":2,
+        #         "useMask":True, #只有lossType==1的时候才有效
+
+        #         ########################
+        #         "de-soft":None,
+        #     },
+        #     "name": "_019_02_updateConfig", #提高模型的拟合能力
+        #     "precomputed": False,
+        #     "input_mode": "A19-config.rigid.non1",
+        #     "norm_method": norm_calculator.calculate_mean_variance,
+        #     "binarize": True,
+        #     "inferenceAll": True,#True,#False,
+        #     "mergeMask": False,
+        # },
     ]#不要重复做实验，要相信之前的结果
+    #可以相信的东西：静态刚体的纹理、无局部刚体的运动
+    #刚体的局部运动
     #软体使用刚体的全局运动
     [#没有进行的测试
         # {#测试不同的平滑权重的影响（因为最终收敛到0了(在2000epoch之内)，所以我感觉权重影响不大）
@@ -1469,7 +1895,12 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    usedVideoId = None
+    usedVideoId = ['CVAI-2855LAO26_CRA31.2','CVAI-2855LAO26_CRA31.3','CVAI-2855LAO26_CRA31.4'] #None
+    usedVideoId = ['CVAI-2855LAO26_CRA31.2']
+    usedVideoId = ['CVAI-2855LAO26_CRA31.2.2']
+    usedVideoId = ['CVAI-2855LAO26_CRA31']
+    # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
+    
     # usedVideoId = [
     #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
     #     # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
@@ -1480,12 +1911,15 @@ def main():
     
     print("代码分为三个阶段:视频解耦->分割推理->对比分析")
     print("一、视频解耦部分")
+    print("configs:",configs)
     for c in configs:
         if "decouple" in c:
             c["decouple"]["name"]=c["name"]#用于给处理进度文件命名
             denoising(c["decouple"],
                       usedVideoId=usedVideoId,
-                      dataset_path_gt=config.dataset_path_gt)
+                      dataset_path_gt=config.dataset_path_gt,
+                      repeating=True
+                      )
     print("视频解耦完成!")
     # exit(0)
 
@@ -1509,3 +1943,4 @@ def main():
 
 if __name__ == "__main__":
     main()#测试在训练过程中f1、recall、precise的变化
+    print("测试不同损失函数对纹理拟合的影响")

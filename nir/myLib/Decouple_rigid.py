@@ -20,15 +20,18 @@ from nir.util import Dataset,ToTensor
 from nir.myLib.Decouple import Decouple
 from nir.myLib.mySave import check,save2img,save0
 #####################################################################
-from nir.myLib.Layer import Layer
+from nir.myLib.Layer import Layer,Tex2D,Layer_video
 class Layer_rigid(nn.Module):
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
                  deformationSize=3*0.004,
-                 hidden_features=128,
-                 hidden_layers1=4,
-                 hidden_layers2=4,
-                 hidden_features1=128,
-                 hidden_features2=128,
+                #  hidden_features=128,
+                #  hidden_layers_map=4,
+                #  hidden_layers_global=4,
+                #  hidden_layers_local=4,
+                #  hidden_features_map=128,
+                #  hidden_features_global=128,
+                #  hidden_features_local=128,
+                 config=None,
                  useSmooth=False, # 是否计算平滑损失函数
                  stillness=False, # 是否静止不动
                  v=None,#原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
@@ -43,25 +46,51 @@ class Layer_rigid(nn.Module):
         self.useSmooth=useSmooth
         self.interval=interval
         self.stillness=stillness
+        hidden_layers_map=4
+        hidden_layers_global=4
+        hidden_layers_local=4
+        hidden_features_map=128
+        hidden_features_global=128
+        hidden_features_local=128
+        if not config is None:
+            hidden_layers_map = config["hidden_layers_map"]   
+            hidden_layers_global = config["hidden_layers_global"]
+            hidden_layers_local = config["hidden_layers_local"] 
+            hidden_features_map = config["hidden_features_map"] 
+            hidden_features_global = config["hidden_features_global"] 
+            hidden_features_local = config["hidden_features_local"] 
+            
         self.v=v #原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
+        # print(2*4*512, 2)
+        # print("hidden_features=",hidden_features_map, "hidden_layers=",hidden_layers_map)
+        # exit(0)
         self.f_2D = Siren(in_features=2, out_features=1,
-                          hidden_features=hidden_features1, hidden_layers=hidden_layers1,
+                          hidden_features=hidden_features_map, hidden_layers=hidden_layers_map,
                           outermost_linear=True)
         self.f_2D.cuda()
         self.parameters = [self.f_2D.parameters()]
+        self.useTex2D=False#True
+        if self.useTex2D:
+            # self.tex2D = nn.Parameter(torch.zeros(512, 512))
+            # self.parameters.append(self.tex2D.parameters())
+            # self.tex2D = torch.zeros(1, 512, 512, requires_grad=True)
+            # self.parameters.append(self.tex2D)
+            self.tex2D = Tex2D(512)
+            self.parameters.append(self.tex2D.parameters())
         if self.useGlobal:
             self.g_global = Siren(in_features=1, out_features=4 if self.useMatrix else 2,
                                   # hidden_features=16, hidden_layers=2,
-                                  hidden_features=hidden_features2, hidden_layers=hidden_layers2,
+                                  hidden_features=hidden_features_global, hidden_layers=hidden_layers_global,
                                   outermost_linear=True)
             self.parameters.append(self.g_global.parameters())
             self.g_global.cuda()
         if self.useLocal:
             self.g_local = Siren(in_features=3, out_features=2,
-                                 hidden_features=hidden_features, hidden_layers=4,
+                                 hidden_features=hidden_features_local, hidden_layers=hidden_layers_local,
                                  outermost_linear=True)
             self.g_local.cuda()
-            self.parameters.append(self.g_local.parameters())
+            self.parameters.append(self.g_local.parameters())    
+    
     def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
         if self.stillness: #静止不动
             xy_ = xyt[:, :-1]
@@ -217,7 +246,12 @@ class Layer_rigid(nn.Module):
                 h_local = 2 * torch.sigmoid(h_local) - 1
                 h_local = h_local * self.deformationSize
                 xy_ = xy_ + h_local
+        # color = torch.sigmoid(self.f_2D(xy_))
+        # if False:
         color = torch.sigmoid(self.f_2D(xy_))
+        if self.useTex2D:
+            color = color + torch.sigmoid(self.f_2D(xy_))
+        # color = torch.sigmoid(self.f_2D(xy_))
         return color,{
             "xy_":xy_,
             "h_local":h_local, #训练的时候stage为0，所以输出的是一个常数0
@@ -228,15 +262,19 @@ class Layer_rigid(nn.Module):
 
 #####################################################################
 
-outpath = './nir/data/removeRigid_27'
-EpochNum = 6000 #5000 #3000
+# outpath = './nir/data/removeRigid_27'
+# EpochNum = 6000 #5000 #3000
 
 #########################################################################
 
 from nir.myLib.VideoFitting import VideoFitting
 
-weight_target = [0.25,100,400]#RSF #信息量比例的目标
+weight_target = [0.25,100,400] #RSF #信息量比例的目标
 weight_init = [10, 0.1, 10] #RSF
+import torch
+import numpy as np
+
+from nir.myLib.GradientMonitor import GradientMonitor
 
 class Decouple_rigid(nn.Module):
     def log(self,x): #x中的全部元素均不能为负数
@@ -247,10 +285,15 @@ class Decouple_rigid(nn.Module):
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
     def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,weight_smooth=1,stillness=False,stillnessFristLayer=True,
-                 NUM_soft=0,NUM_rigid=2,useMask=False,openReconLoss_rigid=False,lossType=1,
+                 NUM_soft=0,NUM_rigid=2,NUM_fluid=0,
+                 useMask=False,openReconLoss_rigid=False,lossType=1,
                  maskPath=None,
                  interval=1.0,#计算平滑损失时的偏导数计算中的步长
                 #  useMatrix=True,#整体运动最好不直接用矩阵，矩阵优化的分析较为复杂
+                configRigid=None,
+                configRigids={},
+                configSofts={},
+                configFluids={}
                  ):
         super().__init__()
         v = VideoFitting(path,useMask=useMask,maskPath=maskPath)
@@ -275,6 +318,9 @@ class Decouple_rigid(nn.Module):
         self.stillness=stillness#是否静止不动
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
+        self.loss_recon_all_type=configRigids["loss_recon_all_type"]
+        
+            
 
         #######################################################################
 
@@ -283,7 +329,16 @@ class Decouple_rigid(nn.Module):
         self.f_soft_list = []
         for i in range(self.NUM_soft):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
-            self.f_soft_list.append(Layer(useGlobal=False, hidden_features=512))
+            self.f_soft_list.append(Layer(
+                useGlobal=False, 
+                hidden_features=512,
+                config=configSofts["layer"]
+                ))
+            # self.f_soft_list.append(Layer_rigid(
+            #     useGlobal=False, 
+            #     hidden_features=512,
+            #     config=configSofts["layer"]
+            #     ))
         # 二、刚体
         self.NUM_rigid = NUM_rigid#2#20 # 刚体层的数据
         self.f_rigid_list=[]
@@ -292,27 +347,46 @@ class Decouple_rigid(nn.Module):
             if False: self.f_rigid_list.append(Layer(useLocal=False, hidden_features=512))
             if False: self.f_rigid_list.append(Layer_rigid(useLocal=False, hidden_features=128,useMatrix=False))
             self.f_rigid_list.append(Layer_rigid(
-                useLocal=True, deformationSize=3*(2/(self.v.video.size()[2] - 1)),
-                hidden_features=128, useMatrix=True,
+                useLocal=True, 
+                deformationSize=3*(2/(self.v.video.size()[2] - 1)),
+                # hidden_features=128, 
+                useMatrix=True,
                 useSmooth=self.useSmooth,
                 stillness=stillness,
                 v=self.v,
-                interval=interval
+                interval=interval,
+                config=configRigid,
             ))
         if self.NUM_rigid>0:
             self.f_rigid_list[0].stillness=stillnessFristLayer
             # useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False
-        # 三、流体
-        # self.f2 = Siren(in_features=3, out_features=1, hidden_features=hidden_features,
-        #            hidden_layers=4, outermost_linear=True)
-        # self.f2.cuda()
+        # 三、流体(流体层至多1层)
+        self.NUM_fluid = NUM_fluid
+        # if NUM_fluid>0:
+        #     self.f2 = Layer_video(
+        #         configFluids
+        #     )
+        self.f_fluid_list=[]
+        for i in range(self.NUM_fluid):
+            self.f_fluid_list.append(Layer_video(
+                configFluids
+            ))
+        if NUM_fluid>0:
+            self.f2 = self.f_fluid_list[0]
+
+
         self.parameters=[
             # self.f2.parameters()
         ] #+ self.f_soft.parameters #+ self.f_rigid.parameters
-        for i in range(self.NUM_rigid):
+        for i in range(self.NUM_rigid): #self.parameters = [self.f_2D.parameters()]
             self.parameters = self.parameters + self.f_rigid_list[i].parameters
         for i in range(self.NUM_soft):
             self.parameters = self.parameters + self.f_soft_list[i].parameters
+        # if NUM_fluid>0:
+        #     # self.parameters = self.parameters + [self.f2.parameters()]
+        #     self.parameters = self.parameters + self.f2.parameters
+        for i in range(self.NUM_fluid):
+            self.parameters = self.parameters + self.f_fluid_list[i].parameters
         
     def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
         N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
@@ -352,28 +426,48 @@ class Decouple_rigid(nn.Module):
             h_global_list.append(p_rigid0["h_global"])
             h_global = p_rigid0["h_global"]
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
-        h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
+        if self.NUM_rigid>0:
+            h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
 
         # 2.软体
         o_soft_all = 1
         o_soft_list = []
         for i in range(self.NUM_soft):
-            o_soft0, _ = self.f_soft_list[i](xyt+h_global)
+            o_soft0, _ = self.f_soft_list[i](xyt+h_global) #软体运动基于刚体运动
             o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
 
         # 3.流体
-        # o_fluid = torch.sigmoid(self.f2(xyt))
-        o = o_rigid_all * o_soft_all # o = o_rigid_all * o_soft_all * (1.0 - o_fluid)
+        o_fluid = 1
+        o_fluid_all = 1
+        o_fluid_list = []
+        for i in range(self.NUM_fluid):
+            o_fluid0 = self.f_fluid_list[i](xyt)
+            o_fluid_all = o_fluid_all * o_fluid0
+            o_fluid_list.append(o_fluid0)
+        if self.NUM_fluid>0 and len(o_fluid_list)==1:
+            o_fluid = o_fluid_list[0]#self.f2(xyt) 
+            if torch.isnan(o_fluid.mean()):
+                print("o_fluid is nan",o_fluid.mean())
+                total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))
+                if torch.isnan(total_norm) or torch.isinf(total_norm) or total_norm > 1e4:
+                    print('>>> 出现梯度爆炸！', total_norm)
+                else:
+                    print('>>> 没有梯度爆炸！', total_norm)
+
+        o = o_rigid_all * o_soft_all * o_fluid_all 
+        # o = o_rigid_all * o_soft_all # o = o_rigid_all * o_soft_all * (1.0 - o_fluid)
         return o , {
             "r": o_rigid_list,
             "s": o_soft_list,
-            # "f": o_fluid
+            "f": o_fluid_list,
+            "f_old": o_fluid
         } ,{
             "h_local_list":h_local_list,#这里的原始版本是"h_local_list":h_local_list,现在修改后要注意兼容性问题
             "h_global_list":h_global_list,
             "o_rigid_all":o_rigid_all,
             "o_soft_all":o_soft_all,
+            "o_fluid_all":o_fluid_all,
             "loss_smooth":loss_smooth,
         }#输出三样东西：重构结果、分层结果、相关参数
 
@@ -509,14 +603,22 @@ class Decouple_rigid(nn.Module):
         eps=10**-10
         R=p["o_rigid_all"]
         S=p["o_soft_all"]
-        R_clone = R.detach().clone() # 避免梯度回传
-        S_clone = S.detach().clone()
-        def getData(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
-            if s0=="S,R" or s0=="R,S":  return S*R  #刚体软件都优化
-            elif s0=="S":  return S*R_clone #只优化软体层
-            elif s0=="R":  return S_clone*R #只优化刚体层
+        F=p["o_fluid_all"]#layers["f"]
+        R_clone = R.detach().clone() if self.NUM_rigid>0 else 1
+        S_clone = S.detach().clone() if self.NUM_soft>0 else 1
+        F_clone = F.detach().clone() if self.NUM_fluid>0 else 1
+        
+        def getData_old(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
+            if s0=="S,R" or s0=="R,S":  return R*S  #刚体软件都优化
+            elif s0=="S":  return R_clone*S #只优化软体层
+            elif s0=="R":  return R*S_clone #只优化刚体层
             # elif s0=="SC*RC":  return S_clone*R_clone
             else: print("Decouple_rigid中loss函数参数错误")
+        def getData(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
+            R2=R if len(s0.split("R")) else R_clone
+            S2=S if len(s0.split("S")) else S_clone
+            F2=F if len(s0.split("F")) else F_clone
+            return R2*S2*F2
         # 一、软体有遮挡重构损失 loss=M*(S*R-O)
         loss_recon_mask = torch.tensor(0.0)
         if not lossParam["rm"] is None:
@@ -529,35 +631,82 @@ class Decouple_rigid(nn.Module):
         
         # 二、刚体无遮挡重构损失 loss=(R-O)
         loss_recon_all = torch.tensor(0.0)
+        
         if not lossParam["ra"] is None:
             ra_in=getData(lossParam["ra"])
-            loss_recon_all = torch.log(
+            if True:#用于输出拟合程度
+             if not self.loss_recon_all_type=="MSE" and not step % 100:
+                loss_recon_all0 = ( self.ground_truth[start:end] - ra_in )**2
+                loss_recon_all0 = loss_recon_all0.mean()#这个对象在训练后期变为了None
+                # print("loss_recon_all0",loss_recon_all0)
+            if torch.isnan(ra_in.mean()):
+                print("ra_in is nan.",ra_in.mean()) #ra_in is None. tensor(nan, device='cuda:0', grad_fn=<MeanBackward0>)
+                exit(0)
+            if self.loss_recon_all_type=="MSE":
+                loss_recon_all = ( self.ground_truth[start:end] - ra_in )**2
+                loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
+            elif self.loss_recon_all_type=="atten_d":#类似最大值的思想
+                temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度
+                # temperature越小，越关注最大误差（类似max）
+                # temperature越大，越接近平均（类似mean）
+                errors = ( self.ground_truth[start:end] - ra_in )**2
+                attention_weights = torch.softmax(errors.clone().detach()/ temperature, dim=0) 
+                loss_recon_all = (attention_weights * errors).sum()
+            elif self.loss_recon_all_type=="atten":#类似最大值的思想(估计会不稳定)
+                temperature =1.0
+                # 温度参数调节注意力集中程度
+                # temperature越小，越关注最大误差（类似max）
+                # temperature越大，越接近平均（类似mean）
+                errors = ( self.ground_truth[start:end] - ra_in )**2
+                attention_weights = torch.softmax(errors/ temperature, dim=0) # 使用softmax让大误差获得更多关注
+                loss_recon_all = (attention_weights * errors).sum()
+            else: #myLog
+                loss_recon_all = torch.log(
                     (self.ground_truth[start:end].abs()+eps)/((ra_in).abs()+eps)
                 ).abs()
-            loss_recon_all = loss_recon_all.mean()
+                loss_recon_all = loss_recon_all.mean() 
+            # loss_recon_all = loss_recon_all.mean()
+
         
         # 三、平滑损失
         loss_smooth=0 # 刚体整体运动的平滑损失
         if self.useSmooth:
             loss_smooth = p["loss_smooth"] # 权重为 1
-
         loss = loss_recon_mask + loss_recon_all + loss_smooth*self.weight_smooth
 
         self.layers = layers
         if not step % 100:
+            # if self.NUM_fluid>0:
+            #     total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))# 计算全局梯度范数（不裁剪）
+            #     eps = 1e-7          # 比默认的 1e-8 稍宽松，也可设 1e-6/1e-5
+            #     if torch.isnan(total_norm) or torch.isinf(total_norm):
+            #         print('>>> 梯度爆炸(NaN/Inf)!', total_norm)
+            #     elif total_norm < eps:
+            #         print('>>> 梯度消失！', total_norm)
+            #     else:
+            #         print('>>> 梯度正常！', total_norm)
             if self.useSmooth:
                 print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, loss_smooth=%0.4f" % (
                     step, loss, loss_recon_mask, loss_recon_all, loss_smooth))
             else:
-                print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
-                    step, loss, loss_recon_mask, loss_recon_all))
+                if self.loss_recon_all_type=="MSE":
+                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
+                        step, loss, loss_recon_mask, loss_recon_all))
+                else:
+                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
+                        step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))
 
         return loss
 
     def train(self,total_steps,paramLoss):
+        if self.NUM_fluid==1:
+            gradientMonitor = GradientMonitor(self.f2)
         model_input = self.model_input
 
+        # print("1;self.parameters",self.parameters)
         optim = torch.optim.Adam(lr=1e-4, params = itertools.chain.from_iterable(self.parameters))
+        # print("2;self.parameters",self.parameters)
+        # exit(0)
         # optim = torch.optim.Adam(lr=1e-4, params=chain(self.parameters))
 
         batch_size = (self.v.H * self.v.W) // 8
@@ -571,6 +720,15 @@ class Decouple_rigid(nn.Module):
             optim.zero_grad()
             loss.backward()
             optim.step()
+            if not step % 100 and step>0 and self.NUM_fluid==1:
+                gradientMonitor.analyze(step)
+
+            if False:
+                if loss<0.1**5: #重构损失足够小的时候退出,达到这个标注后仍然有问题
+                    print("step",step,";loss",loss)
+                    break
+        if self.NUM_fluid==1:
+            gradientMonitor.close()
 
         # for i in range(self.NUM_rigid): # 遍历全部的刚体层
         #     f_2D = self.f_rigid_list[i].f_2D # 一个刚体层的纹理
@@ -588,19 +746,30 @@ class Decouple_rigid(nn.Module):
         #     loss.backward()
         #     optim.step()
 
+
+
     def getVideo(self,stage):
         N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
         # 创建空列表存储每帧预测结果
         pred_frames = []
         layers_frames = {
-            "r": [],
+            # "r": [],
             # "s": [],
             # "f": []
         }
         p_frames = {
-            "o_rigid_all": [],
+            # "o_rigid_all": [],
             # "o_soft_all": []
         }
+        if self.NUM_fluid>0:
+            layers_frames["f"]=[]
+            p_frames["o_fluid_all"]=[]
+        if self.NUM_rigid>0:
+            layers_frames["r"]=[]
+            p_frames["o_rigid_all"]=[]
+        if self.NUM_soft>0:
+            layers_frames["s"]=[]
+            p_frames["o_soft_all"]=[]
         # 生成时间轴的归一化值（-1到1）
         t_vals = torch.linspace(-1, 1, steps=N).cuda() if N > 1 else torch.zeros(1).cuda()
 
@@ -624,10 +793,11 @@ class Decouple_rigid(nn.Module):
 
                 pred_frames.append(frame_image)
                 for id in layers_frames:
-                    if id == "f":
-                        layers_frames[id].append(layers[id].view(H, W, 1))
-                    else:
-                        layers_frames[id].append(layers[id])
+                    # if id == "f":
+                    #     layers_frames[id].append(layers[id].view(H, W, 1))
+                    # else:
+                    #     layers_frames[id].append(layers[id])
+                    layers_frames[id].append(layers[id])
                 for id in p_frames:
                     p_frames[id].append(p[id].view(H, W, 1))
         # return pred_frames, layers_frames, p_frames
@@ -644,13 +814,90 @@ class Decouple_rigid(nn.Module):
                 return l
 
             layers = {
-                "r": p01(layers_frames["r"]),
+                # "r": p01(layers_frames["r"]),
                 # "s": p01(layers_frames["s"]),
                 # "f": torch.stack(layers_frames["f"], dim=0)
             }
             p = {
-                "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
+                # "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
                 # "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
             }
+            if self.NUM_fluid>0:
+                # layers["f"]=torch.stack(layers_frames["f"], dim=0)
+                layers["f"]=p01(layers_frames["f"])
+                p["o_fluid_all"]=torch.stack(p_frames["o_fluid_all"], dim=0)
+            else:
+                layers["f"]=None
+            if self.NUM_rigid>0:
+                layers["r"]=p01(layers_frames["r"])
+                p["o_rigid_all"]=torch.stack(p_frames["o_rigid_all"], dim=0)
+            else:
+                p["o_rigid_all"]=None
+            if self.NUM_soft>0:
+                layers["s"]=p01(layers_frames["s"])
+                p["o_soft_all"]=torch.stack(p_frames["o_soft_all"], dim=0)
+            else:
+                p["o_soft_all"]=None
             return video_pre, layers, p
+
+
+    # def getVideo(self,stage):
+    #     N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+    #     # 创建空列表存储每帧预测结果
+    #     pred_frames = []
+    #     layers_frames = {
+    #         "r": [],
+    #         # "s": [],
+    #         # "f": []
+    #     }
+    #     p_frames = {
+    #         "o_rigid_all": [],
+    #         # "o_soft_all": []
+    #     }
+    #     # 生成时间轴的归一化值（-1到1）
+    #     t_vals = torch.linspace(-1, 1, steps=N).cuda() if N > 1 else torch.zeros(1).cuda()
+    #     # 逐帧推理
+    #     with torch.no_grad():
+    #         for i in range(N):
+    #             # 生成当前帧的空间网格 (H*W, 2)
+    #             spatial_grid = get_mgrid([H, W]).cuda()
+    #             # 为所有空间点添加当前时间值
+    #             t_val = t_vals[i]
+    #             t_column = torch.full((spatial_grid.shape[0], 1), t_val).cuda()
+    #             coords = torch.cat([spatial_grid, t_column], dim=1)
+    #             # 模型推理并激活
+    #             frame_output, layers, p = self.forward(coords,stage)
+    #             # 调整形状为图像格式 (C, H, W)
+    #             frame_image = frame_output.view(H, W, 1)  # .permute(2, 0, 1)
+    #             # print("frame_image",frame_image.shape)
+    #             pred_frames.append(frame_image)
+    #             for id in layers_frames:
+    #                 if id == "f":
+    #                     layers_frames[id].append(layers[id].view(H, W, 1))
+    #                 else:
+    #                     layers_frames[id].append(layers[id])
+    #             for id in p_frames:
+    #                 p_frames[id].append(p[id].view(H, W, 1))
+    #     # return pred_frames, layers_frames, p_frames
+    #         video_pre = torch.stack(pred_frames, dim=0)
+    #         def p01(original_list):
+    #             l = list(map(list, zip(*original_list)))  # 交换列表的前两层
+    #             for i in range(len(l)):
+    #                 for j in range(len(l[i])):
+    #                     l[i][j] = l[i][j].view(H, W, 1)
+    #                     # print(type(l[i][j]),l[i][j].shape)
+    #                     # exit(0)
+    #                 l[i] = torch.stack(l[i], dim=0)
+    #             return l
+    #         layers = {
+    #             "r": p01(layers_frames["r"]),
+    #             # "s": p01(layers_frames["s"]),
+    #             # "f": torch.stack(layers_frames["f"], dim=0)
+    #         }
+    #         p = {
+    #             "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
+    #             # "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
+    #         }
+    #         return video_pre, layers, p
+
 

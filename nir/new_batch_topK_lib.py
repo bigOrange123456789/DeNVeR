@@ -666,7 +666,7 @@ class ResultSaver:
         print("  4. 方法比较 - 简明的比较结果")
         print("  5. 图像路径 - 所有输入图像和ground truth的路径")
 
-def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
+def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
     if arguments==None:
         arguments={
             "de-rigid":"1",
@@ -689,6 +689,8 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
             with open(progress_file, 'r', encoding='utf-8') as f:
                 progress_data = json.load(f)
                 processed_videos = set(progress_data.get("processed_videos", []))
+                if repeating: #重新解耦之前已经解构过的视频
+                    processed_videos=[]
                 print(f"加载进度文件，已处理 {len(processed_videos)} 个视频")
         except Exception as e:
             print(f"加载进度文件失败: {e}，将重新开始处理")
@@ -772,7 +774,8 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None):
                     
                 # 处理成功，更新进度
                 CountI += 1
-                processed_videos.add(video_key)
+                if False:
+                    processed_videos.add(video_key)
                     
                 # 更新进度文件
                 progress_data = {"processed_videos": list(processed_videos)}

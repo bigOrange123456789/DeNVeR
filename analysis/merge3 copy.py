@@ -456,8 +456,9 @@ def main():
     root_paths_config = [
 
         # [0]
-        "outputs/xca_dataset_sub4_copy/images",#原视频
-        "outputs/xca_dataset_sub4_copy/ground_truth",#真值
+        "outputs/xca_dataset_sub3_copy/images",#原视频
+        "outputs/xca_dataset_sub3_copy/ground_truth",#真值
+        # "outputs/xca_dataset_sub3_copy/images",#原视频
         "outputs/xca_dataset_sub2_result/_017_07_orig(sub2)",    
         {
             "type": "metric", 
@@ -470,47 +471,123 @@ def main():
              
 
         # [1]
-        "outputs/xca_dataset_sub4_decouple/A19-best.rigid",
-        "outputs/xca_dataset_sub4_inputs/_019_01_bestMetric",
-        "outputs/xca_dataset_sub4_result/_019_01_bestMetric",   
+        {
+            "type": "div", 
+            "name": "method3-method4", 
+            "paths": [
+                "outputs/xca_dataset_sub3_copy/images",
+                "outputs/xca_dataset_sub3_inputs/_018_01",
+            ]
+        },
+        "outputs/xca_dataset_sub3_inputs/_018_01",
+        "outputs/xca_dataset_sub3_result/_018_01",   
         {
             "type": "metric", 
             "paths": [
                 "outputs/metric/"+
-                "_019_01_bestMetric"
+                "_018_01"
                 +"-CATH"+"_results.xlsx",
             ]
         },  
 
+        # [2]
+        # {
+        #     "type": "div", 
+        #     "name": "method3-method4", 
+        #     "paths": [
+        #         "outputs/xca_dataset_sub3_copy/images",
+        #         "outputs/xca_dataset_sub3_inputs/_018_02_NumR1",
+        #     ]
+        # },
+        "outputs/xca_dataset_sub3_decouple/A-stillness.rigid.main",
+        "outputs/xca_dataset_sub3_inputs/_018_02_NumR1",
+        "outputs/xca_dataset_sub3_result/_018_02_NumR1",  
+        {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_018_02_NumR1"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
+
+
+        # [3]
+        "outputs/xca_dataset_sub3_decouple/A-still0-move1.rigid.main", #解耦噪声
+        "outputs/xca_dataset_sub3_inputs/_018_03_stillFrist",   #去噪输入
+        "outputs/xca_dataset_sub3_result/_018_03_stillFrist",   #分割结果
+        {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+
+                "_018_03_stillFrist"
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
 
     ]
-    # for i in [
-    #     ["A-e2e.rigid.main","_018_04_end2end"], #4
-    #     ["A-e2e.recon","_018_05_end2endRecon"], #5
-    #     ["Am-e2e.rigid.main","_018_06_end2end.m"], #6
-    #     ["Am-e2e.recon","_018_07_end2endRecon.m"], #7
-    #     ["Am-e2e.recon","_018_08_end2endRecon1.m"],#8
-    # ]:
-    #     root_paths_config.append(
-    #         "outputs/xca_dataset_sub3_decouple/"+i[0]
-    #     )
-    #     root_paths_config.append(
-    #         "outputs/xca_dataset_sub3_inputs/"+i[1]
-    #     )
-    #     root_paths_config.append(
-    #         "outputs/xca_dataset_sub3_result/"+i[1] 
-    #     )
-    #     root_paths_config.append(
-    #         {
-    #         "type": "metric", 
-    #         "paths": [
-    #             "outputs/metric/"+i[1]
-    #             +"-CATH"+"_results.xlsx",
-    #         ]
-    #     },
-    #     )
+    for i in [
+        ["A-e2e.rigid.main","_018_04_end2end"], #4
+        ["A-e2e.recon","_018_05_end2endRecon"], #5
+        ["Am-e2e.rigid.main","_018_06_end2end.m"], #6
+        ["Am-e2e.recon","_018_07_end2endRecon.m"], #7
+        ["Am-e2e.recon","_018_08_end2endRecon1.m"],#8
+        ["Am-rlr.rigid.main","_018_09_reconLossRigid"], #9
+        ["Am-rlr.rigid.main","_018_10_reconLossRigid"],#10
+        ["Am-rlr.recon","_018_11_reconLossRigid_rs"],#11
+        ["Am-rlr.recon","_018_12_reconLossRigid_rs2"],#12
+        ["Am-loss2.rigid.main","_018_13_loss2"],#13
+        ["Am-loss2.recon","_018_14_loss2_reon1"],#14
+        ["Am-loss2-smooth.rigid.main","_018_15_loss2_smooth"],#15
+        ["Am-smooth-9.rigid.main","_018_24_smooth"],#24
+    ]:
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_decouple/"+i[0]
+        )
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_inputs/"+i[1]
+        )
+        root_paths_config.append(
+            "outputs/xca_dataset_sub3_result/"+i[1] 
+        )
+        root_paths_config.append(
+            {
+            "type": "metric", 
+            "paths": [
+                "outputs/metric/"+i[1]
+                +"-CATH"+"_results.xlsx",
+            ]
+        },
+        )
 
-    
+    # layout = [
+    #     [1, 3, 6,  9, 12, 15, 18, 21],  
+    #     [0, 4, 7, 10, 13, 16, 19, 22],  
+    #     [2, 5, 8, 11, 14, 17, 20, 23],  
+    # ]
+    # layout = [
+    #     [12, 15, 18, 21],  
+    #     [13, 16, 19, 22],  
+    #     [14, 17, 20, 23],  
+    # ]
+    # layout = [
+    #     [16,20,24,28],  
+    #     [17,21,25,29],  
+    #     [18,22,26,30], 
+    #     [19,23,27,31],  
+    # ]
+    # layout = [
+    #     [1,4, 8,12],  
+    #     [0,5, 9,13],  
+    #     [2,6,10,14],  
+    #     [3,7,11,15],  
+    # ]
+    # layout = [
+    #     [4*9+0,4*10+0,4*11+0,4*12+0],  
+    #     [4*9+1,4*10+1,4*11+1,4*12+1],  
+    #     [4*9+2,4*10+2,4*11+2,4*12+2],  
+    #     [4*9+3,4*10+3,4*11+3,4*12+3],  
+    # ]
     layout = [
         [4*13+0,4*14+0],  
         [4*13+1,4*14+1],  
@@ -523,6 +600,27 @@ def main():
         [4*0+2,4*4+2,4*13+2,4*15+2],  
         [4*0+3,4*4+3,4*13+3,4*15+3],  
     ]
+
+    # layout=[]
+    # for i0 in range(4):
+    #     row=[]
+    #     for j0 in range(15):
+    #         row.append(
+    #             j0*4+i0
+    #         )
+    #     layout.append(row)
+    
+    # layout=[]
+    # for i0 in range(1):
+    #     row=[]
+    #     for j0 in range(15):
+    #     #  if j0<5:
+    #     #  if 5<j0 and j0<10:
+    #     #  if j0>10:
+    #         row.append(
+    #             j0*4+i0
+    #         )
+    #     layout.append(row)
     
     layout = [
         [0,1,2,3,4,15],
@@ -536,13 +634,6 @@ def main():
         for j in range(len(layout[i])):
             # print(i,j,"layout[i,j]:",layout[i][j])
             layout[i][j] = layout[i][j]*4 #解耦噪声
-    
-    layout=[
-        [0,4],
-        [1,5],
-        [2,6],
-        [3,7],
-    ]
 
 
     print(len(root_paths_config))

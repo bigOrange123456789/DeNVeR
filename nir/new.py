@@ -111,11 +111,17 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     stillness=False
     NUM_rigid = 2 #刚体层数量
     NUM_soft = 0
+    NUM_fluid = 0 #流体层数量
     stillnessFristLayer =stillness
     useMask = False
     openReconLoss_rigid = False
     lossParam = None
     interval = 1.0
+    configRigid = None
+    configRigids={}
+    configSofts={}
+    configFluids={}
+    # loss_recon_all_type = "MSE"
     # useMatrix = True
     if not config is None:
         if "epoch" in config:
@@ -150,6 +156,18 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         #     useMatrix = config["useMatrix"]
         if "interval" in config:
             interval = config["interval"]
+        if "configRigid" in config:
+            configRigid = config["configRigid"]
+        if "configRigids" in config:
+            configRigids = config["configRigids"]
+        if "configSofts" in config:
+            configSofts = config["configSofts"]
+        if "NUM_fluid" in config:
+            NUM_fluid = config["NUM_fluid"]
+        if "configFluids" in config:
+            configFluids = config["configFluids"]
+        # if 
+    # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
     # exit(0)
@@ -181,6 +199,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               lossType=lossType,
                               # useMatrix=useMatrix,
                               interval=interval,
+                              configRigid=configRigid,
+                              configRigids=configRigids,
+                              configSofts=configSofts,
+                              NUM_fluid=NUM_fluid,
+                              configFluids=configFluids,
                               )
         myMain.train(myEpochNum,lossParam) 
 
@@ -207,9 +230,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
 
         video_pre, layers, p = myMain.getVideo(1)#使用局部形变
 
+        # soft结果 
+        # save1(p["o_soft_all"], tag+".soft")#看一下刚体层的效果
         # rigid结果 
-        if True: 
-            save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
+        save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
+        if False: 
             save1(
                 orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                 tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
@@ -241,7 +266,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         
         save1(video_pre, tag+".recon")
         save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
-        if False:save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
+        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
 
 
 
