@@ -232,6 +232,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
 
         # soft结果 
         # save1(p["o_soft_all"], tag+".soft")#看一下刚体层的效果
+
         # rigid结果 
         save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
         if False: 
@@ -242,6 +243,10 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             for i in range(len(layers["r"])):
                 save1(layers["r"][i], tag+".rigid" + str(i))
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
+
+        # fluid结果
+        for i in range(len(layers["f"])):
+            save1(layers["f"][i], tag+".fluid" + str(i))
 
         # rigid (推理分割图，并评估指标，推理分割图+连通后处理)
         if False:

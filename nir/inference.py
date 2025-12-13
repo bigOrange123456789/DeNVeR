@@ -1775,13 +1775,53 @@ def main():
                     # recon_all=0.00022805 #略有下降
 
 
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    #     "APE":False, #自适应位置编码
+                    # }, #recon_all=0.00019
+
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    #     "APE":{#自适应位置编码
+                    #         "total_steps":4000,
+                    #         "warmup_steps":3000,
+                    #     },
+                    # }, 
+                    # recon_all=0.00018008, APE没有显著作用
+
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 无显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    #     "APE":False,
+                    # }, 
+                    # "gradualImageLayers":{
+                    #     "warmup_steps":4000,
+                    # },
+                    # 20 min, recon_all=0.00017424
+
                     "hidden_features": 7*256, 
                     "hidden_layers": 2, 
                     "use_residual": False, # 似乎还有负面作用
                     "posEnc":{ # 无显著作用
                         "num_freqs_pos":10, #3
                         "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
-                    }, #recon_all=0.00019
+                        "APE":False,
+                    }, 
+                    "gradualImageLayers":False,
+                    # 20 min, recon_all=0.00010287
 
                 }, # 现在的首要问题是无损失地拟合出来视频
 
