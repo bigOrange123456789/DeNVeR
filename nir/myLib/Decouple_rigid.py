@@ -273,17 +273,20 @@ class Decouple_rigid(nn.Module):
                 layer_start = i * stage_length
                 layer_end = (i + 1) * stage_length
                 
-                if current_step < layer_start:
-                    # 情况1：该层尚未开始训练
+                if current_step < layer_start:# 情况1：该层尚未开始训练
                     # return 0, 0
                     return 0.005, 0 # o_fluid0 , detach()
-                elif layer_start <= current_step < layer_end:
-                    # 情况2：该层正在训练中
+                elif layer_start <= current_step < layer_end:# 情况2：该层正在训练中
                     return 1, 0
-                else:
-                    # 情况3：该层训练已完成
+                else: # 情况3：该层训练已完成
                     # return 0, 1 # o_fluid0 , detach()
                     return 0.005, 0.995 # o_fluid0 , detach()
+                # if current_step < layer_start:# 情况1：该层尚未开始训练
+                #     return 0, 0 # o_fluid0 , detach()
+                # elif layer_start <= current_step < layer_end:# 情况2：该层正在训练中
+                #     return 1, 0
+                # else: # 情况3：该层训练已完成
+                #     return 0.005, 0.995 # o_fluid0 , detach()
         
         # 1.刚体
         o_rigid_all = 1
@@ -318,6 +321,8 @@ class Decouple_rigid(nn.Module):
         o_fluid_list = []
         for i in range(self.NUM_fluid):
             o_fluid0 = self.f_fluid_list[i](xyt, step)
+            # print("self.gradualImageLayers",self.gradualImageLayers)
+            # exit(0)
             if self.gradualImageLayers:
                 # alpha = self.get_mixing_alpha(i, step)
                 # alpha = get_mixing_alpha_old(

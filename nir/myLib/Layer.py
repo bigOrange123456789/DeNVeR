@@ -300,13 +300,17 @@ class Layer_video(nn.Module): #用来拟合视频的模块
                             "warmup_steps":1000,
                         },
                      },
-                     
+                     "use_maskP":True,
                 },
             ):
         super().__init__()
         self.use_posEnc="posEnc" in config and config["posEnc"]
         if self.use_posEnc:
             self.use_APE= "APE" in config["posEnc"] and config["posEnc"]["APE"]
+        self.use_maskP=config["use_maskP"]#True#能否自动遮挡该图层的输出
+        if self.use_maskP:
+            self.maskP = nn.Parameter(torch.tensor(0, dtype=torch.float32)).cuda() #最开始完全遮挡
+            # nn.Parameter(torch.tensor(0.5))
         # print("self.use_posEnc",self.use_posEnc)
         in_features_num = 3
         if self.use_posEnc:
@@ -337,7 +341,10 @@ class Layer_video(nn.Module): #用来拟合视频的模块
             use_residual=config["use_residual"]
             ) 
         self.f2.cuda()
-        self.parameters = [self.f2.parameters()]
+        # self.parameters = [self.f2.parameters()]
+        # if self.use_maskP:
+        #     self.parameters.append(self.maskP)
+        self.parameters = [self.parameters()]
 
     def forward(self,xyt,current_step):
         if self.use_posEnc:
@@ -355,6 +362,8 @@ class Layer_video(nn.Module): #用来拟合视频的模块
         # print("combined",combined.shape,10+4)
         # exit(0)
         color = torch.sigmoid(self.f2(combined))
+        if self.use_maskP:
+            color = self.maskP * color + (1-self.maskP)*1
         return color
 
 class Layer_rigid(nn.Module):

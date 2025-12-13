@@ -1576,7 +1576,7 @@ def main():
             "decouple":{ # 解耦
                 "tag":"A19-config",#只兼容了startDecouple1
                 "de-rigid":"1_sim",#去噪框架
-                "epoch":4000,          #只兼容了startDecouple1 #recon_all=0.00011
+                "epoch":4000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
                 
                 # 1 模型本身
                 # 1.1 刚体模块
@@ -1812,16 +1812,43 @@ def main():
                     # },
                     # 20 min, recon_all=0.00017424
 
+                    ################################## "NUM_fluid":1->4 ######################################
+                    
                     "hidden_features": 7*256, 
                     "hidden_layers": 2, 
                     "use_residual": False, # 似乎还有负面作用
-                    "posEnc":{ # 无显著作用
+                    "posEnc":{ # 有显著作用
                         "num_freqs_pos":10, #3
                         "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
                         "APE":False,
                     }, 
                     "gradualImageLayers":False,
+                    "use_maskP":False,
                     # 20 min, recon_all=0.00010287
+                    # 20 min, recon_all=0.00009287、recon_all=0.00010064
+                    # enpoch=6000, 30 min, recon_all=0.00013577 #后期浮动
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":False, 
+                    # "gradualImageLayers":False,
+                    # "use_maskP":False,
+                    # 20 min, recon_all=0.00029
+
+                    # "hidden_features": 7*256, 
+                    # "hidden_layers": 2, 
+                    # "use_residual": False, # 似乎还有负面作用
+                    # "posEnc":{ # 有显著作用
+                    #     "num_freqs_pos":10, #3
+                    #     "num_freqs_time":10, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                    #     "APE":False,
+                    # }, 
+                    # "gradualImageLayers":{
+                    #     "warmup_steps":4000,
+                    # },
+                    # "use_maskP":False, #应该不会太好
+                    # 21 min, recon_all=0.0002
 
                 }, # 现在的首要问题是无损失地拟合出来视频
 
