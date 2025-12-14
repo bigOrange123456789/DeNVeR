@@ -235,7 +235,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
 
         # rigid结果 
         save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
-        if False: 
+        if True: 
             save1(
                 orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                 tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
@@ -245,8 +245,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
         # fluid结果
-        for i in range(len(layers["f"])):
-            save1(layers["f"][i], tag+".fluid" + str(i))
+        if False:#"f" in layers:
+            for i in range(len(layers["f"])):
+                save1(layers["f"][i], tag+".fluid" + str(i))
 
         # rigid (推理分割图，并评估指标，推理分割图+连通后处理)
         if False:

@@ -3,13 +3,41 @@ import os
 config_data0 = {
             "experiments" : [
                 ####################### 改用sub4数据集 ####################### 
-                ##########################  DeNVeR.017  ##########################                  
+                ##########################  DeNVeR.019  ##########################                  
+                # {# 原视频的分割效果
+                #     "name": "_019_01_bestMetric",
+                #     "color":"#70C00C",
+                #     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sub4_result/_019_01_bestMetric",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
+                ##########################  DeNVeR.020  ##########################  
                 {# 原视频的分割效果
-                    "name": "_019_01_bestMetric",
-                    "color":"#70C00C",
+                    "name": "_020_01_baseline",
+                    "color":"#80A00C",
                     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub4_result/_019_01_bestMetric",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_020_01_baseline",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                # {# 原视频的分割效果
+                #     "name": "_020_02_newSoft",
+                #     "color":"#90C01C",
+                #     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sub4_result/_020_02_newSoft",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
+                {# 原视频的分割效果
+                    "name": "_020_03",
+                    "color":"#A0C02C",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_020_03",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
