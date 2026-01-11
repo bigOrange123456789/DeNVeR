@@ -64,7 +64,7 @@ class Tex2D(nn.Module):
         return sampled.squeeze(0).squeeze(-1).permute(1, 0)
 class Layer(nn.Module):
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
-                 deformationSize=8,hidden_features=128,
+                 deformationSize=8,#hidden_features=128,
                  config={},
                  ):
         super().__init__()
@@ -75,12 +75,12 @@ class Layer(nn.Module):
         hidden_features_global=128
         hidden_features_local=128
         if not config is None:
-            hidden_layers_map = config["hidden_layers_map"]   
+            hidden_layers_map    = config["hidden_layers_map"]   
             hidden_layers_global = config["hidden_layers_global"]
-            hidden_layers_local = config["hidden_layers_local"] 
-            hidden_features_map = config["hidden_features_map"] 
+            hidden_layers_local  = config["hidden_layers_local"] 
+            hidden_features_map    = config["hidden_features_map"] 
             hidden_features_global = config["hidden_features_global"] 
-            hidden_features_local = config["hidden_features_local"] 
+            hidden_features_local  = config["hidden_features_local"] 
         ####################################
         self.useGlobal=useGlobal
         self.useLocal=useLocal
@@ -408,7 +408,6 @@ class Layer_rigid(nn.Module):
         self.v=v #原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
         # print(2*4*512, 2)
         # print("hidden_features=",hidden_features_map, "hidden_layers=",hidden_layers_map)
-        # exit(0)
         self.f_2D = Siren(in_features=2, out_features=1,
                           hidden_features=hidden_features_map, hidden_layers=hidden_layers_map,
                           outermost_linear=True)
@@ -581,16 +580,18 @@ class Layer_rigid(nn.Module):
             else: #不使用变换矩阵 #两个自由度的模式
                 xy_ = xyt[:, :-1] + h_global
             ############################################################
-            if not openLocalDeform:#stage==0:#纹理学习，不分析局部位移  #不使用局部位移
-                h_local = torch.tensor(0.0)# h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
-            else:#只分析局部位移，不学习整体运动和纹理
+            if not openLocalDeform: # stage==0: # 纹理学习，不分析局部位移  # 不使用局部位移
+                h_local = torch.tensor(0.0) # h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
+            elif self.useLocal: # 只分析局部位移，不学习整体运动和纹理
                 h_local = self.g_local(xyt)
                 if False:
-                 if self.useSmooth:#局部形变也要平滑
-                    loss_smooth = loss_smooth + jacobian(h_local, xyt).abs().mean()# if self.useSmooth else 0
+                 if self.useSmooth: # 局部形变也要平滑
+                    loss_smooth = loss_smooth + jacobian(h_local, xyt).abs().mean() # if self.useSmooth else 0
                 h_local = 2 * torch.sigmoid(h_local) - 1
                 h_local = h_local * self.deformationSize
                 xy_ = xy_ + h_local
+            else:
+                h_local = torch.tensor(0.0)
         # color = torch.sigmoid(self.f_2D(xy_))
         # if False:
         color = torch.sigmoid(self.f_2D(xy_))

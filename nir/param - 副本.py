@@ -1156,7 +1156,7 @@ if True:
             "decouple":{ # 解耦
                 "tag":"A19-config",#只兼容了startDecouple1
                 "de-rigid":"1_sim",#去噪框架
-                "epoch":4000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
+                "epoch":1000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
                 
                 # 1 模型本身
                 # 1.1 刚体模块

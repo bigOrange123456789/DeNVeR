@@ -158,17 +158,26 @@ class SineLayer(nn.Module):
     # activations constant, but boost gradients to the weight matrix (see supplement Sec. 1.5)
     
     def __init__(self, in_features, out_features, bias=True,
-                 is_first=False, omega_0=30):
+                 is_first=False, omega_0=30,
+                 activationFun="sin", #"relu" #使用relu后模型无法进行任何的有效学习
+                 ):
         super().__init__()
         self.omega_0 = omega_0
         self.is_first = is_first
+        self.activationFun = activationFun
         
         self.in_features = in_features
         self.linear = nn.Linear(in_features, out_features, bias=bias)
         
-        self.init_weights()
+        if self.activationFun=="sin":
+            self.init_weights()
     
     def init_weights(self):
+        '''
+            论文通过概率论推导表明：若输入为 [-1,1] 上的均匀分布，则经过正弦激活后输出服从 Arcsine 分布。
+            若权重满足论文使用的均匀分布，则每个线性层的输出近似为 标准正态分布，再经正弦激活后又回到 Arcsine 分布。
+            这样，无论网络多深，每层的激活分布都保持一致，避免了梯度消失或爆炸。
+        '''
         with torch.no_grad():
             if self.is_first:
                 self.linear.weight.uniform_(-1 / self.in_features, 
@@ -176,9 +185,27 @@ class SineLayer(nn.Module):
             else:
                 self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0, 
                                              np.sqrt(6 / self.in_features) / self.omega_0)
+        # 默认值是Kaiming 正态分布
+        # Kaiming 均匀分布: weight ~ Uniform(-1/sqrt(in_features), +1/sqrt(in_features))
         
+    def init_weights2(self): # 使得输出的结果为全白
+        with torch.no_grad():
+            if bias:
+                linear.weight.fill_(0)
+                linear.bias.fill_(10**10)
+
+    # def forward(self, input):
+    #     return torch.sin(self.omega_0 * self.linear(input)) #激活函数 sin
+
     def forward(self, input):
-        return torch.sin(self.omega_0 * self.linear(input))
+        result = self.omega_0 * self.linear(input)
+        if self.activationFun == "sin": # sin
+            return torch.sin(result) #激活函数 sin
+        elif self.activationFun == "relu": # relu
+            return nn.functional.relu(result)
+        else:
+            print("SineLayer 激活函数类别错误!!!")
+            exit(0)
     
     def forward_with_intermediate(self, input): #这个函数并没有被执行
         if True:
@@ -193,25 +220,10 @@ class Siren(nn.Module):
     #              first_omega_0=30, hidden_omega_0=30.):
     def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False, 
                  first_omega_0=30, hidden_omega_0=30., 
-                 use_residual=False, 
-                #  use_positionEncoder=False, total_steps=2000, warmup_steps=1500, 
+                 use_residual=False,
+                 initW_mode=None, 
                  ):
         super().__init__()
-        
-        # self.use_positionEncoder = use_positionEncoder
-        # if self.use_positionEncoder:
-        #     # 自适应位置编码器
-        #     self.pos_encoder = AdaptivePositionalEncoder(
-        #         input_dim=3, num_freqs=10, 
-        #         total_steps=total_steps, warmup_steps=warmup_steps, 
-        #         mode='linear'
-        #     )
-            
-            # # 方向编码器（也可以改为自适应，但通常方向编码不需要）
-            # self.dir_encoder = AdaptivePositionalEncoder(
-            #     input_dim=3, num_freqs=4, total_steps=total_steps,
-            #     warmup_steps=warmup_steps, mode='linear'
-            # )
 
         self.net = []
         # 1.输入层
@@ -238,15 +250,17 @@ class Siren(nn.Module):
         
         self.net = nn.Sequential(*self.net)
         self.use_residual=use_residual
+        if not initW_mode is None:
+            if initW_mode=="init_weights2":
+                 self.net[len(self.net)-1].init_weights2()
     
-    def forward_old(self, coords):
-        output = self.net(coords)
-        return output
-
     def forward(self, coords):
-        if not self.use_residual:
-            return self.forward_old(coords)
-        
+        if self.use_residual:
+            return self.forward_res(coords)
+        else:
+            return self.net(coords)
+
+    def forward_res(self, coords):
         x = coords
         
         # 通过输入层

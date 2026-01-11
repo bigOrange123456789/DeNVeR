@@ -3,18 +3,8 @@ import os
 config_data0 = {
             "experiments" : [
                 ####################### 改用sub4数据集 ####################### 
-                ##########################  DeNVeR.019  ##########################                  
-                # {# 原视频的分割效果
-                #     "name": "_019_01_bestMetric",
-                #     "color":"#70C00C",
-                #     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_sub4_result/_019_01_bestMetric",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
                 ##########################  DeNVeR.020  ##########################  
-                {# 原视频的分割效果
+                {# 
                     "name": "_020_01_baseline",
                     "color":"#80A00C",
                     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
@@ -23,29 +13,93 @@ config_data0 = {
                     "block_cath":False,
                     "threshold": 0.5,
                 },
-                # {# 原视频的分割效果
-                #     "name": "_020_02_newSoft",
-                #     "color":"#90C01C",
-                #     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_sub4_result/_020_02_newSoft",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                {# 原视频的分割效果
-                    "name": "_020_03",
-                    "color":"#A0C02C",
+
+                ##########################  DeNVeR.021  ##########################  
+                {# 比020_01的指标低1个点
+                    "name": "_021_01",
+                    "color":"#E1602C",
                     "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub4_result/_020_03",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_021_01",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                {
+                    "name": "_021_02",
+                    "color":"#E2603C",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_021_02",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { #无显著变化
+                    "name": "A21-03(20-01)",
+                    "color":"#E3604C",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-03(20-01)",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { #无显著变化
+                    "name": "_021_04",
+                    "color":"#E3605C",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_021_04",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "_021_05",
+                    "color":"#E4606C",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/_021_05",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-06",
+                    "color":"#E5606D",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-06",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-07",
+                    "color":"#E6606E",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-07",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-08",
+                    "color":"#E7607E",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-08",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
 
 
+
+
             ],
             "usedVideoId":
-                os.listdir("outputs/xca_dataset_sub4_copy/ground_truth"),
+                [
+                    # 'CVAI-1207LAO44_CRA29',
+                    'CVAI-1253LAO0_CAU29',
+                    # 'CVAI-2174LAO42_CRA18', 
+                    # 'CVAI-2855LAO26_CRA31',
+                ],
+                # os.listdir("outputs/xca_dataset_sub4_copy/ground_truth"),
             "DataFiltering": 
                 # "T",
                 # "Move",

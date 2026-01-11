@@ -144,6 +144,12 @@ class Main:
             path_save = os.path.join(self.config.root_path, "inputs", config['name'], video_id)
             os.makedirs(path_save, exist_ok=True)
             save_image(image, os.path.join(path_save,frame_id))
+        
+        def s2(image_noise): #保存提取的噪声图片
+            from torchvision.utils import save_image
+            path_save = os.path.join(self.config.root_path, "noiseLayer", config['name'], video_id)
+            os.makedirs(path_save, exist_ok=True)
+            save_image(image_noise, os.path.join(path_save,frame_id))
 
         if config.get("precomputed", True):
             # 预计算方法使用显示模式
@@ -161,6 +167,9 @@ class Main:
         # return self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
         img = self.image_loader.load_image(input_mode, patient_id, video_id, frame_id)
         s(img)#保存到inputs文件夹中
+        if "noise_label" in config:
+            img_noise = self.image_loader.load_image(config["noise_label"], patient_id, video_id, frame_id)
+            s2(img_noise)
         return img
     
     def _normalize_image(self, config, img, mean, std):
@@ -437,8 +446,6 @@ def myCopy(folder_path,folder2_path,tag):
 
 def main(): 
     """主函数"""
-    # 2025.11.26-15:59:做了一个诡异的梦
-    # 被聚集到一个城市中的一个庭院中，天空中飞过三个外星飞船，还隐约能够看到巨大的鱿鱼
     # 
     # 初始化配置和各个管理器
     config = Config()
@@ -476,11 +483,15 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    usedVideoId = ['CVAI-2855LAO26_CRA31.2','CVAI-2855LAO26_CRA31.3','CVAI-2855LAO26_CRA31.4'] #None
+    # usedVideoId = ['CVAI-2855LAO26_CRA31.2','CVAI-2855LAO26_CRA31.3','CVAI-2855LAO26_CRA31.4'] #None
     usedVideoId = ['CVAI-2855LAO26_CRA31.2']
-    usedVideoId = ['CVAI-2855LAO26_CRA31.2.2']
-    usedVideoId = ['CVAI-2855LAO26_CRA31']
-    usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
+    usedVideoId = ['CVAI-2855LAO26_CRA31.3']
+    # usedVideoId = ['CVAI-2855LAO26_CRA31.5']
+    # usedVideoId = ["CVAI-2855LAO26_CRA31_new"]
+    usedVideoId = ['CVAI-1253LAO0_CAU29']
+    # usedVideoId = ['CVAI-1207LAO44_CRA29']
+    # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
+    
     
     # usedVideoId = [
     #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 

@@ -121,6 +121,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     configRigids={}
     configSofts={}
     configFluids={}
+    adaptiveFrameNumMode = 0 
     # loss_recon_all_type = "MSE"
     # useMatrix = True
     if not config is None:
@@ -166,6 +167,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             NUM_fluid = config["NUM_fluid"]
         if "configFluids" in config:
             configFluids = config["configFluids"]
+        if "adaptiveFrameNumMode" in config:
+            adaptiveFrameNumMode = config["adaptiveFrameNumMode"]
         # if 
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
@@ -178,9 +181,20 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     #     mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
     #     # check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
     #分割原始数据中的血管
-    maskPath=os.path.join(outpath, tag+".orig_mask")
-    if useMask and not os.path.exists(maskPath):
-        mainFreeCOS_sim(paramPath,pathIn,maskPath)
+    if "maskPath_pathIn" in config and not config["maskPath_pathIn"] is None:
+        pathIn2=os.path.join(outpath, config["maskPath_pathIn"])
+        maskPath=os.path.join(outpath, tag+".orig_mask2")
+        print("useMask and not os.path.exists(maskPath)",useMask and not os.path.exists(maskPath))
+        if useMask and not os.path.exists(maskPath):
+            mainFreeCOS_sim(paramPath,pathIn2,maskPath)
+            print("Test123")
+        print("pathIn2",pathIn2)
+        # exit(0)
+        # config["maskPath"]
+    else:
+        maskPath=os.path.join(outpath, tag+".orig_mask")
+        if useMask and not os.path.exists(maskPath):
+            mainFreeCOS_sim(paramPath,pathIn,maskPath)
 
     # 刚体解耦
     if not flagHadRigid:
@@ -204,6 +218,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               configSofts=configSofts,
                               NUM_fluid=NUM_fluid,
                               configFluids=configFluids,
+                              adaptiveFrameNumMode=adaptiveFrameNumMode,
                               )
         myMain.train(myEpochNum,lossParam) 
 
@@ -232,13 +247,23 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
 
         # soft结果 
         # save1(p["o_soft_all"], tag+".soft")#看一下刚体层的效果
+        if True:#输出全部的软体层
+         if "s" in layers:
+            for i in range(len(layers["s"])):
+                save1(layers["s"][i], tag+".soft" + str(i))
+            if myMain.useSoftMask:
+                for i in range(len(layers["softMask"])):
+                    save1(layers["softMask"][i], tag+".softMask" + str(i))
+            # for i in range(len(layers["s"])):
+            #     save1(layers["s"][i], tag+".soft" + str(i))
 
         # rigid结果 
         save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
         if True: 
-            save1(
-                orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
-                tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
+            if not p["o_rigid_all"]==None and len(p["o_rigid_all"])>0: 
+                save1(
+                    orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
+                    tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
         if False:#输出全部的刚体层
             for i in range(len(layers["r"])):
                 save1(layers["r"][i], tag+".rigid" + str(i))
