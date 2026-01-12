@@ -87,6 +87,42 @@ config_data0 = {
                     "block_cath":False,
                     "threshold": 0.5,
                 },
+                { 
+                    "name": "A21-09",
+                    "color":"#E7608E",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-09",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-10",
+                    "color":"#E8609E",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-10",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-11",
+                    "color":"#E960AE",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-11",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+                { 
+                    "name": "A21-11(1)",
+                    "color":"#E960AE",
+                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_sub4_result/A21-11(1)",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
 
 
 

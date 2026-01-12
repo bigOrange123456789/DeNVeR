@@ -108,6 +108,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     useSmooth=False
     openLocalDeform=False
     weight_smooth=1
+    weight_concise=0.0001
     stillness=False
     NUM_rigid = 2 #刚体层数量
     NUM_soft = 0
@@ -122,6 +123,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     configSofts={}
     configFluids={}
     adaptiveFrameNumMode = 0 
+    use_dynamicFeatureMask = False
     # loss_recon_all_type = "MSE"
     # useMatrix = True
     if not config is None:
@@ -135,6 +137,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             openLocalDeform=config["openLocalDeform"]
         if "weight_smooth" in config:
             weight_smooth=config["weight_smooth"]
+        if "weight_concise" in config:
+            weight_concise = config["weight_concise"]
         if "stillness" in config:
             stillness = config["stillness"]
         if "NUM_rigid" in config:
@@ -169,6 +173,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             configFluids = config["configFluids"]
         if "adaptiveFrameNumMode" in config:
             adaptiveFrameNumMode = config["adaptiveFrameNumMode"]
+        if "use_dynamicFeatureMask" in config:
+            use_dynamicFeatureMask = config["use_dynamicFeatureMask"]
         # if 
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
@@ -203,6 +209,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               useSmooth=useSmooth,
                               openLocalDeform=openLocalDeform,
                               weight_smooth=weight_smooth,
+                              weight_concise=weight_concise,
                               stillness=stillness,
                               stillnessFristLayer=stillnessFristLayer,
                               NUM_rigid=NUM_rigid,
@@ -219,6 +226,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               NUM_fluid=NUM_fluid,
                               configFluids=configFluids,
                               adaptiveFrameNumMode=adaptiveFrameNumMode,
+                              use_dynamicFeatureMask=use_dynamicFeatureMask,
                               )
         myMain.train(myEpochNum,lossParam) 
 

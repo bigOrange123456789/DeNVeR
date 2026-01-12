@@ -47,7 +47,9 @@ class Decouple_rigid(nn.Module):
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
     
-    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,weight_smooth=1,stillness=False,stillnessFristLayer=True,
+    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
+                 weight_smooth=1,weight_concise=0.0001,
+                 stillness=False,stillnessFristLayer=True,
                  NUM_soft=0,NUM_rigid=2,NUM_fluid=0,
                  useMask=False,openReconLoss_rigid=False,lossType=1,
                  maskPath=None,
@@ -57,9 +59,11 @@ class Decouple_rigid(nn.Module):
                 configRigids={},
                 configSofts={},
                 configFluids={},
-                adaptiveFrameNumMode=0
+                adaptiveFrameNumMode=0,
+                use_dynamicFeatureMask=False
                  ):
         super().__init__()
+        self.use_dynamicFeatureMask = use_dynamicFeatureMask
         v = VideoFitting(path,useMask=useMask,maskPath=maskPath)
         print("num_frames:",v.num_frames)
         if adaptiveFrameNumMode==1:
@@ -87,6 +91,7 @@ class Decouple_rigid(nn.Module):
         self.useSmooth=useSmooth#一个布尔参数，用来决定本次测试是否使用基于雅可比矩阵的平滑损失函数
         self.openLocalDeform=openLocalDeform
         self.weight_smooth=weight_smooth
+        self.weight_concise=weight_concise
         self.stillness=stillness#是否静止不动
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
@@ -105,7 +110,8 @@ class Decouple_rigid(nn.Module):
             self.f_soft_list.append(Layer(
                 useGlobal=False, 
                 # hidden_features=512,
-                config=configSofts["layer"]
+                config=configSofts["layer"],
+                use_dynamicFeatureMask=use_dynamicFeatureMask,
                 ))
             if self.useSoftMask:
                 self.f_soft_mask_list.append(
@@ -136,6 +142,7 @@ class Decouple_rigid(nn.Module):
                 v=self.v,
                 interval=interval,
                 config=configRigid,
+                use_dynamicFeatureMask=use_dynamicFeatureMask,
             ))
         if self.NUM_rigid>0:
             self.f_rigid_list[0].stillness=stillnessFristLayer
@@ -314,6 +321,7 @@ class Decouple_rigid(nn.Module):
         h_global_list=[]
         h_global = torch.tensor(0.0)
         loss_smooth = torch.tensor(0.0)
+        loss_concise = torch.tensor(0.0)
         for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
             o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,stage)#因为这的stage为0，所以并没有真正使用软体形变
@@ -323,6 +331,9 @@ class Decouple_rigid(nn.Module):
             h_global_list.append(p_rigid0["h_global"])
             h_global = p_rigid0["h_global"]
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
+            if self.use_dynamicFeatureMask:
+                k = self.f_rigid_list[i].kFeatureMask()
+                loss_concise = loss_concise + (k**2)
         if self.NUM_rigid>0:
             h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
 
@@ -338,6 +349,9 @@ class Decouple_rigid(nn.Module):
                 o_soft_mask_list.append( o_soft_mask )
             o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
+            if self.use_dynamicFeatureMask:
+                k = self.f_rigid_list[i].kFeatureMask()
+                loss_concise = loss_concise + (k**2)
 
         # 3.流体
         o_fluid = 1
@@ -389,6 +403,7 @@ class Decouple_rigid(nn.Module):
             "o_soft_all":o_soft_all,
             "o_fluid_all":o_fluid_all,
             "loss_smooth":loss_smooth,
+            "loss_concise":loss_concise,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
             
         }#输出三样东西：重构结果、分层结果、相关参数
@@ -593,6 +608,10 @@ class Decouple_rigid(nn.Module):
         if self.useSmooth:
             loss_smooth = p["loss_smooth"] # 权重为 1
 
+        loss_concise=0
+        if self.use_dynamicFeatureMask:
+            loss_concise = p["loss_concise"]
+
         # # 四、非空白损失 #blank
         # loss_blank = torch.tensor(0.0)
         # if "blank" in lossParam:
@@ -608,12 +627,13 @@ class Decouple_rigid(nn.Module):
         if loss_binaryMask_all>0:
             loss_binaryMask_all = 1/loss_binaryMask_all
 
-        loss = loss_recon_mask + loss_recon_all + loss_smooth * self.weight_smooth + loss_binaryMask_all
+        loss = loss_recon_mask + loss_recon_all + loss_smooth * self.weight_smooth + loss_concise * self.weight_concise + loss_binaryMask_all 
 
 
 
         self.layers = layers
         if not step % 200:
+            # print("loss_concise",loss_concise)
             # if self.NUM_fluid>0:
             #     total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))# 计算全局梯度范数（不裁剪）
             #     eps = 1e-7          # 比默认的 1e-8 稍宽松，也可设 1e-6/1e-5
@@ -630,8 +650,8 @@ class Decouple_rigid(nn.Module):
                 if self.loss_recon_all_type=="MSE": #整体重构损失
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
                     #     step, loss, loss_recon_mask, loss_recon_all))
-                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, loss_binaryMask_all=%0.8f, recon_all=%0.8f" % (
-                        step, loss, loss_recon_mask, loss_binaryMask_all, loss_recon_all))
+                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, loss_bMaskA=%0.8f, loss_concise=%0.8f,recon_all=%0.8f" % (
+                        step, loss, loss_recon_mask, loss_binaryMask_all, loss_concise, loss_recon_all))
                 else:
                     print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
                         step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))

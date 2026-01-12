@@ -13,6 +13,13 @@ from nir.util import Dataset,ToTensor
 
 import torch.nn as nn
 import torch.nn.functional as F
+class LearnableVariable(nn.Module):
+    def __init__(self,value):
+        super().__init__()
+        self.v = nn.Parameter(torch.tensor(value, dtype=torch.float32).cuda())
+    def forward(self):
+        return self.v
+    
 class Tex2D(nn.Module):
     def __init__(self,size):
         # super(Tex2D, self).__init__()
@@ -62,10 +69,21 @@ class Tex2D(nn.Module):
         
         # 5. 调整输出形状: (1, C, N, 1) -> (N, C)
         return sampled.squeeze(0).squeeze(-1).permute(1, 0)
-class Layer(nn.Module):
+class Layer(nn.Module): #用于表示软体层
+    def getFeatureMask(self, k):
+        dim = self.hidden_features_local
+
+        # 创建索引
+        indices = torch.arange(0, dim, dtype=torch.float32).cuda()
+        
+        # 创建基础向量：前k_int个元素为1，其余为0
+        vec = (k*dim-indices).float()
+        
+        return torch.clamp(vec, 0, 1)
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
                  deformationSize=8,#hidden_features=128,
                  config={},
+                 use_dynamicFeatureMask=False,
                  ):
         super().__init__()
         hidden_layers_map=4
@@ -81,6 +99,8 @@ class Layer(nn.Module):
             hidden_features_map    = config["hidden_features_map"] 
             hidden_features_global = config["hidden_features_global"] 
             hidden_features_local  = config["hidden_features_local"] 
+        
+        self.hidden_features_local = hidden_features_local #局部运动MLP的宽度
         ####################################
         self.useGlobal=useGlobal
         self.useLocal=useLocal
@@ -110,8 +130,17 @@ class Layer(nn.Module):
                                  outermost_linear=True)
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())
+        self.use_dynamicFeatureMask = use_dynamicFeatureMask
+        if use_dynamicFeatureMask:
+            self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
+            self.parameters.append(self.kFeatureMask.parameters())
     def forward(self,xyt):
-        h_local = self.g_local(xyt) if self.useLocal else torch.tensor(0.0)
+        featureMask=None
+        if self.use_dynamicFeatureMask:
+            featureMask=self.getFeatureMask(
+                self.kFeatureMask().detach().clone()
+            )
+        h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
         if self.useDeformation:
             h_local=2*torch.sigmoid(h_local)-1
             h_local=h_local*self.deformationSize
@@ -286,6 +315,17 @@ class AdaptivePositionalEncoder(nn.Module):
         }
 
 class Layer_video(nn.Module): #用来拟合视频的模块
+    def getFeatureMask(self, k):
+        dim = self.config["hidden_features"]
+
+        # 创建索引
+        indices = torch.arange(0, dim, dtype=torch.float32).cuda()
+        
+        # 创建基础向量：前k_int个元素为1，其余为0
+        vec = (k*dim-indices).float()
+        
+        return torch.clamp(vec, 0, 1)
+
     def __init__(
                 self,
                 config={
@@ -300,17 +340,21 @@ class Layer_video(nn.Module): #用来拟合视频的模块
                             "warmup_steps":1000,
                         },
                      },
+                     "use_featureMask":False,
+                     "fm_total_steps":1000,
                      "use_maskP":True,
                 },
             ):
         super().__init__()
+        self.config=config
         self.use_posEnc="posEnc" in config and config["posEnc"]
         if self.use_posEnc:
             self.use_APE= "APE" in config["posEnc"] and config["posEnc"]["APE"]
         self.use_maskP=config["use_maskP"]#True#能否自动遮挡该图层的输出
-        if self.use_maskP:
-            self.maskP = nn.Parameter(torch.tensor(0, dtype=torch.float32)).cuda() #最开始完全遮挡
-            # nn.Parameter(torch.tensor(0.5))
+        self.use_featureMask=config["use_featureMask"]
+        # if self.use_featureMask:
+        #     self.featureMaskK=nn.Parameter(torch.tensor(0, dtype=torch.float32)).cuda() #最开始完全遮挡
+        #     self.featureMask=torch.zeros(512)
         # print("self.use_posEnc",self.use_posEnc)
         in_features_num = 3
         if self.use_posEnc:
@@ -361,7 +405,15 @@ class Layer_video(nn.Module): #用来拟合视频的模块
         # print("t_encoded",t_encoded.shape)
         # print("combined",combined.shape,10+4)
         # exit(0)
-        color = torch.sigmoid(self.f2(combined))
+        featureMask = None
+        if self.use_featureMask:
+            if current_step is None:#推理的时候这个似乎是None
+                current_step=self.config["fm_total_steps"]
+            k=current_step/self.config["fm_total_steps"]
+            featureMask = self.getFeatureMask(k)
+        # if current_step%200==0:
+        #     print("featureMask.sum():",featureMask.sum(),"myLib/Layer.py")
+        color = torch.sigmoid(self.f2(combined, featureMask=featureMask))
         if self.use_maskP:
             color = self.maskP * color + (1-self.maskP)*1
         return color
@@ -381,6 +433,7 @@ class Layer_rigid(nn.Module):
                  stillness=False, # 是否静止不动
                  v=None,#原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
                  interval=1.0,
+                 use_dynamicFeatureMask=False,
                  ):
         super().__init__()
         self.useGlobal=useGlobal
@@ -434,6 +487,9 @@ class Layer_rigid(nn.Module):
                                  outermost_linear=True)
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())    
+        if use_dynamicFeatureMask:
+            self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
+            self.parameters.append(self.kFeatureMask.parameters())
     
     def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
         if self.stillness: #静止不动
@@ -443,7 +499,12 @@ class Layer_rigid(nn.Module):
             loss_smooth =torch.tensor(0.0)
         else:
             t = xyt[:, [-1]]
-            h_global = self.g_global(t)
+            featureMask=None
+            if self.use_dynamicFeatureMask:
+                featureMask=self.getFeatureMask(
+                    self.kFeatureMask().detach().clone()
+                )
+            h_global = self.g_global(t,featureMask=featureMask)
             loss_smooth = torch.tensor(0.0)
             
             '''

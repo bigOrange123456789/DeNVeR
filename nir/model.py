@@ -254,17 +254,20 @@ class Siren(nn.Module):
             if initW_mode=="init_weights2":
                  self.net[len(self.net)-1].init_weights2()
     
-    def forward(self, coords):
-        if self.use_residual:
-            return self.forward_res(coords)
-        else:
-            return self.net(coords)
+    def forward_old(self, coords):
+        return self.net(coords)
 
-    def forward_res(self, coords):
+    def forward(self, coords,featureMask=None):
         x = coords
         
         # 通过输入层
         x = self.net[0](x)
+        if not featureMask is None:
+            # print("x in",x.shape)
+            # print("featureMask:",featureMask.shape)
+            x = x*featureMask.unsqueeze(0)
+            # print("x out",x.shape)
+            # exit(0)
         
         # 通过隐含层（从索引1开始）
         for i in range(1, len(self.net) - 1):  # 排除输入层和输出层
@@ -276,8 +279,10 @@ class Siren(nn.Module):
             # 所以这里我们直接使用当前层
             x = self.net[i](x)
             
-            # 添加残差连接
-            x = x + residual
+            if self.use_residual:# 添加残差连接
+                x = x + residual
+            if not featureMask is None:
+                x = x*featureMask.unsqueeze(0)
         
         # 通过输出层
         if len(self.net) > 1:
