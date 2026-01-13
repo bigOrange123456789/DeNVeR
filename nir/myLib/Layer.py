@@ -77,9 +77,10 @@ class Layer(nn.Module): #用于表示软体层
         indices = torch.arange(0, dim, dtype=torch.float32).cuda()
         
         # 创建基础向量：前k_int个元素为1，其余为0
-        vec = (k*dim-indices).float()
+        vec = k*dim-indices
         
-        return torch.clamp(vec, 0, 1)
+        # return torch.clamp(vec, 0, 1)
+        return  torch.sigmoid( vec**3 )
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
                  deformationSize=8,#hidden_features=128,
                  config={},
@@ -138,7 +139,7 @@ class Layer(nn.Module): #用于表示软体层
         featureMask=None
         if self.use_dynamicFeatureMask:
             featureMask=self.getFeatureMask(
-                self.kFeatureMask().detach().clone()
+                self.kFeatureMask()#.detach().clone() #这里必须进行梯度回传, 因此不能进行detach
             )
         h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
         if self.useDeformation:
@@ -419,6 +420,17 @@ class Layer_video(nn.Module): #用来拟合视频的模块
         return color
 
 class Layer_rigid(nn.Module):
+    def getFeatureMask(self, k):
+        dim = self.hidden_features_global
+
+        # 创建索引
+        indices = torch.arange(0, dim, dtype=torch.float32).cuda()
+        
+        # 创建基础向量：前k_int个元素为1，其余为0
+        vec = k*dim-indices
+        
+        # return torch.clamp(vec, 0, 1)
+        return  torch.sigmoid( vec**3 )
     def __init__(self,useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False,
                  deformationSize=3*0.004,
                 #  hidden_features=128,
@@ -457,6 +469,7 @@ class Layer_rigid(nn.Module):
             hidden_features_map = config["hidden_features_map"] 
             hidden_features_global = config["hidden_features_global"] 
             hidden_features_local = config["hidden_features_local"] 
+        self.hidden_features_global=hidden_features_global
             
         self.v=v #原始视频数据的解析对象, 这里读取该对象是为了获取视频的尺寸长度参数
         # print(2*4*512, 2)
@@ -490,6 +503,7 @@ class Layer_rigid(nn.Module):
         if use_dynamicFeatureMask:
             self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
             self.parameters.append(self.kFeatureMask.parameters())
+        self.use_dynamicFeatureMask = use_dynamicFeatureMask
     
     def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
         if self.stillness: #静止不动
@@ -502,8 +516,13 @@ class Layer_rigid(nn.Module):
             featureMask=None
             if self.use_dynamicFeatureMask:
                 featureMask=self.getFeatureMask(
-                    self.kFeatureMask().detach().clone()
+                    self.kFeatureMask()#.detach().clone()
                 )
+            # print("flag")
+            # print("self.use_dynamicFeatureMask",self.use_dynamicFeatureMask)
+            # print("self.getFeatureMask",self.getFeatureMask)
+            # print("self",self)
+            # exit(0)
             h_global = self.g_global(t,featureMask=featureMask)
             loss_smooth = torch.tensor(0.0)
             

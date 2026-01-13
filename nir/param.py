@@ -234,7 +234,7 @@ if True:
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
-                "configRigid":{ #单个刚体层的参数
+                "configRigid":{ #单个刚体层的参数 #有整体运动、但是没有局部运动
                     # 纹理
                     'hidden_layers_map':2,#1,#2,#4,#32,#4,
                     'hidden_features_map': 8*512,#256,#64,#8,#2*4*512,#16*4*512,#128,#512, #128,
@@ -251,8 +251,8 @@ if True:
                     "loss_recon_all_type":"MSE",#{"myLog" 学习能力不如MSE, "MSE", "atten_d"} #我猜测均方误差更关注背景、注意力损失更关注血管
                 }, 
                 "openLocalDeform":False, #True,
-                "stillness":    True,#False, #True,#False,#不取消运动约束
-                "stillnessFristLayer":True,#:False, #True,#False,#并无意义，要和stillness保持一致
+                "stillness":    False,#True,#False, #True,#False,#不取消运动约束
+                "stillnessFristLayer":False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 "use_dynamicFeatureMask":True,
                 # 1.2 软体模块
                 "NUM_soft":1,#1,

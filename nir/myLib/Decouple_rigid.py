@@ -321,7 +321,7 @@ class Decouple_rigid(nn.Module):
         h_global_list=[]
         h_global = torch.tensor(0.0)
         loss_smooth = torch.tensor(0.0)
-        loss_concise = torch.tensor(0.0)
+        loss_conciseR = torch.tensor(0.0)
         for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
             o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,stage)#因为这的stage为0，所以并没有真正使用软体形变
@@ -333,7 +333,7 @@ class Decouple_rigid(nn.Module):
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
             if self.use_dynamicFeatureMask:
                 k = self.f_rigid_list[i].kFeatureMask()
-                loss_concise = loss_concise + (k**2)
+                loss_conciseR = loss_conciseR + (k**2)
         if self.NUM_rigid>0:
             h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
 
@@ -341,6 +341,7 @@ class Decouple_rigid(nn.Module):
         o_soft_all = 1
         o_soft_list = []
         o_soft_mask_list = []
+        loss_conciseS = torch.tensor(0.0)
         for i in range(self.NUM_soft):
             o_soft0, _ = self.f_soft_list[i](xyt+h_global) #软体运动基于刚体运动
             if self.useSoftMask:#如果使用了软体遮挡
@@ -350,8 +351,8 @@ class Decouple_rigid(nn.Module):
             o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
             if self.use_dynamicFeatureMask:
-                k = self.f_rigid_list[i].kFeatureMask()
-                loss_concise = loss_concise + (k**2)
+                k = self.f_soft_list[i].kFeatureMask()
+                loss_conciseS = loss_conciseS + (k**2)
 
         # 3.流体
         o_fluid = 1
@@ -403,7 +404,9 @@ class Decouple_rigid(nn.Module):
             "o_soft_all":o_soft_all,
             "o_fluid_all":o_fluid_all,
             "loss_smooth":loss_smooth,
-            "loss_concise":loss_concise,
+            "loss_concise" :loss_conciseR + loss_conciseS,
+            "loss_conciseR":loss_conciseR,
+            "loss_conciseS":loss_conciseS,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
             
         }#输出三样东西：重构结果、分层结果、相关参数
@@ -650,8 +653,8 @@ class Decouple_rigid(nn.Module):
                 if self.loss_recon_all_type=="MSE": #整体重构损失
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
                     #     step, loss, loss_recon_mask, loss_recon_all))
-                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, loss_bMaskA=%0.8f, loss_concise=%0.8f,recon_all=%0.8f" % (
-                        step, loss, loss_recon_mask, loss_binaryMask_all, loss_concise, loss_recon_all))
+                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, loss_bMaskA=%0.8f, loss_conciseR=%0.8f, loss_conciseS=%0.8f" % (
+                        step, loss, loss_recon_mask, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
                 else:
                     print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
                         step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))

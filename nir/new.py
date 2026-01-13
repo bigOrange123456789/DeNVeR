@@ -278,7 +278,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
         # fluid结果
-        if False:#"f" in layers:
+        if True:#"f" in layers:
             for i in range(len(layers["f"])):
                 save1(layers["f"][i], tag+".fluid" + str(i))
 
