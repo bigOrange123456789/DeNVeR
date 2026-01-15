@@ -194,7 +194,8 @@ for item in os.listdir(folder_path):
             # framelen=40#总帧数
             src_gt_path = os.path.join(folder_path +"/"+item+"/ground_truth",videoId)
             i1 = int(os.listdir(src_gt_path)[-1].split(".")[0])#末尾关键帧的编号
-            if i1>=40: startPos=i1-40
+            # if i1>=framelen: startPos=i1-framelen
+            if i1>=framelen: startPos=i1-framelen+1
 
                 
             NUMBER=NUMBER+1

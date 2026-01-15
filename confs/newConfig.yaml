@@ -1,15 +1,15 @@
 my:
-    filePathRoot: "log_22"
-    notes: "使用经过裁剪后相同长度的视频."
+    filePathRoot: "log_23"
+    notes: "使用原始数据集."
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset_sim4"
-    datasetPath_rigid.out:  "log_22/xca_dataset_sim4"
-    datasetPath_soft.in:  "log_22/xca_dataset_sim4"
-    datasetPath_soft.out:  "log_22/xca_dataset_sim4"
-    datasetPath_gt:  "../DeNVeR_in/xca_dataset_sim4"
-    datasetPath:  "log_22/xca_dataset_sim4"
+    datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset"
+    datasetPath_rigid.out:  "log_23/xca_dataset"
+    datasetPath_soft.in:  "log_23/xca_dataset"
+    datasetPath_soft.out:  "log_23/xca_dataset"
+    datasetPath_gt:  "../DeNVeR_in/xca_dataset"
+    datasetPath:  "log_23/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

@@ -93,13 +93,16 @@ class Layer(nn.Module): #用于表示软体层
         hidden_features_map=128
         hidden_features_global=128
         hidden_features_local=128
+        self.dynamicTex=False # 纹理神经网络是否输入时间
         if not config is None:
             hidden_layers_map    = config["hidden_layers_map"]   
             hidden_layers_global = config["hidden_layers_global"]
             hidden_layers_local  = config["hidden_layers_local"] 
             hidden_features_map    = config["hidden_features_map"] 
             hidden_features_global = config["hidden_features_global"] 
-            hidden_features_local  = config["hidden_features_local"] 
+            hidden_features_local  = config["hidden_features_local"]
+            if "dynamicTex" in config:
+                self.dynamicTex = config["dynamicTex"]  
         
         self.hidden_features_local = hidden_features_local #局部运动MLP的宽度
         ####################################
@@ -108,10 +111,12 @@ class Layer(nn.Module): #用于表示软体层
         self.useMatrix=useMatrix
         self.useDeformation=useDeformation
         self.deformationSize=deformationSize
-        self.f_2D = Siren(in_features=2, out_features=1,
-                          hidden_features=hidden_features_map,#hidden_features, 
-                          hidden_layers=hidden_layers_map,#4,
-                          outermost_linear=True)
+        self.f_2D = Siren(
+                        in_features=3 if self.dynamicTex else 2,# 动态纹理输入uvt，静态纹理输入uv 
+                        out_features=1, #灰度值
+                        hidden_features=hidden_features_map,#hidden_features, 
+                        hidden_layers=hidden_layers_map,#4,
+                        outermost_linear=True)
         self.f_2D.cuda()
         self.parameters = [self.f_2D.parameters()]
         if False:
@@ -171,13 +176,209 @@ class Layer(nn.Module): #用于表示软体层
             xy_ = new_uv + h_local
         else:
             h_global = self.g_global(xyt[:, [-1]]) if self.useGlobal else 0
+            # print("h_global",h_global)
+            # print("h_local",h_local)
+            # exit(0) #符合预期
             xy_ = xyt[:, :-1] + h_global + h_local
-        color = torch.sigmoid(self.f_2D(xy_))
+        if self.dynamicTex:
+            t = xyt[:, [-1]]#1000,1
+            xy_t = torch.cat([xy_, t], dim=1) #1000,1 1000,2 => 1000,3
+        color = torch.sigmoid(
+            self.f_2D(xy_t if self.dynamicTex else xy_)
+            )
         # color = torch.sigmoid(self.tex2D(xy_))
         return color,{
             "xy_":xy_,
             "h_local":h_local
         }
+
+class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和纹理featureMask
+    def _getFeatureMask(self, k, tag):#tag=motion运动 或 map
+        dim = self.config["hidden_features_map"] if tag=="map" else self.config["hidden_features_local"]
+
+        # 创建索引
+        indices = torch.arange(0, dim, dtype=torch.float32).cuda()
+        
+        # 创建基础向量：前k_int个元素为1，其余为0
+        vec = k*dim-indices
+        
+        # return torch.clamp(vec, 0, 1)
+        return  torch.sigmoid( vec**3 )
+    
+    def __init__(self,
+                 useGlobal=True,useMatrix=True,
+                 useLocal=True,useDeformation=False,deformationSize=8, #useDeformation用于让局部形变不太大
+                 use_dynamicFeatureMask=False,
+                 config={
+                    #  "hidden_features":512,
+                    #  "hidden_layers":4,
+                     "use_residual":False,
+                     "posEnc":{
+                        "num_freqs_pos":10,
+                        "num_freqs_time":4,
+                        "APE":{
+                            "total_steps":2000,
+                            "warmup_steps":1000,
+                        },
+                     },
+                     "use_featureMask":False, #没有在新版本中实现
+                     "fm_total_steps":1000,
+                     "use_maskP":True,
+                 },
+                 ):
+        super().__init__()
+        hidden_layers_map=4
+        hidden_layers_global=2#3
+        hidden_layers_local=4
+        hidden_features_map=128
+        hidden_features_global=128
+        hidden_features_local=128
+        self.dynamicTex=False # 纹理神经网络是否输入时间
+        if not config is None:
+            hidden_layers_map    = config["hidden_layers_map"]   
+            hidden_layers_global = config["hidden_layers_global"]
+            hidden_layers_local  = config["hidden_layers_local"] 
+            hidden_features_map    = config["hidden_features_map"] 
+            hidden_features_global = config["hidden_features_global"] 
+            hidden_features_local  = config["hidden_features_local"]
+            if "dynamicTex" in config: #用于视频数据
+                self.dynamicTex = config["dynamicTex"]  
+        
+        self.config = config
+        self.use_featureMask=config["use_featureMask"]
+        #################################### 开始实现PE部分 ####################################
+        '''
+            PE只用于纹理MLP
+            只有当启用dynamicTex的时候, PE模块才生效
+        '''
+        self.use_posEnc = "posEnc" in config and config["posEnc"]
+        if self.use_posEnc:
+            self.use_APE= "APE" in config["posEnc"] and config["posEnc"]["APE"]
+        in_features_num = 3
+        if self.use_posEnc:
+            if self.use_APE:
+               # 对空间位置进行编码
+                self.pos_encoder = AdaptivePositionalEncoder(2, num_freqs=config["posEnc"]["num_freqs_pos"],
+                                                             total_steps =config["posEnc"]["APE"]["total_steps"],
+                                                             warmup_steps=config["posEnc"]["APE"]["warmup_steps"])
+                # 对时间进行编码
+                self.time_encoder = AdaptivePositionalEncoder(1, num_freqs=config["posEnc"]["num_freqs_pos"],
+                                                             total_steps =config["posEnc"]["APE"]["total_steps"],
+                                                             warmup_steps=config["posEnc"]["APE"]["warmup_steps"])
+            else:
+                # 对空间位置进行编码
+                self.pos_encoder = PositionalEncoder(2, num_freqs=config["posEnc"]["num_freqs_pos"])
+                # 对时间进行编码
+                self.time_encoder = PositionalEncoder(1, num_freqs=config["posEnc"]["num_freqs_time"])
+            in_features_num = (
+                self.pos_encoder.output_dim +
+                self.time_encoder.output_dim
+                )
+        #################################### 结束PE部分代码 ####################################
+        self.useGlobal=useGlobal
+        self.useLocal=useLocal
+        self.useMatrix=useMatrix
+        self.useDeformation=useDeformation
+        self.deformationSize=deformationSize
+        self.f_2D = Siren(
+                        in_features=in_features_num if self.dynamicTex else 2,# 动态纹理输入uvt，静态纹理输入uv 
+                        out_features=1, #灰度值
+                        hidden_features=hidden_features_map,#hidden_features, 
+                        hidden_layers=hidden_layers_map,#4,
+                        use_residual=config["use_residual"],#这个功能没啥用
+                        outermost_linear=True)
+        self.f_2D.cuda()
+        self.parameters = [self.f_2D.parameters()]
+        if False:
+            self.tex2D = Tex2D(512)
+            self.parameters.append(self.tex2D.parameters())
+        if self.useGlobal:
+            self.g_global = Siren(in_features=1, out_features=4 if self.useMatrix else 2,
+                                  hidden_features=hidden_features_global,#16, 
+                                  hidden_layers=hidden_layers_global,#2,
+                                  outermost_linear=True)
+            self.parameters.append(self.g_global.parameters())
+            self.g_global.cuda()
+        if self.useLocal:
+            self.g_local = Siren(in_features=3, out_features=2,
+                                 hidden_features=hidden_features_local,#hidden_features, 
+                                 hidden_layers=hidden_layers_local,#4,
+                                 outermost_linear=True)
+            self.g_local.cuda()
+            self.parameters.append(self.g_local.parameters())
+        self.use_dynamicFeatureMask = use_dynamicFeatureMask
+        if use_dynamicFeatureMask:
+            self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
+            self.parameters.append(self.kFeatureMask.parameters())
+    def forward(self,xyt,current_step):
+        featureMask=None
+        if self.use_dynamicFeatureMask:
+            featureMask=self._getFeatureMask(#动态参数
+                self.kFeatureMask(),#.detach().clone() #这里必须进行梯度回传, 因此不能进行detach
+                "motion"
+            )
+        h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
+        if self.useDeformation:
+            h_local=2*torch.sigmoid(h_local)-1
+            h_local=h_local*self.deformationSize
+        if self.useMatrix and self.useGlobal:
+            c =self.g_global(xyt[:, [-1]])
+            u = xyt[:, 0]
+            v = xyt[:, 1]
+            if c.shape[1]==6:
+                new_u = c[:,0] * u + c[:,1] * u + c[:,2]
+                new_v = c[:,3] * v + c[:,4] * v + c[:,5]
+            else:#4
+                # 提取参数 (忽略可能的第五个参数)
+                tx = c[:, 0]  # X轴位移
+                ty = c[:, 1]  # Y轴位移
+                rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
+                scale = torch.tensor(1)#c[:, 3]  # 放缩因子
+                # 计算旋转和放缩后的坐标
+                cos_theta = torch.cos(rotation)
+                sin_theta = torch.sin(rotation)
+                # 向量化计算所有点
+                u=scale*u
+                v=scale*v
+                new_u = (u * cos_theta - v * sin_theta) + tx
+                new_v = (u * sin_theta + v * cos_theta) + ty
+            # 组合成新坐标张量
+            new_uv = torch.stack([new_u, new_v], dim=1)
+            xy_ = new_uv + h_local
+        else:
+            h_global = self.g_global(xyt[:, [-1]]) if self.useGlobal else 0
+            # print("h_global",h_global)
+            # print("h_local",h_local)
+            # exit(0) #符合预期
+            xy_ = xyt[:, :-1] + h_global + h_local
+        if self.dynamicTex:
+            t = xyt[:, [-1]]
+            if self.use_posEnc: #print("使用PE")
+                x_encoded = self.pos_encoder(xy_,current_step)
+                t_encoded = self.time_encoder(t,current_step) # 确保时间有正确的维度
+                combined_xy_t = torch.cat([x_encoded, t_encoded], dim=-1)
+            else:
+                combined_xy_t = torch.cat([xy_, t], dim=1) #1000,1 1000,2 => 1000,3
+            color = torch.sigmoid( self.f_2D(combined_xy_t ))
+        else:
+            color = torch.sigmoid( self.f_2D(xy_ ))
+
+        featureMask = None
+        if self.use_featureMask:
+            if current_step is None:#推理的时候这个似乎是None
+                current_step=self.config["fm_total_steps"]
+            k=current_step/self.config["fm_total_steps"]
+            featureMask = self._getFeatureMask(k,"map")
+        color = torch.sigmoid( self.f_2D(
+            combined_xy_t if self.dynamicTex else xy_,
+            featureMask=featureMask
+        ))
+        # color = torch.sigmoid(self.tex2D(xy_))
+        return color,{
+            "xy_":xy_,
+            "h_local":h_local
+        }
+
 
 class PositionalEncoder(nn.Module):
     """位置编码器，将低维输入映射到高维空间。"""
@@ -343,15 +544,15 @@ class Layer_video(nn.Module): #用来拟合视频的模块
                      },
                      "use_featureMask":False,
                      "fm_total_steps":1000,
-                     "use_maskP":True,
+                    #  "use_maskP":True,
                 },
             ):
         super().__init__()
         self.config=config
-        self.use_posEnc="posEnc" in config and config["posEnc"]
+        self.use_posEnc = "posEnc" in config and config["posEnc"]
         if self.use_posEnc:
             self.use_APE= "APE" in config["posEnc"] and config["posEnc"]["APE"]
-        self.use_maskP=config["use_maskP"]#True#能否自动遮挡该图层的输出
+        # self.use_maskP=config["use_maskP"]#True#能否自动遮挡该图层的输出
         self.use_featureMask=config["use_featureMask"]
         # if self.use_featureMask:
         #     self.featureMaskK=nn.Parameter(torch.tensor(0, dtype=torch.float32)).cuda() #最开始完全遮挡
@@ -415,8 +616,8 @@ class Layer_video(nn.Module): #用来拟合视频的模块
         # if current_step%200==0:
         #     print("featureMask.sum():",featureMask.sum(),"myLib/Layer.py")
         color = torch.sigmoid(self.f2(combined, featureMask=featureMask))
-        if self.use_maskP:
-            color = self.maskP * color + (1-self.maskP)*1
+        # if self.use_maskP:
+        #     color = self.maskP * color + (1-self.maskP)*1
         return color
 
 class Layer_rigid(nn.Module):

@@ -14,8 +14,8 @@ def copy_file_contents(src_folder, dest_folder,newName):
         dest_item_path = os.path.join( dest_folder,newName ) 
         shutil.copy2(src_item_path, dest_item_path)  # copy2 会保留文件的元数据
 
-folder_path = "xca_dataset" 
-folder2_path = "xca_dataset_copy" 
+folder_path = "xca_dataset_sim4" 
+folder2_path = "xca_dataset_sim4_copy" 
 for userId in os.listdir(folder_path):
     path_gt_user=folder_path+"/"+userId+"/ground_truth"#/CVAI-1207LAO44_CRA29"
     path_gt_user2=folder2_path+"/"+userId+"/ground_truth"#/CVAI-1207LAO44_CRA29"

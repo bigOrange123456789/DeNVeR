@@ -25,7 +25,8 @@ class VideoFitting(Dataset):
 
         self.video = self.get_video_tensor(path)
         if self.useMask:
-            self.mask_ = 1-self.get_video_tensor(maskPath)
+            # self.mask_ = 1-self.get_video_tensor(maskPath) #将血管MASK变为背景MASK #这个变换操作太难受了，所以取消这个操作
+            self.mask_ = self.get_video_tensor(maskPath)
         self.num_frames, _, self.H, self.W = self.video.size()
 
         self.pixels = self.video.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
@@ -33,7 +34,7 @@ class VideoFitting(Dataset):
             self.mask = self.mask_.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
         self.coords = get_mgrid([self.H, self.W, self.num_frames])
 
-        shuffle = torch.randperm(len(self.pixels))
+        shuffle = torch.randperm(len(self.pixels)) #打乱顺序
         self.pixels = self.pixels[shuffle]
         self.coords = self.coords[shuffle]
         if self.useMask:
@@ -54,7 +55,7 @@ class VideoFitting(Dataset):
 
     def __getitem__(self, idx):
         if idx > 0: raise IndexError
-        return self.coords, self.pixels, self.mask
+        return self.coords, self.pixels, self.mask #坐标、图片灰度、背景分割图
 
 
 

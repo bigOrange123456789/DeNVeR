@@ -117,6 +117,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     useMask = False
     openReconLoss_rigid = False
     lossParam = None
+    lossFunType = {
+                    "rm":"MSE",
+                    "ra":"MSE",
+                    "rv":"MSE",
+                }
     interval = 1.0
     configRigid = None
     configRigids={}
@@ -124,7 +129,6 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     configFluids={}
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
-    # loss_recon_all_type = "MSE"
     # useMatrix = True
     if not config is None:
         if "epoch" in config:
@@ -157,6 +161,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             lossType = config["lossType"]
         if "lossParam" in config:
             lossParam = config["lossParam"]
+        if "lossFunType" in config:
+            lossFunType = config["lossFunType"]
         # if "useMatrix" in config:
         #     useMatrix = config["useMatrix"]
         if "interval" in config:
@@ -218,6 +224,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               openReconLoss_rigid=openReconLoss_rigid,
                               maskPath=maskPath,
                               lossType=lossType,
+                              lossFunType=lossFunType,
                               # useMatrix=useMatrix,
                               interval=interval,
                               configRigid=configRigid,
@@ -255,7 +262,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
 
         # soft结果 
         # save1(p["o_soft_all"], tag+".soft")#看一下刚体层的效果
-        if True:#输出全部的软体层
+        if NUM_soft>0:#输出全部的软体层
          if "s" in layers:
             for i in range(len(layers["s"])):
                 save1(layers["s"][i], tag+".soft" + str(i))
@@ -266,19 +273,20 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             #     save1(layers["s"][i], tag+".soft" + str(i))
 
         # rigid结果 
-        save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
-        if True: 
+        if NUM_rigid>0: 
+            save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
             if not p["o_rigid_all"]==None and len(p["o_rigid_all"])>0: 
                 save1(
                     orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                     tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
-        if False:#输出全部的刚体层
+        if False:
             for i in range(len(layers["r"])):
                 save1(layers["r"][i], tag+".rigid" + str(i))
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
         # fluid结果
-        if True:#"f" in layers:
+        if NUM_fluid>0:#"f" in layers:
+            save1(p["o_fluid_all"], tag+".fluid")
             for i in range(len(layers["f"])):
                 save1(layers["f"][i], tag+".fluid" + str(i))
 

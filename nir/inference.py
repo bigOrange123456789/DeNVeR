@@ -531,7 +531,7 @@ def main():
     )#推理全部图像
     main.inference0(
         configs2, config.root_path + "/", block_cath, threshold,onlyInferGT=False
-    )#推理全部图像
+    )#只推理有标签的图像
 
 if __name__ == "__main__":
     main()#测试在训练过程中f1、recall、precise的变化
