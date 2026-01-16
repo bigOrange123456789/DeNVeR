@@ -16,6 +16,7 @@ class VideoFitting(Dataset):
         super().__init__()
         self.numChannel=1 #不为3
         self.useMask=useMask
+        self.maskPath=maskPath
 
         self.path = path
         if transform is None:
@@ -26,7 +27,7 @@ class VideoFitting(Dataset):
         self.video = self.get_video_tensor(path)
         if self.useMask:
             # self.mask_ = 1-self.get_video_tensor(maskPath) #将血管MASK变为背景MASK #这个变换操作太难受了，所以取消这个操作
-            self.mask_ = self.get_video_tensor(maskPath)
+            self.mask_ = self.get_video_tensor(self.maskPath)
         self.num_frames, _, self.H, self.W = self.video.size()
 
         self.pixels = self.video.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
@@ -34,11 +35,11 @@ class VideoFitting(Dataset):
             self.mask = self.mask_.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
         self.coords = get_mgrid([self.H, self.W, self.num_frames])
 
-        shuffle = torch.randperm(len(self.pixels)) #打乱顺序
-        self.pixels = self.pixels[shuffle]
-        self.coords = self.coords[shuffle]
+        self.shuffle = torch.randperm(len(self.pixels)) #打乱顺序
+        self.pixels = self.pixels[self.shuffle]
+        self.coords = self.coords[self.shuffle]
         if self.useMask:
-            self.mask = self.mask[shuffle]
+            self.mask = self.mask[self.shuffle]
         else: self.mask =torch.tensor([[1.0]])
 
     def get_video_tensor(self,path):
@@ -56,6 +57,20 @@ class VideoFitting(Dataset):
     def __getitem__(self, idx):
         if idx > 0: raise IndexError
         return self.coords, self.pixels, self.mask #坐标、图片灰度、背景分割图
+    
+    def reload_mask(self):
+        """
+        重新加载mask数据
+        Args:
+            new_mask_path: 新的mask路径，如果为None则使用原来的路径
+        """
+        
+        # 重新加载mask
+        self.mask_ = self.get_video_tensor(self.maskPath)
+        self.mask = self.mask_.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
+        
+        # 重新打乱数据以保持mask与坐标的对齐
+        self.mask = self.mask[self.shuffle]
 
 
 

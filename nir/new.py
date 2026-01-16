@@ -129,8 +129,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     configFluids={}
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
+    dynamicVesselMask=False
     # useMatrix = True
     if not config is None:
+        if "dynamicVesselMask" in config:
+            dynamicVesselMask=config["dynamicVesselMask"]
         if "epoch" in config:
             myEpochNum = config ["epoch"]
         if "tag" in config:
@@ -193,20 +196,23 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     #     mainFreeCOS(paramPath,pathIn,os.path.join(outpath, "mask_nir0"))
     #     # check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
     #分割原始数据中的血管
-    if "maskPath_pathIn" in config and not config["maskPath_pathIn"] is None:
+    Segment_model = None
+    if "maskPath_pathIn" in config and not config["maskPath_pathIn"] is None: #使用之前计算好的MASK
         pathIn2=os.path.join(outpath, config["maskPath_pathIn"])
         maskPath=os.path.join(outpath, tag+".orig_mask2")
         print("useMask and not os.path.exists(maskPath)",useMask and not os.path.exists(maskPath))
-        if useMask and not os.path.exists(maskPath):
-            mainFreeCOS_sim(paramPath,pathIn2,maskPath)
-            print("Test123")
-        print("pathIn2",pathIn2)
+        if useMask :
+            if True: # not os.path.exists(maskPath): #为了每次训练的结果相同，MASK每次训练都会重新生成
+                Segment_model=mainFreeCOS_sim(paramPath,pathIn2,maskPath)
+            # print("Test123")
+        # print("pathIn2",pathIn2)
         # exit(0)
         # config["maskPath"]
-    else:
+    else:#重新生成MASK
         maskPath=os.path.join(outpath, tag+".orig_mask")
-        if useMask and not os.path.exists(maskPath):
-            mainFreeCOS_sim(paramPath,pathIn,maskPath)
+        if useMask:
+            if True:#not os.path.exists(maskPath):
+                Segment_model=mainFreeCOS_sim(paramPath,pathIn,maskPath)
 
     # 刚体解耦
     if not flagHadRigid:
@@ -234,7 +240,17 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               configFluids=configFluids,
                               adaptiveFrameNumMode=adaptiveFrameNumMode,
                               use_dynamicFeatureMask=use_dynamicFeatureMask,
-                              )
+                              dynamicVesselMask=dynamicVesselMask,
+                              updateMaskConfig={#更新所需信息 #dynamicVesselMask不为False的时候才启用
+                                  "mainFreeCOS_sim":mainFreeCOS_sim,
+                                  "pathIn":pathIn,#没啥用
+                                  "maskPath":maskPath,#需要实时更新文件夹中的内容
+                                  "pathInNew":os.path.join(outpath,tag+".rigid.non1"),#需要实时计算文件夹中的内容
+                                  "outpath":outpath,
+                                  "Segment_model":Segment_model,
+                                  "tag": tag+".rigid.non1",
+                              }
+                        )
         myMain.train(myEpochNum,lossParam) 
 
     def save1(o_scene, tag):
@@ -255,7 +271,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
         orig = myMain.v.video.clone()
-        N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
+        # N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
         orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
 
         video_pre, layers, p = myMain.getVideo(1)#使用局部形变

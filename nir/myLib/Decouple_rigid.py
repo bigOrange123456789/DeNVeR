@@ -47,6 +47,50 @@ class Decouple_rigid(nn.Module):
         # eps = 1e-10 #torch.finfo(torch.float64).eps
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
     
+    def _updateMask(self, step):
+        def save1(o_scene, tag):
+            if o_scene==None or len(o_scene)==0: return
+            o_scene[o_scene>1]=1#添加这个操作来去除黑点，否则超过上限后颜色值会变为黑色
+            o_scene = o_scene.cpu().detach().numpy()
+            o_scene = (o_scene * 255).astype(np.uint8)
+            save2img(o_scene[:, :, :, 0], os.path.join(self.updateMaskConfig["outpath"], tag))
+        if self.NUM_rigid<=0:
+            print("ERR:没有刚体")
+            exit(0)
+            return False
+        step0 = step-self.dynamicVesselMask["startEpoch"]
+        if step0>0 and step0%self.dynamicVesselMask['intervalEpoch']==0:
+            orig = self.v.video.clone()
+            orig = orig.permute(0, 2, 3, 1).detach()
+            video_pre, layers, p = self.getVideo(1)#使用局部形变
+            rigid_non1 = orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10)
+            # 将去噪结果存入 tag+rigid.non1
+            save1(rigid_non1, self.updateMaskConfig["tag"]) 
+            # 更新分割图
+            mainFreeCOS_sim=self.updateMaskConfig['mainFreeCOS_sim']
+            mainFreeCOS_sim(
+                None,#self.updateMaskConfig['paramPath'],
+                self.updateMaskConfig["pathInNew"],#tag+rigid.non1
+                self.updateMaskConfig['maskPath'],
+                Segment_model=self.updateMaskConfig["Segment_model"]
+            )
+            print("完成了分割测试")
+            # exit(0)
+            
+            # 使用原来的mask路径重新加载
+            self.v.reload_mask()  
+            
+            # 重新获取DataLoader中的数据
+            videoloader = DataLoader(self.v, batch_size=1, pin_memory=True, num_workers=0)
+            _,_, mask = next(iter(videoloader))
+            mask = mask[0].cuda() #model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
+            # ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
+
+            self.mask=mask
+
+        return True
+
+
     def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
                  weight_smooth=1,weight_concise=0.0001,
                  stillness=False,stillnessFristLayer=True,
@@ -62,9 +106,13 @@ class Decouple_rigid(nn.Module):
                 configSofts={},
                 configFluids={},
                 adaptiveFrameNumMode=0,
-                use_dynamicFeatureMask=False
+                use_dynamicFeatureMask=False,
+                dynamicVesselMask=False,
+                updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                  ):
         super().__init__()
+        self.dynamicVesselMask=dynamicVesselMask
+        self.updateMaskConfig=updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
         self.maskPath=maskPath
         v = VideoFitting(path,useMask=useMask,maskPath=maskPath)
@@ -717,6 +765,7 @@ class Decouple_rigid(nn.Module):
 
         batch_size = (self.v.H * self.v.W) // 8
         for step in range(total_steps): #生成纹理、整体运动
+            
             start = (step * batch_size) % len(model_input)
             end = min(start + batch_size, len(model_input))
 
@@ -733,6 +782,9 @@ class Decouple_rigid(nn.Module):
                 if loss<0.1**5: #重构损失足够小的时候退出,达到这个标注后仍然有问题
                     print("step",step,";loss",loss)
                     break
+            if not step==total_steps-1: #最后一次迭代就不用更新MASK了，训练都要结束了、更新也用不上了
+                self._updateMask(step) #在训练过程中更新MASK
+
         if self.NUM_fluid==1:
             gradientMonitor.close()
 

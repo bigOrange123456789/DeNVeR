@@ -118,6 +118,15 @@ config_data0 = {
                     "block_cath":False,
                     "threshold": 0.5,
                 },
+                { 
+                    "name": "A23-12",
+                    "color":"#2871BE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A23-12",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
 
 
 

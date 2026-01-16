@@ -149,7 +149,8 @@ def mainFreeCOS(pathParam,pathIn,pathOut,needConnect=True):
         image2 = Image.fromarray(img2, mode='L')
         image2.save(os.path.join(pathOut, "binary", filename))
 
-def mainFreeCOS_sim(pathParam,pathIn,pathOut):
+def mainFreeCOS_sim(pathParam,pathIn,pathOut,Segment_model=None):
+    # print("输入:",pathParam,pathIn,pathOut,Segment_model)
     os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -158,21 +159,23 @@ def mainFreeCOS_sim(pathParam,pathIn,pathOut):
 
     n_channels = 1
     num_classes =  1
-    Segment_model = ModelSegment(n_channels, num_classes)
+    if Segment_model is None:
+        Segment_model = ModelSegment(n_channels, num_classes)
 
-    # 有1个cuda 。torch.cuda.device_count()=1
-    if torch.cuda.is_available():
-        # print("cuda_is available")
-        Segment_model = Segment_model.cuda() # 分割模型
+        # 有1个cuda 。torch.cuda.device_count()=1
+        if torch.cuda.is_available():
+            # print("cuda_is available")
+            Segment_model = Segment_model.cuda() # 分割模型
 
 
-    ##############################   predictor.lastInference()   ##############################
-    checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
-    Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
+        ##############################   predictor.lastInference()   ##############################
+        checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
+        Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型
+        Segment_model.eval()
 
     os.makedirs(pathOut, exist_ok=True)
     # os.makedirs(os.path.join(pathOut, "filter"), exist_ok=True)
-    Segment_model.eval()
+    
 
     mean,std = calculate_mean_variance(pathIn)
     # print("mean,std",mean,std)
@@ -202,7 +205,8 @@ def mainFreeCOS_sim(pathParam,pathIn,pathOut):
         image = Image.fromarray(images_np, mode='L')
         # image.save(os.path.join(pathOut, "filter", filename))#image.save(os.path.join(pathOut, "filter", filename))
         image.save(os.path.join(pathOut, filename))
-
+    # print("Segment_model",Segment_model)
+    return Segment_model
 
 def getConnRegion(images_np):
     # 查找连通区域
