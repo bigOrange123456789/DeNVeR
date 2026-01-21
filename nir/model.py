@@ -283,11 +283,14 @@ class Siren(nn.Module):
                 x = x + residual
             if not featureMask is None:
                 x = x*featureMask.unsqueeze(0)
+            # if True:
+            #     if i%2==1: #在奇数层后添加RELU函数(原神经网络的连续性太强了)
+            #         x = nn.functional.relu(x)
         
         # 通过输出层
         if len(self.net) > 1:
             x = self.net[-1](x)
-        
+
         return x
 
 

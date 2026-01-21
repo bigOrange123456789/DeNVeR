@@ -48,6 +48,8 @@ class Decouple_rigid(nn.Module):
         return -1.*torch.log(x+eps) # return -1.*torch.log(x.abs()+eps)
     
     def _updateMask(self, step):
+        if not self.dynamicVesselMask:
+            return
         def save1(o_scene, tag):
             if o_scene==None or len(o_scene)==0: return
             o_scene[o_scene>1]=1#添加这个操作来去除黑点，否则超过上限后颜色值会变为黑色
@@ -59,7 +61,7 @@ class Decouple_rigid(nn.Module):
             exit(0)
             return False
         step0 = step-self.dynamicVesselMask["startEpoch"]
-        if step0>0 and step0%self.dynamicVesselMask['intervalEpoch']==0:
+        if step0>=0 and ((step0%self.dynamicVesselMask['intervalEpoch'])==0):
             orig = self.v.video.clone()
             orig = orig.permute(0, 2, 3, 1).detach()
             video_pre, layers, p = self.getVideo(1)#使用局部形变
@@ -92,7 +94,7 @@ class Decouple_rigid(nn.Module):
 
 
     def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
-                 weight_smooth=1,weight_concise=0.0001,
+                 weight_smooth=1,weight_concise=0.0001,weight_component=1,
                  stillness=False,stillnessFristLayer=True,
                  NUM_soft=0,NUM_rigid=2,NUM_fluid=0,
                  useMask=False,openReconLoss_rigid=False,
@@ -143,6 +145,7 @@ class Decouple_rigid(nn.Module):
         self.openLocalDeform=openLocalDeform
         self.weight_smooth=weight_smooth
         self.weight_concise=weight_concise
+        self.weight_component=weight_component
         self.stillness=stillness#是否静止不动
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
@@ -201,7 +204,7 @@ class Decouple_rigid(nn.Module):
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
             ))
         if self.NUM_rigid>0:
-            self.f_rigid_list[0].stillness=stillnessFristLayer
+            self.f_rigid_list[0].stillness = stillnessFristLayer
             # useGlobal=True,useLocal=True,useMatrix=True,useDeformation=False
         # 三、流体
         self.NUM_fluid = NUM_fluid
@@ -211,9 +214,17 @@ class Decouple_rigid(nn.Module):
         #     )
         self.f_fluid_list=[]
         for i in range(self.NUM_fluid):
-            self.f_fluid_list.append(Layer_video(
-                configFluids
-            ))
+            # self.f_fluid_list.append(Layer_video(configFluids))
+            # configFluids["dynamicTex"]=True
+            self.f_fluid_list.append(
+                # Layer_video(configFluids)
+                Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
+                    useGlobal=False, 
+                    useLocal=False,
+                    config=configFluids,
+                    use_dynamicFeatureMask=False,
+                )
+            )
         if NUM_fluid>0:
             self.f2 = self.f_fluid_list[0]
 
@@ -411,11 +422,11 @@ class Decouple_rigid(nn.Module):
                 loss_conciseS = loss_conciseS + (k**2)
 
         # 3.流体
-        o_fluid = 1
+        # o_fluid = 1 #
         o_fluid_all = 1
         o_fluid_list = []
         for i in range(self.NUM_fluid):
-            o_fluid0 = self.f_fluid_list[i](xyt, step)
+            o_fluid0,_ = self.f_fluid_list[i](xyt, step)
             # print("self.gradualImageLayers",self.gradualImageLayers)
             # exit(0)
             if self.gradualImageLayers:
@@ -436,13 +447,19 @@ class Decouple_rigid(nn.Module):
             # if True:#使用流体层遮挡
             #     self.mask[start:end] + self.lossFunType["rv_eps"]
             o_fluid_list.append(o_fluid0)
-        if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"] and not vesselMask is None:
+        # if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"] and not vesselMask is None:
+        if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
+            if vesselMask is None:
+                print("ERROR: vesselMask is None")
+                exit(0)
             # vesselMask_clamp = torch.clamp(vesselMask,min=0.1,max=1)
-            vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["rv_eps"],max=1) 
-            o_fluid = o_fluid*vesselMask_clamp + 1*(1-vesselMask_clamp)
+            vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1) 
+            # print("o_fluid_all",o_fluid_all)
+            o_fluid_all = o_fluid_all*vesselMask_clamp + 1*(1-vesselMask_clamp)
 
         if self.NUM_fluid>0 and len(o_fluid_list)==1:
             o_fluid = o_fluid_list[0]#self.f2(xyt) 
+            # print("o_fluid:",o_fluid)
             if torch.isnan(o_fluid.mean()):
                 print("o_fluid is nan",o_fluid.mean())
                 total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))
@@ -457,7 +474,7 @@ class Decouple_rigid(nn.Module):
             "r": o_rigid_list,
             "s": o_soft_list,
             "f": o_fluid_list,
-            "f_old": o_fluid,
+            # "f_old": o_fluid,
             "o_soft_mask_list":o_soft_mask_list, #为了省事，这个对象在第二参数和第三参数里面都有输出
         } ,{
             "h_local_list":h_local_list,#这里的原始版本是"h_local_list":h_local_list,现在修改后要注意兼容性问题
@@ -656,7 +673,7 @@ class Decouple_rigid(nn.Module):
                 loss_recon_vessel = torch.log(
                     (self.ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
                 ).abs()
-            m0 = vesselMask + self.lossFunType["rv_eps"] #(1-self.mask[start:end])+self.lossFunType["rv_eps"]
+            m0 = torch.clamp(vesselMask, min=self.lossFunType["rv_eps"]) # m0 = vesselMask + self.lossFunType["rv_eps"]
             loss_recon_vessel = (loss_recon_vessel*m0).sum()/(m0.sum()+1e-8)
         
         # 二、无遮挡重构损失 loss=(R-O)
@@ -712,6 +729,15 @@ class Decouple_rigid(nn.Module):
         #     if lossParam["blank"]=="F":
         #         (1-F).abs()
 
+        # 四、分量小于总量 Any component is less than the total
+        loss_component = torch.tensor(0.0) # 分量约束 #应该比重构损失要小、为啥更大？
+        if self.weight_component>0:
+            raw = self.ground_truth[start:end]
+            loss_component = (torch.clamp(raw-R,min=0)**2 + 
+                              torch.clamp(raw-S,min=0)**2 + 
+                              torch.clamp(raw-F,min=0)**2)/3 #让分量变亮一些
+            loss_component = loss_component.mean()
+
         # 五、MASK二值化损失
         loss_binaryMask_all = torch.tensor(0.0)
         for masklayer in layers["o_soft_mask_list"]:
@@ -721,12 +747,16 @@ class Decouple_rigid(nn.Module):
         if loss_binaryMask_all>0:
             loss_binaryMask_all = 1/loss_binaryMask_all
 
-        loss = loss_recon_mask + loss_recon_all + loss_recon_vessel + loss_smooth * self.weight_smooth + loss_concise * self.weight_concise + loss_binaryMask_all 
+        loss = (loss_recon_mask + loss_recon_all + loss_recon_vessel + 
+                loss_smooth * self.weight_smooth + 
+                loss_concise * self.weight_concise + 
+                loss_component * self.weight_component + 
+                loss_binaryMask_all)
 
 
 
         self.layers = layers
-        if not step % 200:
+        if (step % 200 == 0) or (step ==1999) :
             # print("loss_concise",loss_concise)
             # if self.NUM_fluid>0:
             #     total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))# 计算全局梯度范数（不裁剪）
@@ -744,8 +774,10 @@ class Decouple_rigid(nn.Module):
                 # if self.loss_recon_all_type=="MSE": #整体重构损失
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
                     #     step, loss, loss_recon_mask, loss_recon_all))
-                    print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_vess=%0.8f, recon_al=%0.8f, bMaskA=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
-                                        step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
+                    # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_vess=%0.8f, recon_al=%0.8f, bMaskA=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
+                    #                     step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
+                    print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
+                           step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"]))
                 # else:
                 #     print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
                 #         step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))

@@ -109,6 +109,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     openLocalDeform=False
     weight_smooth=1
     weight_concise=0.0001
+    weight_component =1
     stillness=False
     NUM_rigid = 2 #刚体层数量
     NUM_soft = 0
@@ -146,6 +147,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             weight_smooth=config["weight_smooth"]
         if "weight_concise" in config:
             weight_concise = config["weight_concise"]
+        if "weight_component" in config:
+            weight_component =config["weight_component"]
         if "stillness" in config:
             stillness = config["stillness"]
         if "NUM_rigid" in config:
@@ -222,6 +225,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               openLocalDeform=openLocalDeform,
                               weight_smooth=weight_smooth,
                               weight_concise=weight_concise,
+                              weight_component=weight_component,
                               stillness=stillness,
                               stillnessFristLayer=stillnessFristLayer,
                               NUM_rigid=NUM_rigid,

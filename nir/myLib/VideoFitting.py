@@ -27,7 +27,7 @@ class VideoFitting(Dataset):
         self.video = self.get_video_tensor(path)
         if self.useMask:
             # self.mask_ = 1-self.get_video_tensor(maskPath) #将血管MASK变为背景MASK #这个变换操作太难受了，所以取消这个操作
-            self.mask_ = self.get_video_tensor(self.maskPath)
+            self.mask_ = self.get_video_tensor(self.maskPath) #血管
         self.num_frames, _, self.H, self.W = self.video.size()
 
         self.pixels = self.video.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)

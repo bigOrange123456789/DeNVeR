@@ -191,7 +191,6 @@ class Layer(nn.Module): #用于表示软体层
             "xy_":xy_,
             "h_local":h_local
         }
-
 class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和纹理featureMask
     def _getFeatureMask(self, k, tag):#tag=motion运动 或 map
         dim = self.config["hidden_features_map"] if tag=="map" else self.config["hidden_features_local"]
@@ -235,12 +234,16 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         hidden_features_local=128
         self.dynamicTex=False # 纹理神经网络是否输入时间
         if not config is None:
-            hidden_layers_map    = config["hidden_layers_map"]   
-            hidden_layers_global = config["hidden_layers_global"]
-            hidden_layers_local  = config["hidden_layers_local"] 
-            hidden_features_map    = config["hidden_features_map"] 
-            hidden_features_global = config["hidden_features_global"] 
-            hidden_features_local  = config["hidden_features_local"]
+            # print(config)
+            hidden_layers_map      = config["hidden_layers_map"] if "hidden_layers_map" in config else config["hidden_layers"]  
+            hidden_features_map    = config["hidden_features_map"] if "hidden_features_map" in config else config["hidden_features"]  
+            hidden_layers_global   = config["hidden_layers_global"] if "hidden_layers_global" in config else 1
+            hidden_features_global = config["hidden_features_global"] if "hidden_features_global" in config else 0
+            hidden_layers_local    = config["hidden_layers_local"] if "hidden_layers_local" in config else 1
+            hidden_features_local  = config["hidden_features_local"] if "hidden_features_local" in config else 0
+            # config["hidden_layers_map"]=hidden_layers_map 
+            config["hidden_features_map"]=hidden_features_map 
+
             if "dynamicTex" in config: #用于视频数据
                 self.dynamicTex = config["dynamicTex"]  
         
@@ -310,75 +313,80 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         if use_dynamicFeatureMask:
             self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
             self.parameters.append(self.kFeatureMask.parameters())
-    def forward(self,xyt,current_step):
-        featureMask=None
-        if self.use_dynamicFeatureMask:
+    def forward(self,xyt,current_step):  #这部分是整个程序的核心       
+        # 1.整体运动 
+        if self.useGlobal:
+            if self.useMatrix: #使用矩阵运动
+                c =self.g_global(xyt[:, [-1]])
+                u = xyt[:, 0]
+                v = xyt[:, 1]
+                if c.shape[1]==6: #矩阵变换
+                    new_u = c[:,0] * u + c[:,1] * u + c[:,2]
+                    new_v = c[:,3] * v + c[:,4] * v + c[:,5]
+                else:#4 
+                    # 提取参数 (忽略可能的第五个参数)
+                    tx = c[:, 0]  # X轴位移
+                    ty = c[:, 1]  # Y轴位移
+                    rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
+                    scale = torch.tensor(1)#c[:, 3]  # 放缩因子
+                    # 计算旋转和放缩后的坐标
+                    cos_theta = torch.cos(rotation)
+                    sin_theta = torch.sin(rotation)
+                    # 向量化计算所有点
+                    u=scale*u
+                    v=scale*v #一个问题：放缩与旋转应该不能同时连续变化 #但是整体放缩应该是可以的
+                    new_u = (u * cos_theta - v * sin_theta) + tx
+                    new_v = (u * sin_theta + v * cos_theta) + ty
+                # 组合成新坐标张量
+                new_uv = torch.stack([new_u, new_v], dim=1)
+                # xy_ = new_uv + h_local
+            else: #不使用矩阵计算、只模拟整体位移
+                new_uv = xyt[:, :-1] + self.g_global(xyt[:, [-1]]) 
+        else: #不开启对象整体运动
+            new_uv = xyt[:, :-1]
+        
+        # 2.局部位移
+        if self.useLocal:
+            # 2.1 自适应遮挡向量
             featureMask=self._getFeatureMask(#动态参数
                 self.kFeatureMask(),#.detach().clone() #这里必须进行梯度回传, 因此不能进行detach
                 "motion"
-            )
-        h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
-        if self.useDeformation:
-            h_local=2*torch.sigmoid(h_local)-1
-            h_local=h_local*self.deformationSize
-        if self.useMatrix and self.useGlobal:
-            c =self.g_global(xyt[:, [-1]])
-            u = xyt[:, 0]
-            v = xyt[:, 1]
-            if c.shape[1]==6:
-                new_u = c[:,0] * u + c[:,1] * u + c[:,2]
-                new_v = c[:,3] * v + c[:,4] * v + c[:,5]
-            else:#4
-                # 提取参数 (忽略可能的第五个参数)
-                tx = c[:, 0]  # X轴位移
-                ty = c[:, 1]  # Y轴位移
-                rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
-                scale = torch.tensor(1)#c[:, 3]  # 放缩因子
-                # 计算旋转和放缩后的坐标
-                cos_theta = torch.cos(rotation)
-                sin_theta = torch.sin(rotation)
-                # 向量化计算所有点
-                u=scale*u
-                v=scale*v
-                new_u = (u * cos_theta - v * sin_theta) + tx
-                new_v = (u * sin_theta + v * cos_theta) + ty
-            # 组合成新坐标张量
-            new_uv = torch.stack([new_u, new_v], dim=1)
-            xy_ = new_uv + h_local
+            ) if self.use_dynamicFeatureMask else None
+            # 2.2 计算局部位移
+            h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
+            # 2.3 限制形变程度
+            if self.useDeformation:
+                h_local=2*torch.sigmoid(h_local)-1
+                h_local=h_local*self.deformationSize
         else:
-            h_global = self.g_global(xyt[:, [-1]]) if self.useGlobal else 0
-            # print("h_global",h_global)
-            # print("h_local",h_local)
-            # exit(0) #符合预期
-            xy_ = xyt[:, :-1] + h_global + h_local
-        if self.dynamicTex:
+            h_local = torch.tensor(0.0)
+        xy_ = new_uv + h_local
+        
+        # 3.全景图
+        # 3.1 位置编码
+        x_encoded = self.pos_encoder(xy_,current_step) if self.use_posEnc else xy_
+        if self.dynamicTex: #动态全景图
             t = xyt[:, [-1]]
-            if self.use_posEnc: #print("使用PE")
-                x_encoded = self.pos_encoder(xy_,current_step)
-                t_encoded = self.time_encoder(t,current_step) # 确保时间有正确的维度
-                combined_xy_t = torch.cat([x_encoded, t_encoded], dim=-1)
-            else:
-                combined_xy_t = torch.cat([xy_, t], dim=1) #1000,1 1000,2 => 1000,3
-            color = torch.sigmoid( self.f_2D(combined_xy_t ))
+            t_encoded = self.time_encoder(t,current_step)  if self.use_posEnc else t
+            combined_in = torch.cat([x_encoded, t_encoded], dim=-1)
         else:
-            color = torch.sigmoid( self.f_2D(xy_ ))
-
+            combined_in = x_encoded
+        # 3.2.渐进式遮挡向量
         featureMask = None
         if self.use_featureMask:
-            if current_step is None:#推理的时候这个似乎是None
+            if current_step is None: # 推理的时候这个似乎是None
                 current_step=self.config["fm_total_steps"]
             k=current_step/self.config["fm_total_steps"]
             featureMask = self._getFeatureMask(k,"map")
         color = torch.sigmoid( self.f_2D(
-            combined_xy_t if self.dynamicTex else xy_,
+            combined_in,
             featureMask=featureMask
         ))
-        # color = torch.sigmoid(self.tex2D(xy_))
+
         return color,{
             "xy_":xy_,
             "h_local":h_local
         }
-
 
 class PositionalEncoder(nn.Module):
     """位置编码器，将低维输入映射到高维空间。"""
@@ -395,8 +403,6 @@ class PositionalEncoder(nn.Module):
             encoded.append(torch.sin(freq * torch.pi * x))
             encoded.append(torch.cos(freq * torch.pi * x))
         return torch.cat(encoded, dim=-1)
-
-
 
 class AdaptivePositionalEncoder(nn.Module):
     """
@@ -618,7 +624,7 @@ class Layer_video(nn.Module): #用来拟合视频的模块
         color = torch.sigmoid(self.f2(combined, featureMask=featureMask))
         # if self.use_maskP:
         #     color = self.maskP * color + (1-self.maskP)*1
-        return color
+        return color,None #第二个输出原始None是为了和其他层结构保持统一
 
 class Layer_rigid(nn.Module):
     def getFeatureMask(self, k):
