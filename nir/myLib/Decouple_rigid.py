@@ -71,8 +71,8 @@ class Decouple_rigid(nn.Module):
             print("ERR:没有刚体")
             exit(0)
             return False
-        step0 = step-self.dynamicVesselMask["startEpoch"]
-        if step0>=0 and ((step0%self.dynamicVesselMask['intervalEpoch'])==0):
+        step0 = step-self.dynamicVesselMask["startStep"]#["startEpoch"]
+        if step0>=0 and ((step0%self.dynamicVesselMask['intervalStep'])==0):#['intervalEpoch'])==0):
             orig = self.v.video.clone()
             orig = orig.permute(0, 2, 3, 1).detach()
             video_pre, layers, p = self.getVideo(1)#使用局部形变
@@ -291,7 +291,9 @@ class Decouple_rigid(nn.Module):
                 i=i0
         return i 
     
-    def forward(self,xyt,stage, step , vesselMask=None): # soft, rigid, fluid
+    def forward(self,xyt,
+                stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
+                step , vesselMask=None): # soft, rigid, fluid
         def get_mixing_alpha_old(current_step=None, warmup_steps=None, i=None, total_layers=None):
             """
             基于线性渐进策略计算第i层的混合权重alpha_i。
@@ -416,7 +418,8 @@ class Decouple_rigid(nn.Module):
         loss_conciseR = torch.tensor(0.0)
         for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
-            o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,stage)#因为这的stage为0，所以并没有真正使用软体形变
+            # o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,openLocalDeform=stage)#因为这的stage为0，所以并没有真正使用软体形变
+            o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,step)
             o_rigid_all = o_rigid_all*o_rigid0
             o_rigid_list.append(o_rigid0)
             h_local_list.append(p_rigid0["h_local"])
@@ -817,7 +820,9 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def train(self,total_steps,paramLoss, batch_size_scale = 1.0 ):
+    def train(self,
+              epochs,total_steps,
+              paramLoss, batch_size_scale = 1.0 ):
         if self.NUM_fluid==1:
             gradientMonitor = GradientMonitor(self.f2)
         model_input = self.model_input
@@ -832,11 +837,18 @@ class Decouple_rigid(nn.Module):
         '''
             之前帧数更小为啥最后的拟合效果更好: 之前batch大小固定、帧数小的话训练训练次数更多
         '''
-        # batch_size = int(batch_size_scale * (self.v.H * self.v.W) // 8)
-        total_steps = len(model_input) // batch_size
-        batch_size = (self.v.H * self.v.W * self.v.num_frames) // (8*200) #batch变小了，并且帧约小的视频训练的越少
+        # batch大小与帧数无关
+        # batch_size = (self.v.H * self.v.W) // 8
+        batch_size = int( batch_size_scale * self.v.H * self.v.W) 
+        print("batch_size_scale:",batch_size_scale,"\tbatch_size:",batch_size)
+        # batch大小与帧数有关
+        # batch_size = ( self.v.H * self.v.W * self.v.num_frames) // (8*200)
+        # batch_size = int( batch_size_scale * self.v.H * self.v.W ) // (8*200) #batch变小了，并且帧约小的视频训练的越少
+        if not (epochs is None):    
+            total_steps = (epochs * len(model_input)) // batch_size
         print("训练一遍所有数据需要的次数:", len(model_input) // batch_size)
         print("总共训练了多少遍数据:", total_steps*batch_size / len(model_input) )
+        # exit(0)
         for step in range(total_steps): #生成纹理、整体运动
             start = (step * batch_size) % len(model_input) # len(model_input) 是像素点的总数
             end = min(start + batch_size, len(model_input))
@@ -854,8 +866,11 @@ class Decouple_rigid(nn.Module):
                 if loss<0.1**5: #重构损失足够小的时候退出,达到这个标注后仍然有问题
                     print("step",step,";loss",loss)
                     break
-            if not step==total_steps-1: #最后一次迭代就不用更新MASK了，训练都要结束了、更新也用不上了
-                self._updateMask(step) #在训练过程中更新MASK
+            if True:
+                self._updateMask(step*batch_size/len(model_input))
+            else: # 旧版
+                if not step==total_steps-1: #最后一次迭代就不用更新MASK了，训练都要结束了、更新也用不上了
+                    self._updateMask(step) #在训练过程中更新MASK
 
         if self.NUM_fluid==1:
             gradientMonitor.close()

@@ -101,9 +101,11 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚�
         if False:check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
 
 
-def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,batch_size_scale=1.0): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
+def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
     #设置参数
-    myEpochNum = EpochNum
+    epochs = None
+    total_steps = EpochNum #只用epochs=None的时候才有效
+    batch_size_scale = 1/8
     tag = "A"
     useSmooth=False
     openLocalDeform=False
@@ -135,8 +137,12 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,batch_size_s
     if not config is None:
         if "dynamicVesselMask" in config:
             dynamicVesselMask=config["dynamicVesselMask"]
-        if "epoch" in config:
-            myEpochNum = config ["epoch"]
+        if "epochs" in config:
+            epochs=config["epochs"]
+        elif "total_steps" in config:
+            total_steps = config["total_steps"]
+        elif "epoch" in config:#废弃版本
+            total_steps = config ["epoch"]
         if "tag" in config:
             tag = config["tag"]
         if "useSmooth"in config:
@@ -255,7 +261,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,batch_size_s
                                   "tag": tag+".rigid.non1",
                               }
                         )
-        myMain.train(myEpochNum,lossParam,batch_size_scale=batch_size_scale)
+        myMain.train(
+            epochs,total_steps,
+            lossParam,batch_size_scale=batch_size_scale)
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return

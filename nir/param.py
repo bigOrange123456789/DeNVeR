@@ -315,11 +315,14 @@ if True:
             "decouple":{ # 解耦
                 "tag":"A24-02",
                 "de-rigid":"1_sim",#去噪框架
-                "epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
-                # "epochs":1,#
+                "total_steps":1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
+                "epochs":0.625,#
+                "batch_size_scale":1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    "startEpoch":1000*10,
-                    "intervalEpoch":3000,#300,
+                    # "startEpoch":1000*10,
+                    # "intervalEpoch":3000,#300,
+                    "startStep":0.5*10,
+                    "intervalStep":1.5,
                 },
                 # "dynamicVesselMask":False,
                 # 1 模型本身
@@ -381,7 +384,7 @@ if True:
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
                         "use_featureMask":True, #渐进式遮挡向量
-                        "fm_total_steps":800, #use_featureMask=true的时候启用
+                        "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
                     "layerMask":{ #无效

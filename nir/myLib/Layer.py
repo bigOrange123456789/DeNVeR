@@ -787,7 +787,7 @@ class Layer_rigid(nn.Module):
             self.parameters.append(self.kFeatureMask.parameters())
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
     
-    def forward(self,xyt,openLocalDeform):#openLocalDeform原来是stage,当stage=0的时候对应open=False
+    def forward(self,xyt,openLocalDeform=0):#openLocalDeform原来是stage,当stage=0的时候对应open=False
         if self.stillness: #静止不动
             xy_ = xyt[:, :-1]
             h_local = torch.zeros_like(xy_)   #torch.tensor(0.0)

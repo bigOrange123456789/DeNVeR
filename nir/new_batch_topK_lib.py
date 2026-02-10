@@ -666,7 +666,7 @@ class ResultSaver:
         print("  4. 方法比较 - 简明的比较结果")
         print("  5. 图像路径 - 所有输入图像和ground truth的路径")
 
-def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,batch_size_scale=1.0):
+def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
     if arguments==None:
         arguments={
             "de-rigid":"1",
@@ -749,7 +749,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,ba
                     patientID, "decouple", videoId)#本地路径
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-rigid"]=="1_sim":#目标是将5分钟的解耦时间减少到1分钟
-                    startDecouple1_sim(videoId, paramPath, inpath, outpath, config=arguments, batch_size_scale=batch_size_scale)  # 去除刚体层
+                    startDecouple1_sim(videoId, paramPath, inpath, outpath, config=arguments)  # 去除刚体层
                 elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
                     origVideoPath=os.path.join(
                         dataset_path_gt,
