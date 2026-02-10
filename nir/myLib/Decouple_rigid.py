@@ -979,7 +979,8 @@ class Decouple_rigid(nn.Module):
                     ####################################完成使用MASK####################################
 
                     # 模型推理并激活
-                    frame_output, layers, p = self.forward(coords, stage, None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
+                    epochs0=1
+                    frame_output, layers, p = self.forward(coords, stage, epochs0,None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
                     # print("layers:",layers)
                     # print("p",p)
                     # exit(0)

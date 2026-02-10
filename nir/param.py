@@ -467,7 +467,7 @@ if True:
             "decouple":{ # 解耦
                 "tag":"A24-03",
                 "de-rigid":"1_sim",#去噪框架
-                "total_steps":1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
+                #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
                 "batch_size_scale":1/8,
                 "dynamicVesselMask":{#有较长的时间开销
