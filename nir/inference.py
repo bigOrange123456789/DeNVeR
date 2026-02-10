@@ -491,8 +491,8 @@ def main():
     usedVideoId = ['CVAI-1253LAO0_CAU29']
     # usedVideoId = ['CVAI-1207LAO44_CRA29']
     # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
-    
-    
+
+    batch_size_scale = 1.5 # 1.0
     # usedVideoId = [
     #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
     #     # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
@@ -510,7 +510,8 @@ def main():
             denoising(c["decouple"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
-                      repeating=False #True
+                      repeating=False, #True
+                      batch_size_scale=batch_size_scale
                       )
     print("视频解耦完成!")
     # exit(0)
@@ -533,6 +534,19 @@ def main():
         configs2, config.root_path + "/", block_cath, threshold,onlyInferGT=False
     )#只推理有标签的图像
 
+import torch
+import gc
+def memoryOpt():
+    # 清空未使用的缓存
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    # 如果还在报错，强制同步并查看实际占用
+    torch.cuda.synchronize()
+    print(f"当前已分配: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
+    print(f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
+
 if __name__ == "__main__":
+    # memoryOpt()
     main()#测试在训练过程中f1、recall、precise的变化
     print("测试不同损失函数对纹理拟合的影响")

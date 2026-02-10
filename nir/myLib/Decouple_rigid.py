@@ -27,6 +27,17 @@ from nir.myLib.Layer import Layer,Layer2,Tex2D,Layer_video, Layer_rigid
 # outpath = './nir/data/removeRigid_27'
 # EpochNum = 6000 #5000 #3000
 
+import torch
+import gc
+def memoryOpt():
+    # 清空未使用的缓存
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    # 如果还在报错，强制同步并查看实际占用
+    torch.cuda.synchronize()
+    print(f"当前已分配: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
+    print(f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
 #########################################################################
 
 from nir.myLib.VideoFitting import VideoFitting
@@ -95,7 +106,8 @@ class Decouple_rigid(nn.Module):
 
     def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
                  weight_smooth=1,weight_concise=0.0001,weight_component=1,
-                 stillness=False,stillnessFristLayer=True,
+                #  stillness=False, #废弃
+                 stillnessFristLayer=True,
                  NUM_soft=0,NUM_rigid=2,NUM_fluid=0,
                  useMask=False,openReconLoss_rigid=False,
                  lossType=1,
@@ -127,7 +139,7 @@ class Decouple_rigid(nn.Module):
             configSofts["layer"]["hidden_features_local"]
 
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
-        model_input, ground_truth, mask = next(iter(videoloader))
+        model_input, ground_truth, mask = next(iter(videoloader)) # 坐标、灰度、分割结果
         model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
         ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
         if False:
@@ -146,7 +158,7 @@ class Decouple_rigid(nn.Module):
         self.weight_smooth=weight_smooth
         self.weight_concise=weight_concise
         self.weight_component=weight_component
-        self.stillness=stillness#是否静止不动
+        # self.stillness=stillness#是否静止不动 #废弃
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
         self.configFluids=configFluids
@@ -166,11 +178,12 @@ class Decouple_rigid(nn.Module):
         for i in range(self.NUM_soft):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
             self.f_soft_list.append(Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
-                useGlobal=False, 
-                useLocal=configSofts["useLocal"],
+                # useGlobal=False, 
+                # useLocal=configSofts["useLocal"],
                 # hidden_features=512,
                 config=configSofts["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
+                deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 ))
             if self.useSoftMask:
                 self.f_soft_mask_list.append(
@@ -188,20 +201,31 @@ class Decouple_rigid(nn.Module):
             # self.f_rigid_list.append(Layer(useDeformation=True,hidden_features=512,deformationSize=1.5))
             if False: self.f_rigid_list.append(Layer(useLocal=False, hidden_features=512))
             if False: self.f_rigid_list.append(Layer_rigid(useLocal=False, hidden_features=128,useMatrix=False))
-            useLocal = True
-            if "useLocal" in configRigids:
-                useLocal = configRigids["useLocal"]
-            self.f_rigid_list.append(Layer_rigid(
-                useLocal=useLocal, 
+            # useLocal = True
+            # if "useLocal" in configRigids:
+            #     useLocal = configRigids["useLocal"]
+            # self.f_rigid_list.append(Layer_rigid(
+            #     useLocal=useLocal, 
+            #     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
+            #     # hidden_features=128, 
+            #     useMatrix=True,
+            #     useSmooth=self.useSmooth,
+            #     stillness=stillness,
+            #     v=self.v,
+            #     interval=interval,
+            #     config=configRigid,
+            #     use_dynamicFeatureMask=use_dynamicFeatureMask,
+            # ))
+            self.f_rigid_list.append(Layer2(
+                config=configRigids["layer"],
+                use_dynamicFeatureMask=use_dynamicFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
-                # hidden_features=128, 
-                useMatrix=True,
+                # useMatrix=True,
                 useSmooth=self.useSmooth,
-                stillness=stillness,
+                # stillness=stillness,#废弃
                 v=self.v,
                 interval=interval,
-                config=configRigid,
-                use_dynamicFeatureMask=use_dynamicFeatureMask,
+                
             ))
         if self.NUM_rigid>0:
             self.f_rigid_list[0].stillness = stillnessFristLayer
@@ -219,10 +243,11 @@ class Decouple_rigid(nn.Module):
             self.f_fluid_list.append(
                 # Layer_video(configFluids)
                 Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
-                    useGlobal=False, 
-                    useLocal=False,
-                    config=configFluids,
+                    # useGlobal=False, 
+                    # useLocal=False,
+                    config=configFluids["layer"],#configFluids,
                     use_dynamicFeatureMask=False,
+                    deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 )
             )
         if NUM_fluid>0:
@@ -427,6 +452,7 @@ class Decouple_rigid(nn.Module):
         o_fluid_list = []
         for i in range(self.NUM_fluid):
             o_fluid0,_ = self.f_fluid_list[i](xyt, step)
+            # print("o_fluid0",o_fluid0.shape)
             # print("self.gradualImageLayers",self.gradualImageLayers)
             # exit(0)
             if self.gradualImageLayers:
@@ -453,9 +479,12 @@ class Decouple_rigid(nn.Module):
                 print("ERROR: vesselMask is None")
                 exit(0)
             # vesselMask_clamp = torch.clamp(vesselMask,min=0.1,max=1)
-            vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1) 
+            vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1)
+            # print("vesselMaskClamp",vesselMask_clamp.shape)
+            # print("o_fluid_all", o_fluid_all.shape)
             # print("o_fluid_all",o_fluid_all)
             o_fluid_all = o_fluid_all*vesselMask_clamp + 1*(1-vesselMask_clamp)
+            # print("o_fluid_all", o_fluid_all.shape)
 
         if self.NUM_fluid>0 and len(o_fluid_list)==1:
             o_fluid = o_fluid_list[0]#self.f2(xyt) 
@@ -468,7 +497,11 @@ class Decouple_rigid(nn.Module):
                 else:
                     print('>>> 没有梯度爆炸！', total_norm)
 
-        o = o_rigid_all * o_soft_all * o_fluid_all 
+        o = o_rigid_all * o_soft_all * o_fluid_all
+        # print("o_rigid_all",o_rigid_all.shape)
+        # print("o_soft_all", o_soft_all.shape)
+        # print("o_fluid_all", o_fluid_all.shape)
+        # print("o",o.shape)
         # o = o_rigid_all * o_soft_all # o = o_rigid_all * o_soft_all * (1.0 - o_fluid)
         return o , {
             "r": o_rigid_list,
@@ -616,7 +649,7 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def loss2(self, xyt, step, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}):
+    def loss2(self, xyt, step, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}, batch_size_scale=1.0):
         vesselMask = self.mask[start:end]
         o, layers, p = self.forward(xyt,openLocalDeform, step ,vesselMask = vesselMask)#纹理学习
 
@@ -784,7 +817,7 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def train(self,total_steps,paramLoss):
+    def train(self,total_steps,paramLoss, batch_size_scale = 1.0 ):
         if self.NUM_fluid==1:
             gradientMonitor = GradientMonitor(self.f2)
         model_input = self.model_input
@@ -795,10 +828,17 @@ class Decouple_rigid(nn.Module):
         # exit(0)
         # optim = torch.optim.Adam(lr=1e-4, params=chain(self.parameters))
 
-        batch_size = (self.v.H * self.v.W) // 8
+        # batch_size =  (self.v.H * self.v.W) // 8  # 32768 #每张图片分为8个batch
+        '''
+            之前帧数更小为啥最后的拟合效果更好: 之前batch大小固定、帧数小的话训练训练次数更多
+        '''
+        # batch_size = int(batch_size_scale * (self.v.H * self.v.W) // 8)
+        total_steps = len(model_input) // batch_size
+        batch_size = (self.v.H * self.v.W * self.v.num_frames) // (8*200) #batch变小了，并且帧约小的视频训练的越少
+        print("训练一遍所有数据需要的次数:", len(model_input) // batch_size)
+        print("总共训练了多少遍数据:", total_steps*batch_size / len(model_input) )
         for step in range(total_steps): #生成纹理、整体运动
-            
-            start = (step * batch_size) % len(model_input)
+            start = (step * batch_size) % len(model_input) # len(model_input) 是像素点的总数
             end = min(start + batch_size, len(model_input))
 
             xyt = model_input[start:end].requires_grad_()
@@ -837,6 +877,7 @@ class Decouple_rigid(nn.Module):
         #     optim.step()
 
     def getVideo(self,stage):
+        print("逐帧推理")
         ####################################开始使用MASK####################################
         def get_video_tensor(path):
             """
@@ -876,108 +917,289 @@ class Decouple_rigid(nn.Module):
         else:
             mask_video=None
         ####################################完成使用MASK####################################
-        N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+        memoryOpt() # 1.32GB , 1.44GB
+        if True:#with torch.inference_mode(): #使用 PyTorch 1.9+ 更快的 inference_mode #1.31=>1.33
+        # torch.inference_mode应该与torch.no_grad是等效的，但是inference_mode在windows环境下容易报错
+            N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
+            # 创建空列表存储每帧预测结果
+            pred_frames = []
+            layers_frames = {
+                # "r": [],
+                # "s": [],
+                # "f": []
+            }
+            p_frames = {
+                # "o_rigid_all": [],
+                # "o_soft_all": []
+            }
+            if self.NUM_fluid>0:
+                layers_frames["f"]=[]
+                p_frames["o_fluid_all"]=[]
+            if self.NUM_rigid>0:
+                layers_frames["r"]=[]
+                p_frames["o_rigid_all"]=[]
+            if self.NUM_soft>0:
+                layers_frames["s"]=[]
+                p_frames["o_soft_all"]=[]
+                if self.useSoftMask:
+                    layers_frames["o_soft_mask_list"]=[]
+            # 生成时间轴的归一化值（-1到1）
+            t_vals = torch.linspace(-1, 1, steps=N).cuda() if N > 1 else torch.zeros(1).cuda()
+
+            # 逐帧推理
+            with torch.no_grad():
+                for i in range(N):
+                    # 生成当前帧的空间网格 (H*W, 2)
+                    spatial_grid = get_mgrid([H, W]).cuda() #xy
+
+                    # 为所有空间点添加当前时间值
+                    t_val = t_vals[i]
+                    t_column = torch.full((spatial_grid.shape[0], 1), t_val).cuda()#t
+                    coords = torch.cat([spatial_grid, t_column], dim=1)#xyt
+
+                    ####################################开始使用MASK####################################
+                    vesselMask = None if mask_video is None else mask_video[i].view(H * W, -1).cuda()  # 展平为(H*W, 1)
+                    ####################################完成使用MASK####################################
+
+                    # 模型推理并激活
+                    frame_output, layers, p = self.forward(coords, stage, None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
+                    # print("layers:",layers)
+                    # print("p",p)
+                    # exit(0)
+
+                    # 调整形状为图像格式 (C, H, W)
+                    frame_image = frame_output.view(H, W, 1)  # .permute(2, 0, 1)
+                    # print("frame_image",frame_image.shape)
+
+                    pred_frames.append(frame_image)
+                    for id in layers_frames:
+                        # if id == "f":
+                        #     layers_frames[id].append(layers[id].view(H, W, 1))
+                        # else:
+                        #     layers_frames[id].append(layers[id])
+                        layers_frames[id].append(layers[id])
+                    for id in p_frames:
+                        p_frames[id].append(p[id].view(H, W, 1))
+            # return pred_frames, layers_frames, p_frames
+                video_pre = torch.stack(pred_frames, dim=0)
+
+                def p01(original_list):
+                    l = list(map(list, zip(*original_list)))  # 交换列表的前两层
+                    for i in range(len(l)):
+                        for j in range(len(l[i])):
+                            l[i][j] = l[i][j].view(H, W, 1) #torch.Size([16384, 1])=>torch.Size([128, 128, 1])
+                            # print(type(l[i][j]),l[i][j].shape)
+                            # exit(0)
+                        l[i] = torch.stack(l[i], dim=0)
+                    return l
+
+                layers = {
+                    # "r": p01(layers_frames["r"]),
+                    # "s": p01(layers_frames["s"]),
+                    # "f": torch.stack(layers_frames["f"], dim=0)
+                }
+                p = {
+                    # "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
+                    # "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
+                }
+                if self.NUM_fluid>0:
+                    # layers["f"]=torch.stack(layers_frames["f"], dim=0)
+                    layers["f"]=p01(layers_frames["f"])
+                    p["o_fluid_all"]=torch.stack(p_frames["o_fluid_all"], dim=0)
+                else:
+                    layers["f"]=None
+                if self.NUM_rigid>0:
+                    layers["r"]=p01(layers_frames["r"])
+                    p["o_rigid_all"]=torch.stack(p_frames["o_rigid_all"], dim=0)
+                else:
+                    p["o_rigid_all"]=None
+                if self.NUM_soft>0:
+                    layers["s"]=p01(layers_frames["s"])
+                    p["o_soft_all"]=torch.stack(p_frames["o_soft_all"], dim=0)
+                    if self.useSoftMask:
+                        layers["softMask"]=p01(layers_frames["o_soft_mask_list"])
+                        # p["o_soft_mask_list"]=torch.stack(p_frames["o_soft_mask_list"], dim=0)
+                else:
+                    p["o_soft_all"]=None
+                '''
+                    print("video_pre",video_pre.shape)
+                    print("layers[s]",layers["s"][0].shape)
+                    print('p["o_soft_all"][0].shape:',p["o_soft_all"][0].shape)
+                    --------------------------------------------------------------
+                    video_pre torch.Size([10, 128, 128, 1])
+                    layers[s] torch.Size([10, 128, 128, 1])
+                    p["o_soft_all"][0].shape: torch.Size([128, 128, 1])
+                '''
+                return video_pre, layers, p
+
+    def getVideo_row(self, stage):
+        print("逐行推理")
+        ####################################开始使用MASK####################################
+        def get_video_tensor(path):
+            frames = sorted(
+                [f for f in os.listdir(path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff'))])
+
+            if not frames:
+                raise ValueError(f"No image files found in directory: {path}")
+
+            video = []
+            transform = self.transform if hasattr(self, 'transform') else ToTensor()
+
+            for frame_name in frames:
+                img_path = os.path.join(path, frame_name)
+                img = Image.open(img_path).convert('L')
+                img = transform(img)
+
+                if img.dim() == 2:
+                    img = img.unsqueeze(0)
+
+                video.append(img)
+
+            return torch.stack(video, 0)
+
+        if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
+            mask_video = get_video_tensor(self.maskPath)
+            mask_video = mask_video.cuda()
+        else:
+            mask_video = None
+        ####################################完成使用MASK####################################
+
+        N, C, H, W = self.v.video.size()
         # 创建空列表存储每帧预测结果
         pred_frames = []
-        layers_frames = {
-            # "r": [],
-            # "s": [],
-            # "f": []
-        }
-        p_frames = {
-            # "o_rigid_all": [],
-            # "o_soft_all": []
-        }
-        if self.NUM_fluid>0:
-            layers_frames["f"]=[]
-            p_frames["o_fluid_all"]=[]
-        if self.NUM_rigid>0:
-            layers_frames["r"]=[]
-            p_frames["o_rigid_all"]=[]
-        if self.NUM_soft>0:
-            layers_frames["s"]=[]
-            p_frames["o_soft_all"]=[]
+        layers_frames = {}
+        p_frames = {}
+
+        if self.NUM_fluid > 0:
+            layers_frames["f"] = []
+            p_frames["o_fluid_all"] = []
+        if self.NUM_rigid > 0:
+            layers_frames["r"] = []
+            p_frames["o_rigid_all"] = []
+        if self.NUM_soft > 0:
+            layers_frames["s"] = []
+            p_frames["o_soft_all"] = []
             if self.useSoftMask:
-                layers_frames["o_soft_mask_list"]=[]
+                layers_frames["o_soft_mask_list"] = []
+
         # 生成时间轴的归一化值（-1到1）
         t_vals = torch.linspace(-1, 1, steps=N).cuda() if N > 1 else torch.zeros(1).cuda()
 
-        # 逐帧推理
+        # 逐帧、逐行推理
         with torch.no_grad():
             for i in range(N):
-                # 生成当前帧的空间网格 (H*W, 2)
-                spatial_grid = get_mgrid([H, W]).cuda() #xy
-
-                # 为所有空间点添加当前时间值
-                t_val = t_vals[i]
-                t_column = torch.full((spatial_grid.shape[0], 1), t_val).cuda()#t
-                coords = torch.cat([spatial_grid, t_column], dim=1)#xyt
+                # 为当前帧创建空容器，按行收集结果
+                frame_rows = []
+                frame_layers = {id: [] for id in layers_frames}
+                frame_p = {id: [] for id in p_frames}
 
                 ####################################开始使用MASK####################################
-                vesselMask = None if mask_video is None else mask_video[i].view(H * W, -1).cuda()  # 展平为(H*W, 1)
+                vesselMask_frame = None if mask_video is None else mask_video[i].cuda()
+                if len(vesselMask_frame.shape) == 3:  # 3通道
+                    vesselMask_frame = vesselMask_frame[0]
                 ####################################完成使用MASK####################################
 
-                # 模型推理并激活
-                frame_output, layers, p = self.forward(coords, stage, None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
-                # print("layers:",layers)
-                # print("p",p)
-                # exit(0)
+                # 逐行处理
+                for row in range(H):
+                    # 生成当前行的空间网格 (W, 2)
+                    y_norm = -1 + 2 * row / (H - 1) if H > 1 else 0
+                    x_norm = torch.linspace(-1, 1, steps=W).cuda()
+                    y_coord = torch.full((W, 1), y_norm).cuda()
+                    x_coord = x_norm.view(-1, 1)
+                    spatial_grid = torch.cat([x_coord, y_coord], dim=1)  # (W, 2)
 
-                # 调整形状为图像格式 (C, H, W)
-                frame_image = frame_output.view(H, W, 1)  # .permute(2, 0, 1)
-                # print("frame_image",frame_image.shape)
+                    # 为当前行添加时间值
+                    t_val = t_vals[i]
+                    t_column = torch.full((W, 1), t_val).cuda()
+                    coords = torch.cat([spatial_grid, t_column], dim=1)  # (W, 3)
 
-                pred_frames.append(frame_image)
-                for id in layers_frames:
-                    # if id == "f":
-                    #     layers_frames[id].append(layers[id].view(H, W, 1))
-                    # else:
-                    #     layers_frames[id].append(layers[id])
-                    layers_frames[id].append(layers[id])
-                for id in p_frames:
-                    p_frames[id].append(p[id].view(H, W, 1))
-        # return pred_frames, layers_frames, p_frames
-            video_pre = torch.stack(pred_frames, dim=0)
+                    ####################################开始使用MASK####################################
+                    vesselMask = None if vesselMask_frame is None else vesselMask_frame[row].view(W,
+                                                                                                  -1).cuda()  # (W, 1)
+                    ####################################完成使用MASK####################################
 
-            def p01(original_list):
-                l = list(map(list, zip(*original_list)))  # 交换列表的前两层
-                for i in range(len(l)):
-                    for j in range(len(l[i])):
-                        l[i][j] = l[i][j].view(H, W, 1)
-                        # print(type(l[i][j]),l[i][j].shape)
+                    # 模型推理当前行
+                    row_output, layers, p = self.forward(coords, stage, None, vesselMask=vesselMask)
+
+                    # 收集当前行的结果
+                    frame_rows.append(row_output.view(1, W, 1))  # 形状改为 (1, W, 1)
+
+                    # 收集层的输出
+                    for id in layers_frames:
+                        # 根据不同的层类型处理输出
+                        # print("layers[id]",len(layers[id]))
+                        # print("layers[id][0]", layers[id][0].shape)
                         # exit(0)
-                    l[i] = torch.stack(l[i], dim=0)
-                return l
+                        for imgLayerId in range(len(layers[id])):
+                            # print(layers[id][imgLayerId].shape)
+                            layers[id][imgLayerId]=layers[id][imgLayerId].view(1,1,1, W, 1) # [1,1,1,128,1]<=[128, 1]
+                            # print(layers[id][imgLayerId].shape)
+                            # exit(0)
+                        layers[id] = torch.cat(layers[id], dim=0) # 层数、帧数、高、宽、通道
 
-            layers = {
-                # "r": p01(layers_frames["r"]),
-                # "s": p01(layers_frames["s"]),
-                # "f": torch.stack(layers_frames["f"], dim=0)
-            }
-            p = {
-                # "o_rigid_all": torch.stack(p_frames["o_rigid_all"], dim=0),
-                # "o_soft_all": torch.stack(p_frames["o_soft_all"], dim=0)
-            }
-            if self.NUM_fluid>0:
-                # layers["f"]=torch.stack(layers_frames["f"], dim=0)
-                layers["f"]=p01(layers_frames["f"])
-                p["o_fluid_all"]=torch.stack(p_frames["o_fluid_all"], dim=0)
-            else:
-                layers["f"]=None
-            if self.NUM_rigid>0:
-                layers["r"]=p01(layers_frames["r"])
-                p["o_rigid_all"]=torch.stack(p_frames["o_rigid_all"], dim=0)
-            else:
-                p["o_rigid_all"]=None
-            if self.NUM_soft>0:
-                layers["s"]=p01(layers_frames["s"])
-                p["o_soft_all"]=torch.stack(p_frames["o_soft_all"], dim=0)
-                if self.useSoftMask:
-                    layers["softMask"]=p01(layers_frames["o_soft_mask_list"])
-                    # p["o_soft_mask_list"]=torch.stack(p_frames["o_soft_mask_list"], dim=0)
-            else:
-                p["o_soft_all"]=None
-            return video_pre, layers, p
+                        # print(layers[id],layers[id].shape)
+                        # print("layers[id]:",layers[id].shape)
+                        frame_layers[id].append(layers[id])
+
+                    # 收集物理量输出
+                    for id in p_frames:
+                        frame_p[id].append(p[id].view(1, W, 1))
+
+                # 将当前帧的所有行合并成一帧
+                frame_image = torch.cat(frame_rows, dim=0)  # (H, W, 1)
+                pred_frames.append(frame_image)
+
+                # 处理当前帧的各层输出
+                for id in layers_frames:
+                    layer_frame = torch.cat(frame_layers[id], dim=2)  #所有行合并
+                    layers_frames[id].append(layer_frame)
+
+                # 处理当前帧的物理量输出
+                for id in p_frames:
+                    p_frame = torch.cat(frame_p[id], dim=0)  # (H, W, 1)
+                    p_frames[id].append(p_frame)
+            for id in layers_frames:
+                layers_frames[id] = torch.cat(layers_frames[id], dim=1)  # 所有帧合并 #[1, 10, 128, 128, 1]
+        # 将所有帧堆叠起来
+        video_pre = torch.stack(pred_frames, dim=0)
+
+        def p01(original_list):
+            """处理多物体输出的辅助函数"""
+            return original_list
+            # l = list(map(list, zip(*original_list)))  # 前两个维度是“图层、帧”是列表，后面的维度是张量
+            # for i in range(len(l)):
+            #     # for j in range(len(l[i])):
+            #     #     l[i][j] = l[i][j].view(H, W, 1) #torch.Size([16384, 1])=>torch.Size([128, 128, 1])
+            #     l[i] = torch.stack(l[i], dim=0)#所有帧叠加
+            # return l
+
+        # 构建最终输出字典
+        layers = {}
+        p = {}
+
+        if self.NUM_fluid > 0:
+            # print('layers_frames["f"]',type(layers_frames["f"]),len(layers_frames["f"]))
+            # print(type(layers_frames["f"][0]))
+            # print(layers_frames["f"][0].shape)
+            # exit(0)
+            layers["f"] = p01(layers_frames["f"])
+            '''
+                layers["f"] 1
+                layers["f"][0] torch.Size([10, 128, 128, 1])
+            '''
+            p["o_fluid_all"] = torch.stack(p_frames["o_fluid_all"], dim=0)
+
+        if self.NUM_rigid > 0:
+            layers["r"] = p01(layers_frames["r"])
+            p["o_rigid_all"] = torch.stack(p_frames["o_rigid_all"], dim=0)
+
+        if self.NUM_soft > 0:
+            layers["s"] = p01(layers_frames["s"])
+            p["o_soft_all"] = torch.stack(p_frames["o_soft_all"], dim=0)
+            if self.useSoftMask:
+                layers["softMask"] = p01(layers_frames["o_soft_mask_list"])
+
+        return video_pre, layers, p
 
     # def getVideo(self,stage):
     #     N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度

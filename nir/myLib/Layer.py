@@ -111,6 +111,7 @@ class Layer(nn.Module): #用于表示软体层
         self.useMatrix=useMatrix
         self.useDeformation=useDeformation
         self.deformationSize=deformationSize
+        ###################  纹理部分  #################
         self.f_2D = Siren(
                         in_features=3 if self.dynamicTex else 2,# 动态纹理输入uvt，静态纹理输入uv 
                         out_features=1, #灰度值
@@ -122,6 +123,7 @@ class Layer(nn.Module): #用于表示软体层
         if False:
             self.tex2D = Tex2D(512)
             self.parameters.append(self.tex2D.parameters())
+        ###################  整体运动  #################
         if self.useGlobal:
             self.g_global = Siren(in_features=1, out_features=4 if self.useMatrix else 2,
                                   hidden_features=hidden_features_global,#16, 
@@ -129,6 +131,7 @@ class Layer(nn.Module): #用于表示软体层
                                   outermost_linear=True)
             self.parameters.append(self.g_global.parameters())
             self.g_global.cuda()
+        ###################  局部运动  #################
         if self.useLocal:
             self.g_local = Siren(in_features=3, out_features=2,
                                  hidden_features=hidden_features_local,#hidden_features, 
@@ -201,29 +204,20 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         # 创建基础向量：前k_int个元素为1，其余为0
         vec = k*dim-indices
         
-        # return torch.clamp(vec, 0, 1)
+        if False:
+            return torch.clamp(vec, 0, 1)
         return  torch.sigmoid( vec**3 )
     
-    def __init__(self,
-                 useGlobal=True,useMatrix=True,
-                 useLocal=True,useDeformation=False,deformationSize=8, #useDeformation用于让局部形变不太大
+    def __init__(self, # useGlobal=True, useLocal=True,
+                #  useMatrix=True, #废弃
+                 useDeformation=False,
+                 deformationSize=8, #useDeformation用于让局部形变不太大
                  use_dynamicFeatureMask=False,
-                 config={
-                    #  "hidden_features":512,
-                    #  "hidden_layers":4,
-                     "use_residual":False,
-                     "posEnc":{
-                        "num_freqs_pos":10,
-                        "num_freqs_time":4,
-                        "APE":{
-                            "total_steps":2000,
-                            "warmup_steps":1000,
-                        },
-                     },
-                     "use_featureMask":False, #没有在新版本中实现
-                     "fm_total_steps":1000,
-                     "use_maskP":True,
-                 },
+                 config={},
+                 #平滑损失参数
+                useSmooth=False, # 平滑损失函数：layerRigid中有具体实现#没有实现、做消融实验能够用到
+                interval=1.0,#用于平滑损失
+                v=None,#用于平滑损失，为了获取视频的尺寸长度参数
                  ):
         super().__init__()
         hidden_layers_map=4
@@ -254,11 +248,11 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
             PE只用于纹理MLP
             只有当启用dynamicTex的时候, PE模块才生效
         '''
-        self.use_posEnc = "posEnc" in config and config["posEnc"]
-        if self.use_posEnc:
+        self.use_PE = "posEnc" in config and config["posEnc"]
+        if self.use_PE:
             self.use_APE= "APE" in config["posEnc"] and config["posEnc"]["APE"]
-        in_features_num = 3
-        if self.use_posEnc:
+
+        if self.use_PE:
             if self.use_APE:
                # 对空间位置进行编码
                 self.pos_encoder = AdaptivePositionalEncoder(2, num_freqs=config["posEnc"]["num_freqs_pos"],
@@ -273,39 +267,48 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
                 self.pos_encoder = PositionalEncoder(2, num_freqs=config["posEnc"]["num_freqs_pos"])
                 # 对时间进行编码
                 self.time_encoder = PositionalEncoder(1, num_freqs=config["posEnc"]["num_freqs_time"])
-            in_features_num = (
-                self.pos_encoder.output_dim +
-                self.time_encoder.output_dim
-                )
+            in_pos_dim=self.pos_encoder.output_dim
+            in_time_dim=self.time_encoder.output_dim
+        else:
+            in_pos_dim = 2
+            in_time_dim = 1
         #################################### 结束PE部分代码 ####################################
-        self.useGlobal=useGlobal
-        self.useLocal=useLocal
-        self.useMatrix=useMatrix
+
+        self.useGlobal=config["useGlobal"]
+        self.useLocal=config["useLocal"]
+        # self.useMatrix=useMatrix
         self.useDeformation=useDeformation
         self.deformationSize=deformationSize
+        #################################### 一、纹理部分代码 ####################################
         self.f_2D = Siren(
-                        in_features=in_features_num if self.dynamicTex else 2,# 动态纹理输入uvt，静态纹理输入uv 
+                        in_features=(in_pos_dim+in_time_dim) if self.dynamicTex else in_pos_dim,# 动态纹理输入uvt，静态纹理输入uv
                         out_features=1, #灰度值
                         hidden_features=hidden_features_map,#hidden_features, 
                         hidden_layers=hidden_layers_map,#4,
-                        use_residual=config["use_residual"],#这个功能没啥用
+                        use_residual=config["use_residual"]["T"],#这个功能没啥用
                         outermost_linear=True)
         self.f_2D.cuda()
         self.parameters = [self.f_2D.parameters()]
         if False:
             self.tex2D = Tex2D(512)
             self.parameters.append(self.tex2D.parameters())
+        #################################### 二、全局运动代码 ####################################
         if self.useGlobal:
-            self.g_global = Siren(in_features=1, out_features=4 if self.useMatrix else 2,
+            self.g_global = Siren(in_features=in_time_dim,
+                                  out_features=config["globalMotionMode"],#4 if self.useMatrix else 2,
                                   hidden_features=hidden_features_global,#16, 
                                   hidden_layers=hidden_layers_global,#2,
+                                  use_residual=config["use_residual"]["G"],
                                   outermost_linear=True)
             self.parameters.append(self.g_global.parameters())
             self.g_global.cuda()
+        #################################### 三、局部运动代码 ####################################
         if self.useLocal:
-            self.g_local = Siren(in_features=3, out_features=2,
+            self.g_local = Siren(in_features=(in_pos_dim+in_time_dim),
+                                 out_features=2,
                                  hidden_features=hidden_features_local,#hidden_features, 
                                  hidden_layers=hidden_layers_local,#4,
+                                 use_residual=config["use_residual"]["L"],
                                  outermost_linear=True)
             self.g_local.cuda()
             self.parameters.append(self.g_local.parameters())
@@ -313,47 +316,117 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         if use_dynamicFeatureMask:
             self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
             self.parameters.append(self.kFeatureMask.parameters())
+        self.useSmooth=useSmooth
+        if self.useSmooth:
+            N, C, H, W = v.video.size()  # 帧数、通道数、高度、宽度
+            self.interval0 = torch.tensor(interval, device="cuda")*2/(N-1)
+    
+    def _getSmoothLoss(self,xyt, h_global):
+        '''
+            self.interval0
+        '''
+        if self.useSmooth:#>0
+                t = xyt[:, [-1]]
+                interval0 = self.interval0
+                if self.useSmooth==1: #运动速度趋于0 #失败:无法迫使刚体正确运动
+                    loss_smooth = loss_smooth + jacobian(h_global, t).abs().mean()
+                # elif self.useSmooth==2: #加速度趋于0
+                #     loss_smooth = loss_smooth + hessian_vectorized(h_global, t).abs().mean()
+                elif self.useSmooth==3:#全局运动趋向于固定
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    speed = (data_behind-data0)/interval0
+                    loss_smooth = ( speed**2 ).mean() 
+                elif self.useSmooth==4: # 二阶导数
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    # data_front = self.g_global(t+interval0)#[:,:2] #前面
+                    data_front = self.g_global(t-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    loss_smooth = (acceleration**2).mean() 
+                elif self.useSmooth==5: # 加速度÷速度 #没有正确运动、反而出现了晃动问题
+                    data0 = h_global#[:,:2]#只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t+interval0)#[:,:2] #后面
+                    # data_front = self.g_global(t+interval0)#[:,:2] #前面
+                    data_front = self.g_global(t-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    speed = (data_behind-data0)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                    eps = 10**-10
+                    loss_smooth = ((#静止的时候就不能受力？哪有这样的道理
+                        acceleration/(torch.sigmoid(speed).clone().detach()+eps)
+                        )**2).mean()
+                elif self.useSmooth==6: # 加速度÷速度 #没有正确运动、反而出现了晃动问题
+                    t_new = t + torch.rand((), device=xyt.device)*2/(N-1) #时间序列添加随机扰动
+                    data0 = self.g_global(t_new)# h_global#[:,:2] #只有前两列被用到了，后两列没有用到
+                    data_behind = self.g_global(t_new+interval0)#[:,:2] #后面
+                    data_front = self.g_global(t_new-interval0)#[:,:2] #前面
+                    acceleration = (data_behind-2*data0+data_front)/(interval0**2)
+                    speed = (data_behind-data0)/interval0 #速度的上限应该是2，速度超过2是不可想象的
+                    eps = 10**-10
+                    loss_smooth = ((#静止的时候就不能受力？哪有这样的道理
+                        acceleration/(torch.sigmoid(speed+2).clone().detach()+eps)
+                        )**2).mean()
+        else:
+            loss_smooth = torch.tensor(0.0)
+        return loss_smooth
+
     def forward(self,xyt,current_step):  #这部分是整个程序的核心       
+        def pep(xy_0):
+            return self.pos_encoder(xy_0, current_step) if self.use_PE else xy_0
+        def pet(t0):
+            return self.time_encoder(t0, current_step) if self.use_PE else t0
+        def pe(xyt0):
+            xy_0=pep(xyt0[:, :-1])
+            t0  =pet(xyt0[:, [-1]])
+            return torch.cat([xy_0, t0], dim=-1)
+
+        # 0. 自适应遮挡向量
+        featureMask=self._getFeatureMask(#动态参数
+            self.kFeatureMask(),#.detach().clone() #这里必须进行梯度回传, 因此不能进行detach
+            "motion"
+        ) if self.use_dynamicFeatureMask else None
+        
         # 1.整体运动 
         if self.useGlobal:
-            if self.useMatrix: #使用矩阵运动
-                c =self.g_global(xyt[:, [-1]])
-                u = xyt[:, 0]
-                v = xyt[:, 1]
-                if c.shape[1]==6: #矩阵变换
-                    new_u = c[:,0] * u + c[:,1] * u + c[:,2]
-                    new_v = c[:,3] * v + c[:,4] * v + c[:,5]
-                else:#4 
-                    # 提取参数 (忽略可能的第五个参数)
-                    tx = c[:, 0]  # X轴位移
-                    ty = c[:, 1]  # Y轴位移
-                    rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
-                    scale = torch.tensor(1)#c[:, 3]  # 放缩因子
-                    # 计算旋转和放缩后的坐标
-                    cos_theta = torch.cos(rotation)
-                    sin_theta = torch.sin(rotation)
-                    # 向量化计算所有点
-                    u=scale*u
-                    v=scale*v #一个问题：放缩与旋转应该不能同时连续变化 #但是整体放缩应该是可以的
-                    new_u = (u * cos_theta - v * sin_theta) + tx
-                    new_v = (u * sin_theta + v * cos_theta) + ty
-                # 组合成新坐标张量
-                new_uv = torch.stack([new_u, new_v], dim=1)
-                # xy_ = new_uv + h_local
-            else: #不使用矩阵计算、只模拟整体位移
-                new_uv = xyt[:, :-1] + self.g_global(xyt[:, [-1]]) 
+            c =self.g_global(pet(xyt[:, [-1]]), featureMask=featureMask)
+            tx = c[:, 0]  # X轴位移
+            ty = c[:, 1]  # Y轴位移
+            u = xyt[:, 0]
+            v = xyt[:, 1]
+            if self.config["globalMotionMode"]==6:
+                new_u = c[:,2] * u + c[:,3] * u + tx
+                new_v = c[:,4] * v + c[:,5] * v + ty
+            elif self.config["globalMotionMode"]==5: #没有完全实现
+                rotation = torch.tensor(0)#c[:, 2]  # 旋转角度(弧度)
+                scale = torch.tensor(1)#c[:, 3]  # 放缩因子
+            elif self.config["globalMotionMode"]==4:
+                # 提取参数 (忽略可能的第五个参数)
+                rotation = c[:, 2]  # 旋转角度(弧度)
+                scale = c[:, 3]  # 放缩因子
+                # 计算旋转和放缩后的坐标
+                cos_theta = torch.cos(rotation)
+                sin_theta = torch.sin(rotation)
+                # 向量化计算所有点
+                u=scale*u
+                v=scale*v #一个问题：放缩与旋转应该不能同时连续变化 #但是整体放缩应该是可以的
+                new_u = (u * cos_theta - v * sin_theta) + tx
+                new_v = (u * sin_theta + v * cos_theta) + ty
+            elif self.config["globalMotionMode"]==2:
+                new_u = u + tx
+                new_v = v + ty #new_uv = xyt[:, :-1] + self.g_global(xyt[:, [-1]]) 
+            else:
+                print("Err: globalMotionMode")
+                exit(0)
+            # 组合成新坐标张量
+            new_uv = torch.stack([new_u, new_v], dim=1)
         else: #不开启对象整体运动
             new_uv = xyt[:, :-1]
+            c = torch.zeros_like(new_uv) #整体位移
         
         # 2.局部位移
         if self.useLocal:
-            # 2.1 自适应遮挡向量
-            featureMask=self._getFeatureMask(#动态参数
-                self.kFeatureMask(),#.detach().clone() #这里必须进行梯度回传, 因此不能进行detach
-                "motion"
-            ) if self.use_dynamicFeatureMask else None
             # 2.2 计算局部位移
-            h_local = self.g_local(xyt, featureMask=featureMask) if self.useLocal else torch.tensor(0.0)
+            h_local = self.g_local(pe(xyt), featureMask=featureMask)
             # 2.3 限制形变程度
             if self.useDeformation:
                 h_local=2*torch.sigmoid(h_local)-1
@@ -364,10 +437,10 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         
         # 3.全景图
         # 3.1 位置编码
-        x_encoded = self.pos_encoder(xy_,current_step) if self.use_posEnc else xy_
+        x_encoded = pep(xy_)#self.pos_encoder(xy_,current_step) if self.use_PE else xy_
         if self.dynamicTex: #动态全景图
             t = xyt[:, [-1]]
-            t_encoded = self.time_encoder(t,current_step)  if self.use_posEnc else t
+            t_encoded = pet(t)#self.time_encoder(t,current_step)  if self.use_PE else t
             combined_in = torch.cat([x_encoded, t_encoded], dim=-1)
         else:
             combined_in = x_encoded
@@ -385,7 +458,9 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
 
         return color,{
             "xy_":xy_,
-            "h_local":h_local
+            "h_local":h_local,
+            "h_global":c, #h_global,
+            "loss_smooth":self._getSmoothLoss(xyt, c),
         }
 
 class PositionalEncoder(nn.Module):

@@ -101,7 +101,7 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚�
         if False:check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
 
 
-def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
+def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,batch_size_scale=1.0): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
     #设置参数
     myEpochNum = EpochNum
     tag = "A"
@@ -124,7 +124,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                     "rv":"MSE",
                 }
     interval = 1.0
-    configRigid = None
+    # configRigid = None
     configRigids={}
     configSofts={}
     configFluids={}
@@ -173,8 +173,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
         #     useMatrix = config["useMatrix"]
         if "interval" in config:
             interval = config["interval"]
-        if "configRigid" in config:
-            configRigid = config["configRigid"]
+        # if "configRigid" in config:
+        #     configRigid = config["configRigid"]
         if "configRigids" in config:
             configRigids = config["configRigids"]
         if "configSofts" in config:
@@ -226,7 +226,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               weight_smooth=weight_smooth,
                               weight_concise=weight_concise,
                               weight_component=weight_component,
-                              stillness=stillness,
+                              #   stillness=stillness, #废弃
                               stillnessFristLayer=stillnessFristLayer,
                               NUM_rigid=NUM_rigid,
                               NUM_soft=NUM_soft,
@@ -237,7 +237,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                               lossFunType=lossFunType,
                               # useMatrix=useMatrix,
                               interval=interval,
-                              configRigid=configRigid,
+                            #   configRigid=configRigid,
                               configRigids=configRigids,
                               configSofts=configSofts,
                               NUM_fluid=NUM_fluid,
@@ -255,7 +255,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                                   "tag": tag+".rigid.non1",
                               }
                         )
-        myMain.train(myEpochNum,lossParam) 
+        myMain.train(myEpochNum,lossParam,batch_size_scale=batch_size_scale)
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return
