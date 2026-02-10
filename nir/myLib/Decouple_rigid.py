@@ -293,7 +293,7 @@ class Decouple_rigid(nn.Module):
     
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
-                step , vesselMask=None): # soft, rigid, fluid
+                step ,epochs0, vesselMask=None): # soft, rigid, fluid
         def get_mixing_alpha_old(current_step=None, warmup_steps=None, i=None, total_layers=None):
             """
             基于线性渐进策略计算第i层的混合权重alpha_i。
@@ -419,7 +419,7 @@ class Decouple_rigid(nn.Module):
         for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
             # o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,openLocalDeform=stage)#因为这的stage为0，所以并没有真正使用软体形变
-            o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,step)
+            o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,epochs0)#(xyt,step)
             o_rigid_all = o_rigid_all*o_rigid0
             o_rigid_list.append(o_rigid0)
             h_local_list.append(p_rigid0["h_local"])
@@ -440,7 +440,7 @@ class Decouple_rigid(nn.Module):
         for i in range(self.NUM_soft):
             o_soft0, _ = self.f_soft_list[i](xyt+h_global, step) #软体运动基于刚体运动
             if self.useSoftMask:#如果使用了软体遮挡
-                o_soft_mask = self.f_soft_mask_list[i](xyt, step)
+                o_soft_mask = self.f_soft_mask_list[i](xyt,epochs0)#(xyt, step)
                 o_soft0 = o_soft0 * o_soft_mask + ( 1 - o_soft_mask )
                 o_soft_mask_list.append( o_soft_mask )
             o_soft_all = o_soft_all * o_soft0
@@ -454,7 +454,7 @@ class Decouple_rigid(nn.Module):
         o_fluid_all = 1
         o_fluid_list = []
         for i in range(self.NUM_fluid):
-            o_fluid0,_ = self.f_fluid_list[i](xyt, step)
+            o_fluid0,_ = self.f_fluid_list[i](xyt,epochs0)#(xyt, step)
             # print("o_fluid0",o_fluid0.shape)
             # print("self.gradualImageLayers",self.gradualImageLayers)
             # exit(0)
@@ -526,13 +526,13 @@ class Decouple_rigid(nn.Module):
             
         }#输出三样东西：重构结果、分层结果、相关参数
 
-    def loss(self, xyt, step, start, end,openLocalDeform,lossParam):
+    def loss(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam):
         if self.lossType==1:
-            return self.loss1(xyt, step, start, end,openLocalDeform)
+            return self.loss1(xyt, step,epochs0, start, end,openLocalDeform)
         elif self.lossType==2:
-            return self.loss2(xyt, step, start, end,openLocalDeform,lossParam)
+            return self.loss2(xyt, step,epochs0, start, end,openLocalDeform,lossParam)
 
-    def loss1(self, xyt, step, start, end,openLocalDeform):
+    def loss1(self, xyt, step,epochs0, start, end,openLocalDeform):
         o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
         #局部
 
@@ -611,7 +611,7 @@ class Decouple_rigid(nn.Module):
             # exit(0)
         return loss
 
-    def loss2_old(self, xyt, step, start, end,openLocalDeform):
+    def loss2_old(self, xyt, step,epochs0, start, end,openLocalDeform):
         o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
         #局部
 
@@ -652,9 +652,9 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def loss2(self, xyt, step, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}, batch_size_scale=1.0):
+    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}, batch_size_scale=1.0):
         vesselMask = self.mask[start:end]
-        o, layers, p = self.forward(xyt,openLocalDeform, step ,vesselMask = vesselMask)#纹理学习
+        o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
 
         eps=10**-10
         R=p["o_rigid_all"]
@@ -845,7 +845,7 @@ class Decouple_rigid(nn.Module):
         # batch_size = ( self.v.H * self.v.W * self.v.num_frames) // (8*200)
         # batch_size = int( batch_size_scale * self.v.H * self.v.W ) // (8*200) #batch变小了，并且帧约小的视频训练的越少
         if not (epochs is None):    
-            total_steps = (epochs * len(model_input)) // batch_size
+            total_steps = int((epochs * len(model_input)) / batch_size)
         print("训练一遍所有数据需要的次数:", len(model_input) // batch_size)
         print("总共训练了多少遍数据:", total_steps*batch_size / len(model_input) )
         # exit(0)
@@ -854,7 +854,9 @@ class Decouple_rigid(nn.Module):
             end = min(start + batch_size, len(model_input))
 
             xyt = model_input[start:end].requires_grad_()
-            loss = self.loss(xyt, step,start,end,self.openLocalDeform,paramLoss)#离谱，stage竟然为0
+            loss = self.loss(xyt, 
+                             step,step*batch_size/len(model_input),
+                             start,end,self.openLocalDeform,paramLoss)#离谱，stage竟然为0
 
             optim.zero_grad()
             loss.backward()

@@ -624,7 +624,7 @@ class Layer_video(nn.Module): #用来拟合视频的模块
                         },
                      },
                      "use_featureMask":False,
-                     "fm_total_steps":1000,
+                     "fm_total_steps":0.5,#1000,
                     #  "use_maskP":True,
                 },
             ):
