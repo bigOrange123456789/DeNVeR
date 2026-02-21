@@ -2,186 +2,52 @@ import os
 # from confs.json import config_data_base #现在精力充沛，等之后比较困的时候再整理代码，将训练json和测试json合并到一起
 config_data0 = {
             "experiments" : [
-                ####################### 改用sub4数据集 ####################### 
-                ##########################  DeNVeR.020  ##########################  
-                {# 
-                    "name": "_020_01_baseline",
-                    "color":"#80A00C",
-                    "gt_path":"outputs/xca_dataset_sub4_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sub4_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sub4_result/_020_01_baseline",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-
-                ####################### xca_dataset(原视频长度) ####################### 
-                ##########################  DeNVeR.23   ##########################  
-                # { 
-                #     "name": "A23-01",
-                #     "color":"#29510E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-01",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                # { 
-                #     "name": "A23-02",
-                #     "color":"#29612E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-02",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                # { 
-                #     "name": "A23-03",
-                #     "color":"#29712E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-03",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                # { 
-                #     "name": "A23-04",
-                #     "color":"#29713E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-04",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                # { 
-                #     "name": "A23-05",
-                #     "color":"#29714E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-05",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-
-                # { 
-                #     "name": "A23-06",
-                #     "color":"#29715E",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-06",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
 
                 { 
-                    "name": "A23-07",
+                    "name": "1.masks",
                     "color":"#28716E",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-07",
+                    "pred_path":"outputs/xca_dataset_result/1.masks",
                     "block_cath":False,
                     "threshold": 0.5,
                 },
                 { 
-                    "name": "A23-08",
+                    "name": "2.2.planar",
                     "color":"#28717E",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-08",
+                    "pred_path":"outputs/xca_dataset_result/2.2.planar",
                     "block_cath":False,
                     "threshold": 0.5,
-                },
+                },       
                 { 
-                    "name": "A23-09",
+                    "name": "3.parallel",
                     "color":"#28718E",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-09",
+                    "pred_path":"outputs/xca_dataset_result/3.parallel",
                     "block_cath":False,
                     "threshold": 0.5,
-                },
+                },    
                 { 
-                    "name": "A23-10",
+                    "name": "4.deform",
                     "color":"#28719E",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-10",
+                    "pred_path":"outputs/xca_dataset_result/4.deform",
                     "block_cath":False,
                     "threshold": 0.5,
-                },
-
+                },    
                 { 
-                    "name": "A23-11",
+                    "name": "5.refine",
                     "color":"#2871AE",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-11",
+                    "pred_path":"outputs/xca_dataset_result/5.refine",
                     "block_cath":False,
                     "threshold": 0.5,
-                },
-                { 
-                    "name": "A23-12",
-                    "color":"#2871BE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-12",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                # { 
-                #     "name": "A23-13",
-                #     "color":"#2871CE",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-13",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                # { 
-                #     "name": "A23-14",
-                #     "color":"#2871DE",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"outputs/xca_dataset_result/A23-14",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },
-                { 
-                    "name": "A23-15",
-                    "color":"#3871BE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-15",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                { 
-                    "name": "A23-16",
-                    "color":"#4871BE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-16",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-                { 
-                    "name": "A23-17",
-                    "color":"#5871BE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/A23-17",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
-
-
-
-
-
-
-
-
-
-
+                },        
 
 
             ],
