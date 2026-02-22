@@ -483,16 +483,17 @@ class Decouple_rigid(nn.Module):
             o_fluid_list.append(o_fluid0)
         # if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"] and not vesselMask is None:
         if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
-            if vesselMask is None:
-                print("ERROR: vesselMask is None")
-                exit(0)
-            # vesselMask_clamp = torch.clamp(vesselMask,min=0.1,max=1)
-            vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1)
-            # print("vesselMaskClamp",vesselMask_clamp.shape)
-            # print("o_fluid_all", o_fluid_all.shape)
-            # print("o_fluid_all",o_fluid_all)
-            o_fluid_all = o_fluid_all*vesselMask_clamp + 1*(1-vesselMask_clamp)
-            # print("o_fluid_all", o_fluid_all.shape)
+            # if vesselMask is None:
+            #     print("ERROR: vesselMask is None")
+            #     exit(0)
+            if not(vesselMask is None):
+                # vesselMask_clamp = torch.clamp(vesselMask,min=0.1,max=1)
+                vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1)
+                # print("vesselMaskClamp",vesselMask_clamp.shape)
+                # print("o_fluid_all", o_fluid_all.shape)
+                # print("o_fluid_all",o_fluid_all)
+                o_fluid_all = o_fluid_all*vesselMask_clamp + 1*(1-vesselMask_clamp)
+                # print("o_fluid_all", o_fluid_all.shape)
 
         if self.NUM_fluid>0 and len(o_fluid_list)==1:
             o_fluid = o_fluid_list[0]#self.f2(xyt) 
@@ -538,14 +539,15 @@ class Decouple_rigid(nn.Module):
         if self.lossType==1:#废弃代码
             return self.loss1(xyt, step,epochs0, start, end,openLocalDeform,xyt_vessel)
         elif self.lossType==2:
+            vesselMask = self.mask[start:end]
             if not(xyt_vessel is None):
                 l = self.loss2(
-                        xyt,        step,epochs0, start, end,openLocalDeform,lossParam #不只是血管
+                        xyt,        step,epochs0, start, end,openLocalDeform,lossParam,vesselMask #不只是血管
                     ) + self.loss2(
-                        xyt_vessel, step,epochs0, start, end,openLocalDeform,lossParam_vessel) #只包含血管
+                        xyt_vessel, step,epochs0, start, end,openLocalDeform,lossParam_vessel,torch.ones_like(xyt_vessel)) #只包含血管
             else:
                 l = self.loss2(
-                    xyt, step,epochs0, start, end,openLocalDeform,lossParam) #不分两部训练
+                    xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask) #不分两部训练
             return l
 
     def loss1(self, xyt, step,epochs0, start, end,openLocalDeform):
@@ -668,8 +670,8 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}):
-        vesselMask = self.mask[start:end]
+    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask):
+        # vesselMask = self.mask[start:end]
         o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
 
         eps=10**-10
