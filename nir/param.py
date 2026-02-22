@@ -755,7 +755,7 @@ if True:
                     "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
-                    "ra":None,#"F", 
+                    "ra":"F", 
                     "rm":None, 
                     "rv":None, 
                     }, 

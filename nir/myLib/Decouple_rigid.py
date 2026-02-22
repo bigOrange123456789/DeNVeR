@@ -535,22 +535,21 @@ class Decouple_rigid(nn.Module):
     def loss(self, xyt, step,epochs0, start, end,openLocalDeform,
              lossParam=None,
              lossParam_vessel=None,
-             xyt_vessel=None):
+             xyt_vessel=None,start_vessel=None,end_vessel=None):
         if self.lossType==1:#废弃代码
             return self.loss1(xyt, step,epochs0, start, end,openLocalDeform,xyt_vessel)
         elif self.lossType==2:
             vesselMask = self.mask[start:end]
-            if not(xyt_vessel is None):
-
-                l = self.loss2(
-                        xyt,  step,epochs0, start, end,openLocalDeform,lossParam,vesselMask #不只是血管
+            l = self.loss2(
+                        xyt,  step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,self.ground_truth #不只是血管
                     ) 
+            if not(xyt_vessel is None):
                 if not((lossParam_vessel["ra"] is None) and (lossParam_vessel["rm"] is None) and (lossParam_vessel["rv"] is None)):
                     l = l + self.loss2(
-                        xyt_vessel, step,epochs0, start, end,openLocalDeform,lossParam_vessel,torch.ones_like(xyt_vessel)) #只包含血管
-            else:
-                l = self.loss2(
-                    xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask) #不分两部训练
+                        xyt_vessel, step,epochs0, start_vessel, end_vessel,openLocalDeform,
+                        lossParam_vessel,
+                        torch.ones_like(xyt_vessel),
+                        self.ground_truth_vessel) #只包含血管
             return l
 
     def loss1(self, xyt, step,epochs0, start, end,openLocalDeform):
@@ -673,8 +672,9 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask):
+    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,ground_truth):
         # vesselMask = self.mask[start:end]
+        # ground_truth=self.ground_truth
         o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
 
         eps=10**-10
@@ -703,16 +703,16 @@ class Decouple_rigid(nn.Module):
         if not lossParam["rm"] is None:
             # rm_in=getData(lossParam["rm"])
             # loss_recon_mask = torch.log(
-            #     (self.ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
+            #     (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
             # ).abs() # ground_truth是目标图像，mask是分割图
             # loss_recon_mask = loss_recon_mask*self.mask[start:end]#只重构血管？
             # loss_recon_mask = loss_recon_mask.sum()/(self.mask[start:end].sum()+1e-8)
             rm_in=getData(lossParam["rm"])
             if self.lossFunType["rm"]=="MSE":
-                loss_recon_mask = ( self.ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
+                loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
             else:#myLog
                 loss_recon_mask = torch.log(
-                    (self.ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
+                    (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
                 ).abs() # ground_truth是目标图像，mask是分割图
             m0 = 1-vesselMask#self.mask[start:end]
             loss_recon_mask = (loss_recon_mask*m0).sum()/(m0.sum()+1e-8)
@@ -720,15 +720,15 @@ class Decouple_rigid(nn.Module):
         # loss_recon_vessel = torch.tensor(0.0) if lossParam["rf"] is None else dist0( #前景重构损失
         #     "myLog", 
         #     getData(lossParam["rf"]), 
-        #     self.ground_truth[start:end] )
+        #     ground_truth[start:end] )
         loss_recon_vessel = torch.tensor(0.0) #血管重构损失
         if not lossParam["rv"] is None:
             rv_in=getData(lossParam["rv"])
             if self.lossFunType["rv"]=="MSE":
-                loss_recon_vessel = ( self.ground_truth[start:end] - rv_in ) ** 2
+                loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
             else:#myLog
                 loss_recon_vessel = torch.log(
-                    (self.ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
+                    (ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
                 ).abs()
             m0 = torch.clamp(vesselMask, min=self.lossFunType["rv_eps"]) # m0 = vesselMask + self.lossFunType["rv_eps"]
             loss_recon_vessel = (loss_recon_vessel*m0).sum()/(m0.sum()+1e-8)
@@ -740,20 +740,20 @@ class Decouple_rigid(nn.Module):
             if True:#用于输出拟合程度
              loss_recon_all_type = self.lossFunType["ra"]#self.loss_recon_all_type
              if not loss_recon_all_type=="MSE" and not step % 100:
-                loss_recon_all0 = ( self.ground_truth[start:end] - ra_in )**2
+                loss_recon_all0 = ( ground_truth[start:end] - ra_in )**2
                 loss_recon_all0 = loss_recon_all0.mean()#这个对象在训练后期变为了None
                 # print("loss_recon_all0",loss_recon_all0)
             if torch.isnan(ra_in.mean()):
                 print("ra_in is nan.",ra_in.mean()) #ra_in is None. tensor(nan, device='cuda:0', grad_fn=<MeanBackward0>)
                 exit(0)
             if loss_recon_all_type=="MSE":
-                loss_recon_all = ( self.ground_truth[start:end] - ra_in )**2
+                loss_recon_all = ( ground_truth[start:end] - ra_in )**2
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
             elif loss_recon_all_type=="atten_d":#类似最大值的思想
                 temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度
                 # temperature越小，越关注最大误差（类似max）
                 # temperature越大，越接近平均（类似mean）
-                errors = ( self.ground_truth[start:end] - ra_in )**2
+                errors = ( ground_truth[start:end] - ra_in )**2
                 attention_weights = torch.softmax(errors.clone().detach()/ temperature, dim=0) 
                 loss_recon_all = (attention_weights * errors).sum()
             elif loss_recon_all_type=="atten":#类似最大值的思想(估计会不稳定)
@@ -761,12 +761,12 @@ class Decouple_rigid(nn.Module):
                 # 温度参数调节注意力集中程度
                 # temperature越小，越关注最大误差（类似max）
                 # temperature越大，越接近平均（类似mean）
-                errors = ( self.ground_truth[start:end] - ra_in )**2
+                errors = ( ground_truth[start:end] - ra_in )**2
                 attention_weights = torch.softmax(errors/ temperature, dim=0) # 使用softmax让大误差获得更多关注
                 loss_recon_all = (attention_weights * errors).sum()
             else: #myLog
                 loss_recon_all = torch.log(
-                    (self.ground_truth[start:end].abs()+eps)/((ra_in).abs()+eps)
+                    (ground_truth[start:end].abs()+eps)/((ra_in).abs()+eps)
                 ).abs()
                 loss_recon_all = loss_recon_all.mean() 
             # loss_recon_all = loss_recon_all.mean()
@@ -789,7 +789,7 @@ class Decouple_rigid(nn.Module):
         # 四、分量小于总量 Any component is less than the total
         loss_component = torch.tensor(0.0) # 分量约束 #应该比重构损失要小、为啥更大？
         if self.weight_component>0:
-            raw = self.ground_truth[start:end]
+            raw = ground_truth[start:end]
             loss_component = (torch.clamp(raw-R,min=0)**2 + 
                               torch.clamp(raw-S,min=0)**2 + 
                               torch.clamp(raw-F,min=0)**2)/3 #让分量变亮一些
@@ -893,7 +893,10 @@ class Decouple_rigid(nn.Module):
                              start,end,self.openLocalDeform,
                              lossParam=lossParam,
                              lossParam_vessel=lossParam_vessel,
-                             xyt_vessel=xyt_vessel)#离谱，stage竟然为0
+                             xyt_vessel=xyt_vessel,
+                             start_vessel=start_vessel,
+                             end_vessel=end_vessel
+                             )
 
             optim.zero_grad()
             loss.backward()
