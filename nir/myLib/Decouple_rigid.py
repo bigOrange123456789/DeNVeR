@@ -541,9 +541,12 @@ class Decouple_rigid(nn.Module):
         elif self.lossType==2:
             vesselMask = self.mask[start:end]
             if not(xyt_vessel is None):
+
                 l = self.loss2(
-                        xyt,        step,epochs0, start, end,openLocalDeform,lossParam,vesselMask #不只是血管
-                    ) + self.loss2(
+                        xyt,  step,epochs0, start, end,openLocalDeform,lossParam,vesselMask #不只是血管
+                    ) 
+                if not((lossParam_vessel["ra"] is None) and (lossParam_vessel["rm"] is None) and (lossParam_vessel["rv"] is None)):
+                    l = l + self.loss2(
                         xyt_vessel, step,epochs0, start, end,openLocalDeform,lossParam_vessel,torch.ones_like(xyt_vessel)) #只包含血管
             else:
                 l = self.loss2(
@@ -879,6 +882,8 @@ class Decouple_rigid(nn.Module):
             if learningVessel: #与背景区域使用相同大小的batch块
                 start_vessel = (step * batch_size) % len(model_input_vessel) 
                 end_vessel = (start_vessel + batch_size)% len(model_input_vessel)
+                if end_vessel<=start_vessel:
+                    end_vessel = len(model_input_vessel)
                 xyt_vessel = model_input_vessel[start_vessel:end_vessel].requires_grad_()
             else:
                 xyt_vessel = None

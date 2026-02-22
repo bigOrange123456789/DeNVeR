@@ -750,12 +750,12 @@ if True:
                 #     "rv":"F", #前景
                 #     }, 
                 "lossParam":{ 
-                    "ra":"R,S,F", 
-                    "rm":None, 
-                    "rv":None, 
+                    "ra":"R", 
+                    "rm":"S", 
+                    "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
-                    "ra":"F", 
+                    "ra":None,#"F", 
                     "rm":None, 
                     "rv":None, 
                     }, 
