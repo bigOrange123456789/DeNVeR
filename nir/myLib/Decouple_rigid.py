@@ -139,9 +139,11 @@ class Decouple_rigid(nn.Module):
             configSofts["layer"]["hidden_features_local"]
 
         videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
-        model_input, ground_truth, mask = next(iter(videoloader)) # 坐标、灰度、分割结果
+        model_input, ground_truth, mask, model_input_vessel, ground_truth_vessel, mask_vessel = next(iter(videoloader)) # 坐标、灰度、分割结果
         model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
+        model_input_vessel, ground_truth_vessel, mask_vessel = model_input_vessel[0].cuda(), ground_truth_vessel[0].cuda(), mask_vessel[0].cuda()
         ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
+        ground_truth_vessel = ground_truth_vessel[:, 0:1]
         if False:
             print("gt_illu_max",torch.max(ground_truth))
             print("gt_illu_min",torch.min(ground_truth))
@@ -153,6 +155,9 @@ class Decouple_rigid(nn.Module):
         self.model_input=model_input
         self.ground_truth=ground_truth
         self.mask=mask
+        self.model_input_vessel=model_input_vessel
+        self.ground_truth_vessel=ground_truth_vessel
+        self.mask_vessel=mask_vessel
         self.useSmooth=useSmooth#一个布尔参数，用来决定本次测试是否使用基于雅可比矩阵的平滑损失函数
         self.openLocalDeform=openLocalDeform
         self.weight_smooth=weight_smooth
@@ -526,11 +531,22 @@ class Decouple_rigid(nn.Module):
             
         }#输出三样东西：重构结果、分层结果、相关参数
 
-    def loss(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam):
-        if self.lossType==1:
-            return self.loss1(xyt, step,epochs0, start, end,openLocalDeform)
+    def loss(self, xyt, step,epochs0, start, end,openLocalDeform,
+             lossParam=None,
+             lossParam_vessel=None,
+             xyt_vessel=None):
+        if self.lossType==1:#废弃代码
+            return self.loss1(xyt, step,epochs0, start, end,openLocalDeform,xyt_vessel)
         elif self.lossType==2:
-            return self.loss2(xyt, step,epochs0, start, end,openLocalDeform,lossParam)
+            if not(xyt_vessel is None):
+                l = self.loss2(
+                        xyt,        step,epochs0, start, end,openLocalDeform,lossParam #不只是血管
+                    ) + self.loss2(
+                        xyt_vessel, step,epochs0, start, end,openLocalDeform,lossParam_vessel) #只包含血管
+            else:
+                l = self.loss2(
+                    xyt, step,epochs0, start, end,openLocalDeform,lossParam) #不分两部训练
+            return l
 
     def loss1(self, xyt, step,epochs0, start, end,openLocalDeform):
         o, layers, p = self.forward(xyt,openLocalDeform)#纹理学习
@@ -652,7 +668,7 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}, batch_size_scale=1.0):
+    def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam={"rm":"S","ra":"R"}):
         vesselMask = self.mask[start:end]
         o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
 
@@ -822,10 +838,13 @@ class Decouple_rigid(nn.Module):
 
     def train(self,
               epochs,total_steps,
-              paramLoss, batch_size_scale = 1.0 ):
+              lossParam=None, 
+              lossParam_vessel=None,
+              batch_size_scale = 1.0 ):
         if self.NUM_fluid==1:
             gradientMonitor = GradientMonitor(self.f2)
         model_input = self.model_input
+        model_input_vessel = self.model_input_vessel
 
         # print("1;self.parameters",self.parameters)
         optim = torch.optim.Adam(lr=1e-4, params = itertools.chain.from_iterable(self.parameters))
@@ -852,11 +871,22 @@ class Decouple_rigid(nn.Module):
         for step in range(total_steps): #生成纹理、整体运动
             start = (step * batch_size) % len(model_input) # len(model_input) 是像素点的总数
             end = min(start + batch_size, len(model_input))
-
             xyt = model_input[start:end].requires_grad_()
+
+            learningVessel = True#是否单独学习血管区域
+            if learningVessel: #与背景区域使用相同大小的batch块
+                start_vessel = (step * batch_size) % len(model_input_vessel) 
+                end_vessel = (start_vessel + batch_size)% len(model_input_vessel)
+                xyt_vessel = model_input_vessel[start_vessel:end_vessel].requires_grad_()
+            else:
+                xyt_vessel = None
+            
             loss = self.loss(xyt, 
                              step,step*batch_size/len(model_input),
-                             start,end,self.openLocalDeform,paramLoss)#离谱，stage竟然为0
+                             start,end,self.openLocalDeform,
+                             lossParam=lossParam,
+                             lossParam_vessel=lossParam_vessel,
+                             xyt_vessel=xyt_vessel)#离谱，stage竟然为0
 
             optim.zero_grad()
             loss.backward()

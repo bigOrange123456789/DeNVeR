@@ -120,6 +120,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     useMask = False
     openReconLoss_rigid = False
     lossParam = None
+    lossParam_vessel = None
     lossFunType = {
                     "rm":"MSE",
                     "ra":"MSE",
@@ -173,6 +174,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             lossType = config["lossType"]
         if "lossParam" in config:
             lossParam = config["lossParam"]
+        if "lossParam_vessel" in config:
+            lossParam_vessel = config["lossParam_vessel"]
         if "lossFunType" in config:
             lossFunType = config["lossFunType"]
         # if "useMatrix" in config:
@@ -263,7 +266,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
                         )
         myMain.train(
             epochs,total_steps,
-            lossParam,batch_size_scale=batch_size_scale)
+            lossParam=lossParam,
+            lossParam_vessel=lossParam_vessel,
+            batch_size_scale=batch_size_scale)
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return

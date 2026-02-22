@@ -1,13 +1,13 @@
 my:
-    filePathRoot: "log_24"
-    notes: "计划更新layer2兼容刚体、软体、流体."
+    filePathRoot: "log_25"
+    notes: "测试对血管区域进行更多的迭代."
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
     datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset"
-    datasetPath_rigid.out:  "log_24/xca_dataset"
-    datasetPath_soft.in:  "log_24/xca_dataset"
-    datasetPath_soft.out:  "log_24/xca_dataset"
+    datasetPath_rigid.out:  "log_25/xca_dataset"
+    datasetPath_soft.in:  "log_25/xca_dataset"
+    datasetPath_soft.out:  "log_25/xca_dataset"
     datasetPath_gt:  "../DeNVeR_in/xca_dataset"
     datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
