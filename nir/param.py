@@ -464,6 +464,7 @@ if True:
         #     "mergeMask": False,
         # },
         { #修复刚体层的stage bug之后
+            #现在的问题是血管区域的训练不足
             "decouple":{ # 解耦
                 "tag":"A24-03",
                 "de-rigid":"1_sim",#去噪框架

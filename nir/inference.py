@@ -444,6 +444,16 @@ def myCopy(folder_path,folder2_path,tag):
                             frameId
                         )
 
+def getUsedVideoId(folder_path = "xca_dataset"): 
+    usedVideoId = []
+    for userId in os.listdir(folder_path):
+        path_gt_user=folder_path+"/"+userId+"/ground_truth"#/CVAI-1207LAO44_CRA29"
+        videoId_list=os.listdir(path_gt_user)
+        for videoId in videoId_list:
+                if len(videoId.split("CATH"))==1:
+                    usedVideoId.append(videoId)#print(videoId)
+    return usedVideoId
+                
 def main(): 
     """主函数"""
     # 
@@ -483,21 +493,30 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    # usedVideoId = ['CVAI-2855LAO26_CRA31.2','CVAI-2855LAO26_CRA31.3','CVAI-2855LAO26_CRA31.4'] #None
-    usedVideoId = ['CVAI-2855LAO26_CRA31.2']
-    usedVideoId = ['CVAI-2855LAO26_CRA31.3']
-    # usedVideoId = ['CVAI-2855LAO26_CRA31.5']
-    # usedVideoId = ["CVAI-2855LAO26_CRA31_new"]
-    usedVideoId = ['CVAI-1253LAO0_CAU29']
-    # usedVideoId = ['CVAI-1207LAO44_CRA29']
-    # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
+    if True:
+        import yaml
+        script_path = os.path.abspath(__file__)
+        ROOT1 = os.path.dirname(script_path)
+        file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+        with open(file_path, 'r', encoding='utf-8') as file:
+            config0 = yaml.safe_load(file)
+        usedVideoId=getUsedVideoId(config0["my"]["datasetPath_rigid.in"])
+    else:
+        # usedVideoId = ['CVAI-2855LAO26_CRA31.2','CVAI-2855LAO26_CRA31.3','CVAI-2855LAO26_CRA31.4'] #None
+        usedVideoId = ['CVAI-2855LAO26_CRA31.2']
+        usedVideoId = ['CVAI-2855LAO26_CRA31.3']
+        # usedVideoId = ['CVAI-2855LAO26_CRA31.5']
+        # usedVideoId = ["CVAI-2855LAO26_CRA31_new"]
+        usedVideoId = ['CVAI-1253LAO0_CAU29']
+        # usedVideoId = ['CVAI-1207LAO44_CRA29']
+        # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
 
-    # usedVideoId = [
-    #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
-    #     # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
-    #     # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
-    #     # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
-    #     ]
+        # usedVideoId = [
+        #     'CVAI-1207LAO44_CRA29', 'CVAI-1207RAO2_CAU30', 
+        #     # 'CVAI-1247RAO30_CAU24', 'CVAI-1250LAO31_CRA27', 'CVAI-1250LAO50_CAU1', 
+        #     # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
+        #     # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
+        #     ]
     ''' 将视频在这里进行解耦 '''
     
     print("代码分为三个阶段:视频解耦->分割推理->对比分析")

@@ -9,7 +9,7 @@ my:
     datasetPath_soft.in:  "log_24/xca_dataset"
     datasetPath_soft.out:  "log_24/xca_dataset"
     datasetPath_gt:  "../DeNVeR_in/xca_dataset"
-    datasetPath:  "log_24/xca_dataset"
+    datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True
