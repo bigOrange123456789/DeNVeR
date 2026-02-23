@@ -32,7 +32,7 @@ class Config:
             self.dataset_path_gt = config["my"]["datasetPath_gt"]  # 真值标签路径
             # self.dataset_path = os.path.join("..", "DeNVeR.008", "log_8", "dataset_decouple")  # 解耦数据路径
             # self.dataset_path = os.path.join(self.root_path, "dataset_decouple")
-            self.dataset_path = config["my"]["datasetPath"]
+            self.dataset_path = config["my"]["datasetPath_rigid.out"]#config["my"]["datasetPath"]
             
         print(f"真值标签的路径: {self.dataset_path_gt}")
         print(f"解耦数据的路径: {self.dataset_path}")
@@ -682,6 +682,14 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
     
     # 进度文件路径
     progress_file = os.path.join(ROOT1, "progress_newBatch"+arguments["name"]+".json")
+    if True:
+        import yaml
+        script_path = os.path.abspath(__file__)
+        ROOT1 = os.path.dirname(script_path)
+        file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+        with open(file_path, 'r', encoding='utf-8') as file:
+            config0 = yaml.safe_load(file)
+            progress_file = os.path.join(config0["my"]["filePathRoot"], "progress_newBatch"+arguments["name"]+".json")
     # 加载进度文件
     processed_videos = set()
     if os.path.exists(progress_file):

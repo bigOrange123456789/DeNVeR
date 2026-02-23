@@ -28,6 +28,14 @@ class GradientMonitor:
                 )
         
         log_path = f"./grad_analysis.txt"
+        if True:
+            import yaml
+            script_path = os.path.abspath(__file__)
+            ROOT1 = os.path.dirname(script_path)
+            file_path = os.path.join(ROOT1, "../../",'confs/newConfig.yaml')
+            with open(file_path, 'r', encoding='utf-8') as file:
+                config0 = yaml.safe_load(file)
+                log_path = os.path.join(config0["my"]["filePathRoot"], "grad_analysis.txt")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         self.f = open(log_path, "w", encoding="utf-8")
     def close(self):
