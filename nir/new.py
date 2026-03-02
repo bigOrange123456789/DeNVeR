@@ -134,10 +134,13 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
     dynamicVesselMask=False
+    singleTrainVessel=False
     # useMatrix = True
     if not config is None:
         if "dynamicVesselMask" in config:
             dynamicVesselMask=config["dynamicVesselMask"]
+        if "singleTrainVessel" in config:
+            singleTrainVessel = config["singleTrainVessel"]
         if "epochs" in config:
             epochs=config["epochs"]
         elif "total_steps" in config:
@@ -268,7 +271,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
             epochs,total_steps,
             lossParam=lossParam,
             lossParam_vessel=lossParam_vessel,
-            batch_size_scale=batch_size_scale)
+            batch_size_scale=batch_size_scale,
+            singleTrainVessel=singleTrainVessel
+            )
 
     def save1(o_scene, tag):
         if o_scene==None or len(o_scene)==0: return

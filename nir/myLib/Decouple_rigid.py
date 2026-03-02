@@ -845,7 +845,8 @@ class Decouple_rigid(nn.Module):
               epochs,total_steps,
               lossParam=None, 
               lossParam_vessel=None,
-              batch_size_scale = 1.0 ):
+              batch_size_scale = 1.0,
+              singleTrainVessel = False ):
         if self.NUM_fluid==1:
             gradientMonitor = GradientMonitor(self.f2)
         model_input = self.model_input
@@ -878,8 +879,8 @@ class Decouple_rigid(nn.Module):
             end = min(start + batch_size, len(model_input))
             xyt = model_input[start:end].requires_grad_()
 
-            learningVessel = True#是否单独学习血管区域
-            if learningVessel: #与背景区域使用相同大小的batch块
+            # singleTrainVessel = True#是否单独学习血管区域
+            if singleTrainVessel: #与背景区域使用相同大小的batch块
                 start_vessel = (step * batch_size) % len(model_input_vessel) 
                 end_vessel = (start_vessel + batch_size)% len(model_input_vessel)
                 if end_vessel<=start_vessel:
@@ -887,6 +888,8 @@ class Decouple_rigid(nn.Module):
                 xyt_vessel = model_input_vessel[start_vessel:end_vessel].requires_grad_()
             else:
                 xyt_vessel = None
+                start_vessel=None
+                end_vessel=None
             
             loss = self.loss(xyt, 
                              step,step*batch_size/len(model_input),

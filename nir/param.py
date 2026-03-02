@@ -632,6 +632,7 @@ if True:
                     "intervalStep":1.5,
                 },
                 # "dynamicVesselMask":False,
+                "singleTrainVessel":True, #是否单独增加在血管区域的训练次数
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
