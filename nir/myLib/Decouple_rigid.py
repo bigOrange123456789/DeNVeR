@@ -95,7 +95,7 @@ class Decouple_rigid(nn.Module):
             
             # 重新获取DataLoader中的数据
             videoloader = DataLoader(self.v, batch_size=1, pin_memory=True, num_workers=0)
-            _,_, mask = next(iter(videoloader))
+            _,_, mask, _,_,_ = next(iter(videoloader))#_,_, mask = next(iter(videoloader))
             mask = mask[0].cuda() #model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
             # ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
 

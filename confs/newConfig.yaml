@@ -1,13 +1,13 @@
 my:
-    filePathRoot: "log_25"
-    notes: "测试对血管区域进行更多的迭代."
+    filePathRoot: "log_26"
+    notes: "测试关闭‘渐进式网络结构’效果是否会更差"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
     datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset"
-    datasetPath_rigid.out:  "log_25/xca_dataset"
-    datasetPath_soft.in:  "log_25/xca_dataset"
-    datasetPath_soft.out:  "log_25/xca_dataset"
+    datasetPath_rigid.out:  "log_26/xca_dataset"
+    datasetPath_soft.in:  "log_26/xca_dataset"
+    datasetPath_soft.out:  "log_26/xca_dataset"
     datasetPath_gt:  "../DeNVeR_in/xca_dataset"
     datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"

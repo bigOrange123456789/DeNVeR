@@ -92,7 +92,7 @@ class VideoFitting(Dataset):
         
         # 重新打乱数据以保持mask与坐标的对齐
         self.mask = self.mask[self.shuffle]
-        if self._vessel:self._getVesselSet()
+        self._getVesselSet()
 
 
 

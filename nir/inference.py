@@ -532,6 +532,7 @@ def main():
                       )
     print("视频解耦完成!")
     # exit(0)
+    return
 
     print("二、分割推理部分")
     configs1=[]
@@ -565,5 +566,10 @@ def memoryOpt():
 
 if __name__ == "__main__":
     # memoryOpt()
+    import time
+    start = time.time()
     main()#测试在训练过程中f1、recall、precise的变化
-    print("测试不同损失函数对纹理拟合的影响")
+    end = time.time()
+    h = (end - start)/(60*60)
+    print('运行时间: %s 小时' % h) # print('运行时间: %s 秒' % (end - start))
+    # print("测试不同损失函数对纹理拟合的影响")
