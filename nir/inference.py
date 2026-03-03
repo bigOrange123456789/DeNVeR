@@ -456,7 +456,6 @@ def getUsedVideoId(folder_path = "xca_dataset"):
                 
 def main(): 
     """主函数"""
-    # 
     # 初始化配置和各个管理器
     config = Config()
     model_manager = ModelManager()
@@ -493,7 +492,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if True:
+    if False:#True: #处理全部数据
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -532,7 +531,7 @@ def main():
                       )
     print("视频解耦完成!")
     # exit(0)
-    return
+    # return 
 
     print("二、分割推理部分")
     configs1=[]
@@ -552,6 +551,10 @@ def main():
         configs2, config.root_path + "/", block_cath, threshold,onlyInferGT=False
     )#只推理有标签的图像
 
+    print("三、计算分割指标")
+    ############################
+    # main #
+
 import torch
 import gc
 def memoryOpt():
@@ -565,11 +568,27 @@ def memoryOpt():
     print(f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
 
 if __name__ == "__main__":
+    if True:
+            import yaml
+            script_path = os.path.abspath(__file__)
+            ROOT1 = os.path.dirname(script_path)
+            file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+            print("file_path:",file_path)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                config0 = yaml.safe_load(file)
+                log_path = os.path.join(config0["my"]["filePathRoot"], "RunningTime.txt")
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            f = open(log_path, "w", encoding="utf-8")
+    def writeln(msg=""):
+        f.write(msg + "\n")
+
     # memoryOpt()
     import time
     start = time.time()
     main()#测试在训练过程中f1、recall、precise的变化
     end = time.time()
     h = (end - start)/(60*60)
-    print('运行时间: %s 小时' % h) # print('运行时间: %s 秒' % (end - start))
+    print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
+    writeln('Running time: %s hours' % h)
     # print("测试不同损失函数对纹理拟合的影响")
+    # "要发现难点在哪里"
