@@ -6,7 +6,6 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 
-
 def get_mgrid(sidelen, vmin=-1, vmax=1):
     if type(vmin) is not list:
         vmin = [vmin for _ in range(len(sidelen))]

@@ -50,6 +50,16 @@ import numpy as np
 from nir.myLib.GradientMonitor import GradientMonitor
 
 class Decouple_rigid(nn.Module):
+    def undateXY(self, xyt, k): #用于低分辨率的学习
+        x = xyt[:,0] # 0,512 =>[511, 2]
+        y = xyt[:,1] # 0,512
+        t = xyt[:,2]  
+        eps = k * 2/511
+        x_new = torch.round((x+1) / eps) * eps - 1
+        y_new = torch.round((y+1) / eps) * eps - 1
+        return torch.stack([x_new, y_new, t], dim=1)
+    #-..-#
+    
     def log(self,x): #x中的全部元素均不能为负数
         import math
         e = math.e # 获取自然数 e 的值
@@ -102,7 +112,6 @@ class Decouple_rigid(nn.Module):
             self.mask=mask
 
         return True
-
 
     def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
                  weight_smooth=1,weight_concise=0.0001,weight_component=1,
@@ -299,6 +308,21 @@ class Decouple_rigid(nn.Module):
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
                 step ,epochs0, vesselMask=None): # soft, rigid, fluid
+        # xyt = xyt_raw
+        # print("type(xyt):",type(xyt))
+        # print("xyt.shape:",xyt.shape)
+        # print("xyt")
+        # eps = 1/512 #1024 #512
+        # x = xyt[:,0]
+        # y = xyt[:,1]
+        # t = xyt[:,2]
+        # x_new = torch.trunc(x * eps) / eps
+        # print(((x-x_new)**2).sum())
+        # exit(0)
+        # print("shape:", x.shape, y.shape, t.shape)
+        # print("exit", 1, 2, 34, 5)
+        # print("")
+        # exit(0)
         def get_mixing_alpha_old(current_step=None, warmup_steps=None, i=None, total_layers=None):
             """
             基于线性渐进策略计算第i层的混合权重alpha_i。
@@ -541,12 +565,19 @@ class Decouple_rigid(nn.Module):
         elif self.lossType==2:
             vesselMask = self.mask[start:end]
             l = self.loss2(
-                        xyt,  step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,self.ground_truth #不只是血管
+                        xyt,  
+                        step,
+                        epochs0, 
+                        start, end,
+                        openLocalDeform,
+                        lossParam,
+                        vesselMask,
+                        self.ground_truth #不只是血管
                     ) 
             if not(xyt_vessel is None):
                 if not((lossParam_vessel["ra"] is None) and (lossParam_vessel["rm"] is None) and (lossParam_vessel["rv"] is None)):
                     l = l + self.loss2(
-                        xyt_vessel, step,epochs0, start_vessel, end_vessel,openLocalDeform,
+                        xyt_vessel, step,epochs0, start_vessel, end_vessel, openLocalDeform,
                         lossParam_vessel,
                         torch.ones_like(xyt_vessel),
                         self.ground_truth_vessel) #只包含血管
@@ -613,7 +644,7 @@ class Decouple_rigid(nn.Module):
         #             step, loss, loss_recon, loss_rigid, loss_smooth))
         #     print("loss_smooth此时不为0") #平滑损失 #速度为0
         #     exit(0)
-        if not step % 100:#500:#200:
+        if not step % 10: # :100:#500:#200:
             # print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_soft=%0.8f, loss_fluid=%0.8f, loss_rigid=%0.4f" % (
             #     step, loss, loss_recon, loss_soft , loss_fluid , loss_rigid))
             if self.useSmooth:

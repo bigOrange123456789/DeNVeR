@@ -492,7 +492,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False:#True: #处理全部数据
+    if False: #处理全部数据
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -531,7 +531,6 @@ def main():
                       )
     print("视频解耦完成!")
     # exit(0)
-    # return 
 
     print("二、分割推理部分")
     configs1=[]
@@ -551,7 +550,7 @@ def main():
         configs2, config.root_path + "/", block_cath, threshold,onlyInferGT=False
     )#只推理有标签的图像
 
-    print("三、计算分割指标")
+    # print("三、计算分割指标")
     ############################
     # main #
 

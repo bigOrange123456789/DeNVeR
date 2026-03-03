@@ -137,6 +137,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None): #单独的
     singleTrainVessel=False
     # useMatrix = True
     if not config is None:
+        if "batch_size_scale" in config:
+            batch_size_scale = config["batch_size_scale"]
         if "dynamicVesselMask" in config:
             dynamicVesselMask=config["dynamicVesselMask"]
         if "singleTrainVessel" in config:
