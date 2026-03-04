@@ -492,7 +492,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False: #True: # #处理全部数据 ####
+    if True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)

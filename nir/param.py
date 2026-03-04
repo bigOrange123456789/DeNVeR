@@ -39,7 +39,7 @@ if True:
                 "tag":"A27-01",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
-                "epochs":0.01,#0.625,#欠拟合和过拟合都没太大差别
+                "epochs":0.625,#欠拟合和过拟合都没太大差别
                 "batch_size_scale":0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startEpoch":1000*10,

@@ -135,17 +135,17 @@ class Decouple_rigid(nn.Module):
                 reconFlow=False
                  ):
         super().__init__()
-        self.dynamicVesselMask=dynamicVesselMask
-        self.updateMaskConfig=updateMaskConfig
+        self.dynamicVesselMask = dynamicVesselMask
+        self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
-        self.maskPath=maskPath
+        self.maskPath = maskPath
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
-            path_custom=inpath_custom,
-            videoId=videoId,
-            useMask=useMask,#True
-            maskPath=maskPath,#log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29\A26-01.orig_mask
-            reconFlow=reconFlow,
+            path_custom = inpath_custom,
+            videoId = videoId,
+            useMask = useMask,#True
+            maskPath = maskPath,#log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29\A26-01.orig_mask
+            reconFlow = reconFlow,
             )
         # print("num_frames:",v.num_frames)
         if adaptiveFrameNumMode==1:
@@ -200,6 +200,8 @@ class Decouple_rigid(nn.Module):
         for i in range(self.NUM_soft):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
             # print("pixels", pixels.shape, pixels.shape[1])
+            # print("pixels.shape",pixels.shape,pixels.shape[1])
+            # exit(0)
             self.f_soft_list.append(Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
                 # useGlobal=False, 
                 # useLocal=configSofts["useLocal"],
@@ -1111,7 +1113,9 @@ class Decouple_rigid(nn.Module):
                     l = list(map(list, zip(*original_list)))  # 交换列表的前两层
                     for i in range(len(l)):
                         for j in range(len(l[i])):
-                            l[i][j] = l[i][j].view(H, W, 1) #torch.Size([16384, 1])=>torch.Size([128, 128, 1])
+                            # print("l[i][j]:",l[i][j].shape)
+                            # exit(0)
+                            l[i][j] = l[i][j][:,0:1].view(H, W, 1) #torch.Size([16384, 1])=>torch.Size([128, 128, 1])
                             # print(type(l[i][j]),l[i][j].shape)
                             # exit(0)
                         l[i] = torch.stack(l[i], dim=0)
