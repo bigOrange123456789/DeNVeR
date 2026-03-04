@@ -113,7 +113,7 @@ class Decouple_rigid(nn.Module):
 
         return True
 
-    def __init__(self, path,hidden_features=128,useSmooth=False,openLocalDeform=False,
+    def __init__(self, path,inpath_custom=None,videoId=None,hidden_features=128,useSmooth=False,openLocalDeform=False,
                  weight_smooth=1,weight_concise=0.0001,weight_component=1,
                 #  stillness=False, #废弃
                  stillnessFristLayer=True,
@@ -132,14 +132,22 @@ class Decouple_rigid(nn.Module):
                 use_dynamicFeatureMask=False,
                 dynamicVesselMask=False,
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
+                reconFlow=False
                  ):
         super().__init__()
         self.dynamicVesselMask=dynamicVesselMask
         self.updateMaskConfig=updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
         self.maskPath=maskPath
-        v = VideoFitting(path,useMask=useMask,maskPath=maskPath)
-        print("num_frames:",v.num_frames)
+        self.v = VideoFitting(
+            path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
+            path_custom=inpath_custom,
+            videoId=videoId,
+            useMask=useMask,#True
+            maskPath=maskPath,#log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29\A26-01.orig_mask
+            reconFlow=reconFlow,
+            )
+        # print("num_frames:",v.num_frames)
         if adaptiveFrameNumMode==1:
             # configRigids["configRigid"]
             # configRigids["layer"]['hidden_features_map']
@@ -147,11 +155,12 @@ class Decouple_rigid(nn.Module):
             configSofts["layer"]["hidden_features_global"]
             configSofts["layer"]["hidden_features_local"]
 
-        videoloader = DataLoader(v, batch_size=1, pin_memory=True, num_workers=0)
-        model_input, ground_truth, mask, model_input_vessel, ground_truth_vessel, mask_vessel = next(iter(videoloader)) # 坐标、灰度、分割结果
-        model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
+        videoloader = DataLoader(self.v, batch_size=1, pin_memory=True, num_workers=0)
+        model_input, pixels, mask, model_input_vessel, ground_truth_vessel, mask_vessel = next(iter(videoloader)) # 坐标、灰度、分割结果 coords, pixels, self.mask
+        model_input, pixels, mask = model_input[0].cuda(), pixels[0].cuda(), mask[0].cuda()
         model_input_vessel, ground_truth_vessel, mask_vessel = model_input_vessel[0].cuda(), ground_truth_vessel[0].cuda(), mask_vessel[0].cuda()
-        ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
+        ground_truth = pixels #pixels[:, 0:1]  # 将RGB图像转换为灰度图
+        self.pixels = pixels
         ground_truth_vessel = ground_truth_vessel[:, 0:1]
         if False:
             print("gt_illu_max",torch.max(ground_truth))
@@ -160,7 +169,6 @@ class Decouple_rigid(nn.Module):
             print("gt_dis_max", torch.max(ground_truth))
             print("gt_dis_min", torch.min(ground_truth))
         # exit(0)
-        self.v=v
         self.model_input=model_input
         self.ground_truth=ground_truth
         self.mask=mask
@@ -191,6 +199,7 @@ class Decouple_rigid(nn.Module):
         self.useSoftMask = configSofts["useSoftMask"]
         for i in range(self.NUM_soft):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
+            # print("pixels", pixels.shape, pixels.shape[1])
             self.f_soft_list.append(Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
                 # useGlobal=False, 
                 # useLocal=configSofts["useLocal"],
@@ -198,6 +207,7 @@ class Decouple_rigid(nn.Module):
                 config=configSofts["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
+                out_features = pixels.shape[1],
                 ))
             if self.useSoftMask:
                 self.f_soft_mask_list.append(
@@ -239,7 +249,7 @@ class Decouple_rigid(nn.Module):
                 # stillness=stillness,#废弃
                 v=self.v,
                 interval=interval,
-                
+                out_features = pixels.shape[1],
             ))
         if self.NUM_rigid>0:
             self.f_rigid_list[0].stillness = stillnessFristLayer
@@ -262,6 +272,7 @@ class Decouple_rigid(nn.Module):
                     config=configFluids["layer"],#configFluids,
                     use_dynamicFeatureMask=False,
                     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
+                    out_features = pixels.shape[1],
                 )
             )
         if NUM_fluid>0:
@@ -307,7 +318,7 @@ class Decouple_rigid(nn.Module):
     
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
-                step ,epochs0, vesselMask=None): # soft, rigid, fluid
+                step, epochs0, vesselMask=None): # soft, rigid, fluid
         # xyt = xyt_raw
         # print("type(xyt):",type(xyt))
         # print("xyt.shape:",xyt.shape)
@@ -449,7 +460,7 @@ class Decouple_rigid(nn.Module):
             # step = 2/(self.v.video.size()[0] - 1)
             # o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,openLocalDeform=stage)#因为这的stage为0，所以并没有真正使用软体形变
             o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,epochs0)#(xyt,step)
-            o_rigid_all = o_rigid_all*o_rigid0
+            o_rigid_all = o_rigid_all * o_rigid0[:, 0:1] # o_rigid_all = o_rigid_all*o_rigid0
             o_rigid_list.append(o_rigid0)
             h_local_list.append(p_rigid0["h_local"])
             h_global_list.append(p_rigid0["h_global"])
@@ -468,11 +479,12 @@ class Decouple_rigid(nn.Module):
         loss_conciseS = torch.tensor(0.0)
         for i in range(self.NUM_soft):
             o_soft0, _ = self.f_soft_list[i](xyt+h_global, step) #软体运动基于刚体运动
+            o_soft0_gray = o_soft0[:, 0:1]
             if self.useSoftMask:#如果使用了软体遮挡
                 o_soft_mask = self.f_soft_mask_list[i](xyt,epochs0)#(xyt, step)
-                o_soft0 = o_soft0 * o_soft_mask + ( 1 - o_soft_mask )
+                o_soft0_gray = o_soft0_gray * o_soft_mask + ( 1 - o_soft_mask ) # o_soft0 = o_soft0 * o_soft_mask + ( 1 - o_soft_mask )
                 o_soft_mask_list.append( o_soft_mask )
-            o_soft_all = o_soft_all * o_soft0
+            o_soft_all = o_soft_all * o_soft0_gray # o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
             if self.use_dynamicFeatureMask:
                 k = self.f_soft_list[i].kFeatureMask()
@@ -484,6 +496,7 @@ class Decouple_rigid(nn.Module):
         o_fluid_list = []
         for i in range(self.NUM_fluid):
             o_fluid0,_ = self.f_fluid_list[i](xyt,epochs0)#(xyt, step)
+            o_fluid0_gray = o_fluid0[:, 0:1]
             # print("o_fluid0",o_fluid0.shape)
             # print("self.gradualImageLayers",self.gradualImageLayers)
             # exit(0)
@@ -500,8 +513,8 @@ class Decouple_rigid(nn.Module):
                     warmup_steps=self.gradualImageLayers["warmup_steps"], 
                     i=i, 
                     total_layers=self.NUM_fluid)
-                o_fluid0 = alpha1*o_fluid0 + alpha2*o_fluid0.detach().clone() +(1-alpha1-alpha2)*1
-            o_fluid_all = o_fluid_all * o_fluid0
+                o_fluid0_gray = alpha1 * o_fluid0_gray + alpha2*o_fluid0_gray.detach().clone() +(1-alpha1-alpha2)*1
+            o_fluid_all = o_fluid_all * o_fluid0_gray
             # if True:#使用流体层遮挡
             #     self.mask[start:end] + self.lossFunType["rv_eps"]
             o_fluid_list.append(o_fluid0)
@@ -536,6 +549,8 @@ class Decouple_rigid(nn.Module):
         # print("o_fluid_all", o_fluid_all.shape)
         # print("o",o.shape)
         # o = o_rigid_all * o_soft_all # o = o_rigid_all * o_soft_all * (1.0 - o_fluid)
+        # print("reconFlow:",self.v.reconFlow)
+        # exit(0)
         return o , {
             "r": o_rigid_list,
             "s": o_soft_list,
@@ -553,7 +568,6 @@ class Decouple_rigid(nn.Module):
             "loss_conciseR":loss_conciseR,
             "loss_conciseS":loss_conciseS,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
-            
         }#输出三样东西：重构结果、分层结果、相关参数
 
     def loss(self, xyt, step,epochs0, start, end,openLocalDeform,
@@ -704,6 +718,8 @@ class Decouple_rigid(nn.Module):
         return loss
 
     def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,ground_truth):
+        # print("ground_truth",ground_truth.shape)
+        # exit(0)
         # vesselMask = self.mask[start:end]
         # ground_truth=self.ground_truth
         o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
@@ -715,6 +731,19 @@ class Decouple_rigid(nn.Module):
         R_clone = R.detach().clone() if self.NUM_rigid>0 else 1
         S_clone = S.detach().clone() if self.NUM_soft>0 else 1
         F_clone = F.detach().clone() if self.NUM_fluid>0 else 1
+
+        # 零、辅助数据重构损失
+        layers_list=[]
+        for l in layers["r"]:
+            layers_list.append(l[:, 1:])
+        for l in layers["s"]:
+            layers_list.append(l[:, 1:])
+        for l in layers["f"]:
+            layers_list.append(l[:, 1:]) # torch.Size([131072, 3])
+        loss_recon_flow = torch.tensor(0.0)
+        for l in layers_list:
+            loss_recon_flow = loss_recon_flow + (( self.pixels[start:end, 1:] - l ) ** 2).mean()
+        loss_recon_flow = loss_recon_flow / len(layers_list)
         
         def getData_old(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
             if s0=="S,R" or s0=="R,S":  return R*S  #刚体软件都优化
@@ -839,12 +868,13 @@ class Decouple_rigid(nn.Module):
                 loss_smooth * self.weight_smooth + 
                 loss_concise * self.weight_concise + 
                 loss_component * self.weight_component + 
-                loss_binaryMask_all)
+                loss_binaryMask_all + 
+                loss_recon_flow)
 
 
 
         self.layers = layers
-        if (step % 200 == 0) or (step ==1999) :
+        if (step % 50 == 0) or (step ==1999) :
             # print("loss_concise",loss_concise)
             # if self.NUM_fluid>0:
             #     total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))# 计算全局梯度范数（不裁剪）
@@ -864,8 +894,8 @@ class Decouple_rigid(nn.Module):
                     #     step, loss, loss_recon_mask, loss_recon_all))
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_vess=%0.8f, recon_al=%0.8f, bMaskA=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
                     #                     step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
-                    print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
-                           step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"]))
+                    print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f, loss_recon_flow=%0.8f" % (
+                           step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"], loss_recon_flow))
                 # else:
                 #     print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
                 #         step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))
@@ -967,7 +997,7 @@ class Decouple_rigid(nn.Module):
         #     loss.backward()
         #     optim.step()
 
-    def getVideo(self,stage):
+    def getVideo(self, stage):
         print("逐帧推理")
         ####################################开始使用MASK####################################
         def get_video_tensor(path):
@@ -1055,6 +1085,8 @@ class Decouple_rigid(nn.Module):
                     # 模型推理并激活
                     epochs0=1
                     frame_output, layers, p = self.forward(coords, stage, epochs0,None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
+                    # print("frame_output",frame_output.shape)
+                    # exit(0)
                     # print("layers:",layers)
                     # print("p",p)
                     # exit(0)
@@ -1096,7 +1128,10 @@ class Decouple_rigid(nn.Module):
                 }
                 if self.NUM_fluid>0:
                     # layers["f"]=torch.stack(layers_frames["f"], dim=0)
-                    layers["f"]=p01(layers_frames["f"])
+                    # print(layers_frames["f"].shape)
+                    # print(type(layers_frames["f"]))
+                    # exit(0)
+                    layers["f"]=p01(layers_frames["f"]) # layers["f"]=p01(layers_frames["f"][:,0:1])
                     p["o_fluid_all"]=torch.stack(p_frames["o_fluid_all"], dim=0)
                 else:
                     layers["f"]=None

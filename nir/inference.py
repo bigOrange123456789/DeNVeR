@@ -492,7 +492,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False: #处理全部数据
+    if False: #True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -565,7 +565,8 @@ def memoryOpt():
     torch.cuda.synchronize()
     print(f"当前已分配: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
     print(f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
-
+# print("flag01")
+# exit(0)
 if __name__ == "__main__":
     if True:
             import yaml

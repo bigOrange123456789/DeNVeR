@@ -36,10 +36,10 @@ if True:
 
         { #follow 25: 测试关闭‘渐进式网络结构’效果是否会更差
             "decouple":{ # 解耦
-                "tag":"A26-01",
+                "tag":"A27-01",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
-                "epochs":0.625,#欠拟合和过拟合都没太大差别
+                "epochs":0.01,#0.625,#欠拟合和过拟合都没太大差别
                 "batch_size_scale":0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startEpoch":1000*10,
@@ -155,6 +155,7 @@ if True:
                     # "use_maskP":False, #自动学习MASK遮挡图、无效功能
                 }, # 现在的首要问题是无损失地拟合出来视频
                 # 2.损失函数
+                "reconFlow":True,
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
                 "weight_concise":0.00001,
@@ -188,10 +189,10 @@ if True:
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-01", #提高模型的拟合能力
+            "name": "A27-01", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-01.rigid",
-            "input_mode": "A26-01.rigid.non1",
+            "noise_label":"A27-01.rigid",
+            "input_mode": "A27-01.rigid.non1",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,#True,#

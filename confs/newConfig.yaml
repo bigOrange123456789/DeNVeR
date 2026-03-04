@@ -1,13 +1,14 @@
 my:
-    filePathRoot: "log_26"
+    filePathRoot: "log_27"
     notes: "测试关闭‘渐进式网络结构’效果是否会更差"
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
     datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset"
-    datasetPath_rigid.out:  "log_26/xca_dataset"
-    datasetPath_soft.in:  "log_26/xca_dataset"
-    datasetPath_soft.out:  "log_26/xca_dataset"
+    datasetPath_rigid.in_custom:  "../DeNVeR_in/custom_videos"
+    datasetPath_rigid.out:  "log_27/xca_dataset"
+    datasetPath_soft.in:  "log_27/xca_dataset"
+    datasetPath_soft.out:  "log_27/xca_dataset"
     datasetPath_gt:  "../DeNVeR_in/xca_dataset"
     datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"

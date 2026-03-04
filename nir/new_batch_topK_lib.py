@@ -751,13 +751,20 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                 inpath = os.path.join(
                     config["my"]["datasetPath_rigid.in"],#datasetPath0,
                     patientID, "images", videoId)
+                inpath_custom = config["my"]["datasetPath_rigid.in_custom"]
                 # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
                 outpath = os.path.join(
                     config["my"]["datasetPath_rigid.out"], #"log_15/xca_dataset_sub1", 
                     patientID, "decouple", videoId)#本地路径
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-rigid"]=="1_sim":#目标是将5分钟的解耦时间减少到1分钟
-                    startDecouple1_sim(videoId, paramPath, inpath, outpath, config=arguments)  # 去除刚体层
+                    startDecouple1_sim(
+                        videoId, #CVAI-1253LAO0_CAU29                         
+                        paramPath, #../DeNVeR_in/models_config/freecos_Seg.pt 
+                        inpath, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29 
+                        outpath, # log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29
+                        inpath_custom=inpath_custom,
+                        config=arguments)  # 去除刚体层
                 elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
                     origVideoPath=os.path.join(
                         dataset_path_gt,
