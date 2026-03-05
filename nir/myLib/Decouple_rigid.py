@@ -50,11 +50,13 @@ import numpy as np
 from nir.myLib.GradientMonitor import GradientMonitor
 
 class Decouple_rigid(nn.Module):
-    def undateXY(self, xyt, k): #用于低分辨率的学习
+    def undateXY(self, xyt, blurriness=4): #用于低分辨率的学习
+        # k = blurriness*510+1 #k0=0分辨率不变，k0=1完全模糊
+        k = blurriness
         x = xyt[:,0] # 0,512 =>[511, 2]
         y = xyt[:,1] # 0,512
         t = xyt[:,2]  
-        eps = k * 2/511
+        eps = k * 2/511 #将[-1,+1]的区间等分为了511块 所以k的值为[1,2,...511] 0->1,1->511
         x_new = torch.round((x+1) / eps) * eps - 1
         y_new = torch.round((y+1) / eps) * eps - 1
         return torch.stack([x_new, y_new, t], dim=1)
@@ -180,7 +182,7 @@ class Decouple_rigid(nn.Module):
         self.weight_smooth=weight_smooth
         self.weight_concise=weight_concise
         self.weight_component=weight_component
-        # self.stillness=stillness#是否静止不动 #废弃
+        # self.stillness=stillness #是否静止不动 #废弃
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
         self.configFluids=configFluids
@@ -321,6 +323,7 @@ class Decouple_rigid(nn.Module):
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
                 step, epochs0, vesselMask=None): # soft, rigid, fluid
+        xyt = self.undateXY(xyt, blurriness=8)
         # xyt = xyt_raw
         # print("type(xyt):",type(xyt))
         # print("xyt.shape:",xyt.shape)
@@ -735,17 +738,18 @@ class Decouple_rigid(nn.Module):
         F_clone = F.detach().clone() if self.NUM_fluid>0 else 1
 
         # 零、辅助数据重构损失
-        layers_list=[]
-        for l in layers["r"]:
-            layers_list.append(l[:, 1:])
-        for l in layers["s"]:
-            layers_list.append(l[:, 1:])
-        for l in layers["f"]:
-            layers_list.append(l[:, 1:]) # torch.Size([131072, 3])
         loss_recon_flow = torch.tensor(0.0)
-        for l in layers_list:
-            loss_recon_flow = loss_recon_flow + (( self.pixels[start:end, 1:] - l ) ** 2).mean()
-        loss_recon_flow = loss_recon_flow / len(layers_list)
+        if self.v.reconFlow:
+            layers_list=[]
+            for l in layers["r"]:
+                layers_list.append(l[:, 1:])
+            for l in layers["s"]:
+                layers_list.append(l[:, 1:])
+            for l in layers["f"]:
+                layers_list.append(l[:, 1:]) # torch.Size([131072, 3])
+            for l in layers_list:
+                loss_recon_flow = loss_recon_flow + (( self.pixels[start:end, 1:] - l ) ** 2).mean()
+            loss_recon_flow = 0*loss_recon_flow / len(layers_list)
         
         def getData_old(s0): #优化选项后面细化为: 整体运动、局部运动、纹理
             if s0=="S,R" or s0=="R,S":  return R*S  #刚体软件都优化
@@ -819,7 +823,7 @@ class Decouple_rigid(nn.Module):
                 attention_weights = torch.softmax(errors.clone().detach()/ temperature, dim=0) 
                 loss_recon_all = (attention_weights * errors).sum()
             elif loss_recon_all_type=="atten":#类似最大值的思想(估计会不稳定)
-                temperature =1.0
+                temperature = 1.0
                 # 温度参数调节注意力集中程度
                 # temperature越小，越关注最大误差（类似max）
                 # temperature越大，越接近平均（类似mean）

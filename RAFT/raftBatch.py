@@ -14,6 +14,7 @@ def runRAFT(rgb_dir,out_dir,out_img_dir,gap):
     cmd = f"cd {path0} && python run_raft.py {rgb_dir} {out_dir} -I {out_img_dir} --gap {gap} -b {batch_size}"
     # print(cmd)
     subprocess.call(cmd, shell=True)
+    
 from tqdm import tqdm
 def traverseVideo():
     datasetPath=os.path.join(ROOT,"../","../DeNVeR_in/xca_dataset")

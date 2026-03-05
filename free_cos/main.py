@@ -167,7 +167,6 @@ def mainFreeCOS_sim(pathParam,pathIn,pathOut,Segment_model=None):
             # print("cuda_is available")
             Segment_model = Segment_model.cuda() # 分割模型
 
-
         ##############################   predictor.lastInference()   ##############################
         checkpoint = torch.load(pathParam, map_location=torch.device('cpu'))  # 如果模型是在GPU上训练的，这里指定为'cpu'以确保兼容性
         Segment_model.load_state_dict(checkpoint['state_dict'])  # 提取模型状态字典并赋值给模型

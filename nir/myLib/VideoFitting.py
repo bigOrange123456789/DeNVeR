@@ -51,10 +51,10 @@ class VideoFitting(Dataset):
             pathSkel = os.path.join(path_custom, "skeltoize", videoId)
             dataGap1 = self.get_video_tensor(pathGap1, +1)
             dataGap2 = self.get_video_tensor(pathGap2, -1)
-            datapathSkel = self.get_video_tensor(pathSkel)
+            dataSkel = self.get_video_tensor(pathSkel)
             self.dataGap1 = dataGap1.permute(2, 3, 0, 1).contiguous().view(-1, dataGap1.shape[1])[self.shuffle] 
             self.dataGap2 = dataGap2.permute(2, 3, 0, 1).contiguous().view(-1, dataGap2.shape[1])[self.shuffle] 
-            self.datapathSkel = datapathSkel.permute(2, 3, 0, 1).contiguous().view(-1, datapathSkel.shape[1])[self.shuffle] 
+            self.datapathSkel = dataSkel.permute(2, 3, 0, 1).contiguous().view(-1, dataSkel.shape[1])[self.shuffle] 
             self.pixels = torch.cat([ #更每个像素点增加更多的维度
                 self.pixels, 
                 self.dataGap1, 
