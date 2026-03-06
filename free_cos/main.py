@@ -149,6 +149,106 @@ def mainFreeCOS(pathParam,pathIn,pathOut,needConnect=True):
         image2 = Image.fromarray(img2, mode='L')
         image2.save(os.path.join(pathOut, "binary", filename))
 
+# class FineTuning():
+#     def __init__(self,model):
+#         self.Segment_model=model
+#         print()
+
+#     def loss(self):
+#         loss = 0
+#         return loss    
+    
+#     def backward(self):
+#         encoder = self.Segment_model.backbone.encoder
+#         decoder = self.Segment_model.backbone.decoder
+#         contrast = self.Segment_model.backbone.contrast
+
+#         loss = self.loss()
+#         loss.backward(retain_graph=False)
+
+#     def __step(self,current_idx):
+#         optimizer_l = self.optimizer_l
+#         optimizer_D = self.optimizer_D
+#         lr_policy = self.lr_policy
+#         lrD_policy = self.lrD_policy
+
+#         optimizer_l.step()  # 根据梯度更新分割器的参数
+#         if optimizer_D!=None:
+#             optimizer_D.step()  # 根据梯度更新判别器的参数
+
+#         # lr_policy, lrD_policy,      学习率调整的策略    <engine.lr_policy.WarmUpPolyLR>
+#         lr = lr_policy.get_lr(current_idx)  # lr change #调整学习率
+#         optimizer_l.param_groups[0]['lr'] = lr  # 分割网络
+#         optimizer_l.param_groups[1]['lr'] = lr  # BN
+        
+#         if optimizer_D!=None:
+#             Lr_D = lrD_policy.get_lr(current_idx)
+#             optimizer_D.param_groups[0]['lr'] = Lr_D  # 判别器
+#         return lr
+
+
+# import torch.optim as optim
+# class FineTuner:
+#     def __init__(self, 
+#                  model, 
+#                  train_loader, 
+#                  val_loader, 
+#                  num_classes, 
+#                  lr=0.001, epochs=10, device=None):
+#         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#         self.model = model.to(self.device)
+#         self.train_loader = train_loader
+#         self.val_loader = val_loader
+#         self.num_classes = num_classes
+#         self.lr = lr
+#         self.epochs = epochs
+#         self.criterion = nn.CrossEntropyLoss()
+#         self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=1e-4)
+#         # 可以添加scheduler，但为简洁省略
+#         self.best_acc = 0.0
+
+#     def _train_one_epoch(self):
+#         self.model.train()
+#         total_loss, correct, total = 0, 0, 0
+#         for inputs, labels in self.train_loader:
+#             inputs, labels = inputs.to(self.device), labels.to(self.device)
+#             self.optimizer.zero_grad()
+#             outputs = self.model(inputs)
+#             loss = self.criterion(outputs, labels)
+#             loss.backward()
+#             self.optimizer.step()
+#             total_loss += loss.item() * inputs.size(0)
+#             _, preds = torch.max(outputs, 1)
+#             correct += (preds == labels).sum().item()
+#             total += labels.size(0)
+#         return total_loss / total, correct / total
+
+#     def _validate(self):
+#         self.model.eval()
+#         total_loss, correct, total = 0, 0, 0
+#         with torch.no_grad():
+#             for inputs, labels in self.val_loader:
+#                 inputs, labels = inputs.to(self.device), labels.to(self.device)
+#                 outputs = self.model(inputs)
+#                 loss = self.criterion(outputs, labels)
+#                 total_loss += loss.item() * inputs.size(0)
+#                 _, preds = torch.max(outputs, 1)
+#                 correct += (preds == labels).sum().item()
+#                 total += labels.size(0)
+#         return total_loss / total, correct / total
+
+#     def train(self, save_best=True):
+#         for epoch in range(self.epochs):
+#             train_loss, train_acc = self._train_one_epoch()
+#             val_loss, val_acc = self._validate()
+#             print(f'Epoch {epoch+1}/{self.epochs}: Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}')
+#             if save_best and val_acc > self.best_acc:
+#                 self.best_acc = val_acc
+#                 torch.save(self.model.state_dict(), 'best_model.pth')
+#                 print('Best model saved.')
+#         return self.model
+
+
 def mainFreeCOS_sim(pathParam,pathIn,pathOut,Segment_model=None):
     # print("输入:",pathParam,pathIn,pathOut,Segment_model)
     os.environ['MASTER_PORT'] = '169711' #“master_port”的意思是主端口
