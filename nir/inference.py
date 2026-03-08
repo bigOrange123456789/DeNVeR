@@ -22,6 +22,8 @@ class PostProcessing:
     def update_masks(self):
         input_folder=self.inpath 
         output_folder=self.outpath
+        print("input_folder",input_folder)
+        print("output_folder",output_folder)
         """
         通过相邻帧更新所有mask图片
         
@@ -492,7 +494,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False: #True: # #处理全部数据 ####
+    if True: #True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)

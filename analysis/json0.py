@@ -2,15 +2,15 @@ import os
 # from confs.json import config_data_base #现在精力充沛，等之后比较困的时候再整理代码，将训练json和测试json合并到一起
 config_data0 = {
             "experiments" : [
-                { 
-                    "name": "_001old_hessian",
-                    "color":"#28018E",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/_001old_hessian",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },  
+                # { 
+                #     "name": "_001old_hessian",
+                #     "color":"#28018E",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/_001old_hessian",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
                 # { 
                 #     "name": "_0_1.masks",
@@ -85,15 +85,15 @@ config_data0 = {
                 #     "block_cath":False,
                 #     "threshold": 0.5,
                 # },    
-                { 
-                    "name": "_001old_5.refine",
-                    "color":"#2871AE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/_001old_5.refine",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },       
+                # { 
+                #     "name": "_001old_5.refine",
+                #     "color":"#2871AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/_001old_5.refine",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },       
 
                 # { 
                 #     "name": "_001_1.masks",
@@ -141,32 +141,62 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },    
 
-                { 
-                    "name": "_024.nir",
-                    "color":"#8871AE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/_024.nir",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },    
+                # { 
+                #     "name": "_024.nir",
+                #     "color":"#8871AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/_024.nir",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },    
+
+                # { 
+                #     "name": "_024.nir",
+                #     "color":"#8871AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/_024.nir",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
+
+                # { 
+                #     "name": "_025-01.nir",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/_025-01.nir",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
+
+                # { 
+                #     "name": "freecos.fineTuner",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"temp/mask",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
                 { 
-                    "name": "_024.nir",
-                    "color":"#8871AE",
+                    "name": "myFreeCOS.nir",
+                    "color":"#88A1AE",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/_024.nir",
+                    "pred_path":"log_26/outputs/myFreeCOS",
                     "block_cath":False,
                     "threshold": 0.5,
                 },  
 
                 { 
-                    "name": "_025-01.nir",
+                    "name": "myFreeCOS.freecos",
                     "color":"#88A1AE",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/_025-01.nir",
+                    "pred_path":"temp/mask",
                     "block_cath":False,
                     "threshold": 0.5,
                 },  
@@ -180,8 +210,8 @@ config_data0 = {
                 #     # 'CVAI-2174LAO42_CRA18', 
                 #     # 'CVAI-2855LAO26_CRA31',
                 # ],
-                # os.listdir("outputs/xca_dataset_copy/ground_truth"),
-                os.listdir("outputs/xca_dataset_result/_0_1.masks"),
+                os.listdir("outputs/xca_dataset_copy/ground_truth"),
+                # os.listdir("outputs/xca_dataset_result/_0_1.masks"),
             "DataFiltering": 
                 # "T",
                 # "Move",

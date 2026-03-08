@@ -425,6 +425,7 @@ if __name__ == "__main__":
     # 测试
     finetuner.test3(test_loader, output_dir="inference_new2") #finetuner.test(test_loader)
     
+    exit(0)
     # 开始训练
     finetuner.fit(
         train_loader, 

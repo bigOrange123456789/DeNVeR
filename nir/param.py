@@ -1270,7 +1270,7 @@ if True:
             "input_mode": "orig",
             "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": True,#False,
+            "inferenceAll": False,#True,#False,
             "mergeMask": False,
             "fineTuning": True,
         },
