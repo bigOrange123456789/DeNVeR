@@ -135,7 +135,7 @@ class FineTuner:
             weight_ce * bce + weight_dice * dice
             ), bce, dice
 
-    def train_one_epoch(self, dataloader, epoch, epochs=None, print_freq=5):
+    def train_one_epoch(self, dataloader, epoch, epochs=None, print_freq=5,mean=None,std=None):
         """训练一个epoch"""
         self.model.train()
         total_loss = 0.0
@@ -191,8 +191,8 @@ class FineTuner:
         avg_dice = total_dice / len(dataloader)
         return avg_loss, avg_dice
 
-    def fit(self, train_loader, val_loader, epochs, lr=1e-4, weight_decay=1e-5, 
-            save_path='best_model.pth', early_stopping_patience=None):
+    def fit0(self, train_loader, val_loader, epochs, lr=1e-4, weight_decay=1e-5, 
+            save_path='best_model.pth', early_stopping_patience=None,mean=None,std=None):
         """
         完整训练流程
         参数:
@@ -212,7 +212,7 @@ class FineTuner:
 
         for epoch in range(1, epochs+1):
             # print(f"\n========== Epoch {epoch}/{epochs} ==========")
-            train_loss, train_bce, train_dice = self.train_one_epoch(train_loader, epoch,epochs=epochs)
+            train_loss, train_bce, train_dice = self.train_one_epoch(train_loader, epoch,epochs=epochs,mean=mean,std=std)
             val_loss, val_dice = self.evaluate(val_loader)
 
             # 调整学习率
@@ -242,8 +242,9 @@ class FineTuner:
 
         print("Training completed.")
     
-    def fit2(self, loader, epochs, lr=1e-4, weight_decay=1e-5, 
-            save_path='best_model.pth', early_stopping_patience=None):
+    def fit1(self, loader, epochs, lr=1e-4, weight_decay=1e-5, 
+            save_path='best_model.pth', early_stopping_patience=None#,mean=None,std=None
+            ):
         """
         完整训练流程
         参数:
@@ -262,7 +263,7 @@ class FineTuner:
         f_warp = MaskWarpLoss(1, +1)  # MaskWarpLoss() #Mask扭曲损失
         b_warp = MaskWarpLoss(1, -1)
         # train_loader
-        for k in range(1):
+        for epoch in range(1, epochs+1):#for epoch in range(1):
             for batch in loader:
                 batch_in = batch
                 batch["rgb"] = batch["rgb"].to("cuda")
@@ -290,7 +291,7 @@ class FineTuner:
                 loss = loss_f + loss_b
                 # print("loss",loss)
                 self.scheduler.step(loss)
-            print(k,f"Train Loss: {loss:.4f} ")
+            print("\repoch:",epoch,f"Train Loss: {loss:.4f} ",end="", flush=True)
 
     @torch.no_grad()
     def test(self, test_loader, model_path=None):
@@ -370,7 +371,8 @@ class FineTuner:
         #     self.model.load_state_dict(checkpoint['model_state_dict'])
         #     print(f"Loaded model from {model_path} for testing")
 
-        self.model.train()#self.model.eval()
+        # self.model.train()#
+        self.model.eval()
 
         # 用于累积指标
         total_tp = 0
@@ -752,13 +754,13 @@ def test():
     # exit(0)
     
     # 开始训练
-    if False:finetuner.fit( #必须要给出新的微调代码
+    if False:finetuner.fit0( #必须要给出新的微调代码
         train_loader, 
         val_loader, 
         epochs=5,#20, 
         lr=1e-4, save_path=None) # 85%
     
-    finetuner.fit2( #必须要给出新的微调代码
+    finetuner.fit1( #必须要给出新的微调代码
         loader, 
         epochs=5,#20, 
         lr=1e-4, save_path=None)
@@ -843,9 +845,14 @@ def train1_video(
     mask_dir = "./temp/mask/CVAI-1207LAO44_CRA29",
     segment_model = None,
     batch_size = 4, #10 #14 #16
-    videoId=""
+    videoId="",
+    epochs=50,
+    mean=None, 
+    std=None,
 ):
-    mean, std = calculate_mean_variance(test_img_dir)
+    if mean is None or std is None:
+        mean, std = calculate_mean_variance(test_img_dir)
+        print("正在计算mean和std:",test_img_dir)
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
@@ -881,10 +888,12 @@ def train1_video(
         mask_dir=mask_dir,
         segImg=segImg)
     # exit(0)
-    finetuner.fit2( #必须要给出新的微调代码
+    finetuner.fit1( #必须要给出新的微调代码
         loader, 
-        epochs=5,#20, 
-        lr=1e-4, save_path=None)
+        epochs=epochs,#5,#20, 
+        lr=1e-4, save_path=None,
+                # mean=mean,std=std,
+                )
     return segment_model
 
 def train1(
@@ -892,8 +901,12 @@ def train1(
     customPath = "../DeNVeR_in/custom_videos",
     segment_model = None, #pathParam = "../DeNVeR_in/models_config/freecos_Seg.pt",
     batch_size = 8,#16,
+    epochs=100,
+    mean=None, 
+    std=None,
 ):
-    for userId in os.listdir(datasetPath):
+    for i0 in range(epochs):
+     for userId in os.listdir(datasetPath):
         for videoId in os.listdir(os.path.join(datasetPath,userId,"images")):
             segment_model = train1_video(
                 test_img_dir = os.path.join(datasetPath,userId,"images",videoId),
@@ -908,6 +921,8 @@ def train1(
                 #mask_dir = "./temp/mask/CVAI-1207LAO44_CRA29",
                 segment_model = segment_model,
                 batch_size =batch_size,
+                epochs=1,#epochs,
+                mean=mean,std=std,
             )
     return segment_model
 
@@ -917,6 +932,8 @@ def train0_video(
     segment_model = None,
     batch_size = 4, #10 #14 #16
     epochs = 100,
+    mean=None, 
+    std=None,
 ):
     mean, std = calculate_mean_variance(test_img_dir)
     transform = transforms.Compose([
@@ -947,11 +964,12 @@ def train0_video(
     val_loader =  DataLoader(val_dataset,    batch_size=batch_size, shuffle=False, num_workers=2)
 
     # 开始训练
-    FineTuner(segment_model).fit( #必须要给出新的微调代码
+    FineTuner(segment_model).fit0( #必须要给出新的微调代码
         val_loader, 
         val_loader, 
         epochs=epochs,#20, 
-        lr=1e-4, save_path=None) # 85%
+        lr=1e-4, save_path=None,
+                mean=mean,std=std,) # 85%
 
     return segment_model
 
@@ -960,6 +978,8 @@ def train0(
     segment_model=None, #pathParam = "../DeNVeR_in/models_config/freecos_Seg.pt",
     batch_size = 16,
     epochs=100,
+    mean=None, 
+    std=None,
 ):
     for userId in os.listdir(datasetPath):
         for videoId in os.listdir(os.path.join(datasetPath,userId,"images")):
@@ -970,7 +990,8 @@ def train0(
                 test_gt_dir  = os.path.join(datasetPath,userId,"ground_truth",videoId),
                 segment_model = segment_model,
                 batch_size =batch_size,
-                epochs=epochs
+                epochs=epochs,
+                mean=mean,std=std,
             )
     return segment_model
 
@@ -984,105 +1005,30 @@ from torch.utils.data import DataLoader, ConcatDataset, random_split
 from torchvision import transforms
 from PIL import Image
 
-# def compute_global_mean_std(image_dirs):
-#     """
-#     计算多个目录中所有图像的全局均值和标准差（假设图像为RGB三通道）
-#     """
-#     pixel_sum = np.zeros(3)
-#     pixel_sq_sum = np.zeros(3)
-#     total_pixels = 0
+def compute_global_mean_std(image_dirs):
+    """
+    计算多个目录中所有图像的全局均值和标准差（假设图像为RGB三通道）
+    """
+    pixel_sum = np.zeros(3)
+    pixel_sq_sum = np.zeros(3)
+    total_pixels = 0
 
-#     for img_dir in image_dirs:
-#         for img_name in os.listdir(img_dir):
-#             img_path = os.path.join(img_dir, img_name)
-#             # 强制转为RGB，即使原图为灰度也会复制成三通道
-#             img = Image.open(img_path).convert('RGB')
-#             img_np = np.array(img).astype(np.float32) / 255.0  # 归一化到[0,1]
-#             h, w = img_np.shape[:2]
-#             for c in range(3):
-#                 pixel_sum[c] += np.sum(img_np[:,:,c])
-#                 pixel_sq_sum[c] += np.sum(img_np[:,:,c] ** 2)
-#             total_pixels += h * w
+    for img_dir in image_dirs:
+        for img_name in os.listdir(img_dir):
+            img_path = os.path.join(img_dir, img_name)
+            # 强制转为RGB，即使原图为灰度也会复制成三通道
+            img = Image.open(img_path).convert('RGB')
+            img_np = np.array(img).astype(np.float32) / 255.0  # 归一化到[0,1]
+            h, w = img_np.shape[:2]
+            for c in range(3):
+                pixel_sum[c] += np.sum(img_np[:,:,c])
+                pixel_sq_sum[c] += np.sum(img_np[:,:,c] ** 2)
+            total_pixels += h * w
 
-#     mean = pixel_sum / total_pixels
-#     std = np.sqrt(pixel_sq_sum / total_pixels - mean ** 2)
-#     return mean[0].tolist(), std[0].tolist()
+    mean = pixel_sum / total_pixels
+    std = np.sqrt(pixel_sq_sum / total_pixels - mean ** 2)
+    return mean[0].tolist(), std[0].tolist()
 
-# def train0_global(
-#     datasetPath="../DeNVeR_in/xca_dataset",
-#     segment_model=None,
-#     batch_size=16,
-#     epochs=100,
-#     val_ratio=0.2,
-#     mean=0.36372424163653405, 
-#     std =0.08839974009304374,
-# ):
-#     # 1. 收集所有视频的图像目录和标签目录
-#     img_dirs = []
-#     gt_dirs = []
-#     for userId in os.listdir(datasetPath):
-#         user_img_dir = os.path.join(datasetPath, userId, "images")
-#         user_gt_dir = os.path.join(datasetPath, userId, "ground_truth")
-#         if not os.path.isdir(user_img_dir) or not os.path.isdir(user_gt_dir):
-#             continue
-#         for videoId in os.listdir(user_img_dir):
-#             img_dir = os.path.join(user_img_dir, videoId)
-#             gt_dir = os.path.join(user_gt_dir, videoId)
-#             if os.path.isdir(img_dir) and os.path.isdir(gt_dir):
-#                 img_dirs.append(img_dir)
-#                 gt_dirs.append(gt_dir)
-
-#     # 2. 计算全局均值和标准差
-#     # if False:
-#     #     mean, std = compute_global_mean_std(img_dirs)
-#     # else:
-#     #     mean=0.36372424163653405 
-#     #     std =0.08839974009304374
-#     print("mean, std",mean, std)
-
-#     # 3. 定义图像transform：确保图像变为三通道，再归一化
-#     transform = transforms.Compose([
-#         transforms.ToTensor(),  # 输出形状: [C, H, W]，C=1（灰度）或3（RGB）
-#         # transforms.Lambda(lambda x: x.repeat(3, 1, 1) if x.size(0) == 1 else x),  # 单通道复制为三通道
-#         transforms.Normalize(mean=mean, std=std)
-#     ])
-
-#     # 4. 定义标签transform：转为张量并二值化（假设标签中前景为255）
-#     target_transform = transforms.Compose([
-#         transforms.ToTensor(),  # [0,1]范围内
-#         lambda x: (x > 0.5).float()  # 阈值化为0/1
-#     ])
-
-#     # 5. 为每个视频创建数据集，并合并
-#     datasets = []
-#     for img_dir, gt_dir in zip(img_dirs, gt_dirs):
-#         ds = SegmentationDataset(img_dir, gt_dir,
-#                                  transform=transform,
-#                                  target_transform=target_transform)
-#         datasets.append(ds)
-#     full_dataset = ConcatDataset(datasets)
-
-#     # 6. 划分训练集和验证集
-#     val_size = int(len(full_dataset) * val_ratio)
-#     train_size = len(full_dataset) - val_size
-#     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
-
-#     # 7. 创建DataLoader
-#     train_loader = DataLoader(train_dataset, batch_size=batch_size,
-#                               shuffle=True, num_workers=2)
-#     val_loader = DataLoader(val_dataset, batch_size=batch_size,
-#                             shuffle=False, num_workers=2)
-
-#     # 8. 开始训练
-#     FineTuner(segment_model).fit(
-#         train_loader,
-#         val_loader,
-#         epochs=epochs,
-#         lr=1e-4,
-#         save_path=None
-#     )
-
-#     return segment_model, mean, std
 
 def compute_video_mean_std(video_img_dir):
     """
@@ -1149,7 +1095,7 @@ def train0_global(
         if mean is None or std is None:
             # 为当前视频单独计算均值和标准差
             video_mean, video_std = compute_video_mean_std(img_dir)
-            print(f"\rVideo {img_dir}: mean={video_mean:.4f}, std={video_std:.4f}",end="", flush=True)
+            # print(f"\rVideo {img_dir}: mean={video_mean:.4f}, std={video_std:.4f}",end="", flush=True)
             transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean=video_mean, std=video_std)
@@ -1181,7 +1127,7 @@ def train0_global(
                             shuffle=False, num_workers=2)
 
     # 7. 开始训练
-    FineTuner(segment_model).fit(
+    FineTuner(segment_model).fit0(
         train_loader,
         val_loader,
         epochs=epochs,
@@ -1194,36 +1140,57 @@ def train0_global(
 # ========== 使用示例 ==========
 if __name__ == "__main__":
     #################################
+    datasetPath="../DeNVeR_in/xca_dataset"
     segment_model = getModel("../DeNVeR_in/models_config/freecos_Seg.pt")
-    mean=0.36372424163653405 
-    std =0.08839974009304374
-    # mean = None
-    # std = None
+    if True:
+        mean=0.36372424163653405 
+        std =0.08839974009304374
+    elif False:
+        mean, std = compute_global_mean_std(datasetPath)
+    else:
+        mean = None
+        std = None
 
     # result = getAna(segment_model=segment_model) # 每个视频单独归一化的结果
     # print(result)#(0.7681779952595764, 0.7615979381443299, 0.7748727440999538)
 
-    if True:
+    if False:
         result = getAna(segment_model=segment_model,mean=mean, std=std) #所有视频统一归一化
-        print(result)
-        #全局归一化{'dice': 0.6420784738562635, 'recall': 0.5775253262418497, 'precision': 0.7228785410524693}
-        #局部归一化{'dice': 0.641999244973987, 'recall': 0.5775235782315224, 'precision': 0.72268046097917}
+        # print(result)
+        # 训练模式：
+        #   全局归一{'dice': 0.642078473856263, 'recall': 0.5775253262418497, 'precision': 0.72287854105246}
+        #   局部归一{'dice': 0.641999244973987, 'recall': 0.5775235782315224, 'precision': 0.72268046097917}
+        # 推理模式：
+        #   局部归一{'dice': 0.7682335231473698, 'recall': 0.8138804061832176, 'precision': 0.72743497467174}
+        #   全局归一{'dice': 0.7697969438214193, 'recall': 0.8100602267247083, 'precision': 0.73334663781879}
 
-    exit(0)
+    # exit(0)
     # segment_model=train0(
     #     datasetPath="../DeNVeR_in/xca_dataset",
     #     segment_model=segment_model,
     #     batch_size = 16,
+    #     epochs=100,
     # )
-    segment_model,mean, std=train0_global(
-        datasetPath="../DeNVeR_in/xca_dataset",
-        segment_model=segment_model,
-        batch_size = 11,#14,#16,
-        epochs=100,
+    # segment_model,mean, std = train0_global( #有标签训练
+    #     datasetPath=datasetPath,
+    #     segment_model=segment_model,
+    #     batch_size = 11,#14,#16,
+    #     epochs=50,
+    #     mean=mean,std=std,
+    # )
+    # epochs=100：#全局 0.9035327403541834 局部 0.8918270924904032
+    # epochs=50：#全局{'dice': 0.9019837657761053, 'recall': 0.8842611286591926, 'precision': 0.9204313374907155}
+    # epochs=5：#全局 0.8461806532067341 局部 0.8361631923850654
+
+
+    segment_model=train1(
+        datasetPath = datasetPath,
+        customPath = "../DeNVeR_in/custom_videos",
+        segment_model = segment_model,
+        batch_size = 4,#8,#16,
+        epochs=20,
         mean=mean,std=std,
     )
-    # epochs=100：#全局 0.9035327403541834 局部 0.8918270924904032
-    # epochs=5：#全局 0.8461806532067341 局部 0.8361631923850654
 
     result = getAna(segment_model=segment_model,mean=mean, std=std)
     #{'dice': 0.7622238680943861, 'recall': 0.8269151249701139, 'precision': 0.7069200691852502} #没有变化，甚至指标还下降了
