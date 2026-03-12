@@ -9,6 +9,10 @@ c_test/
 # outputs
 tmp_tensor/
 *outputs/
+# 保留 outputs/namelist.xlsx
+!outputs/namelist.xlsx
+
+
 CVAI-1247RAO30_CAU24/
 CVAI-1250LAO31_CRA27/
 *CATH1/

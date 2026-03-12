@@ -2,6 +2,17 @@ import os
 # from confs.json import config_data_base #现在精力充沛，等之后比较困的时候再整理代码，将训练json和测试json合并到一起
 config_data0 = {
             "experiments" : [
+
+                { 
+                    "name": "A23-01",
+                    "color":"#29510E",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/noRigid1",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },
+
                 # { 
                 #     "name": "_001old_hessian",
                 #     "color":"#28018E",
@@ -181,25 +192,25 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },  
 
-                { 
-                    "name": "myFreeCOS.nir",
-                    "color":"#88A1AE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"log_26/outputs/myFreeCOS",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },  
+                # { 
+                #     "name": "myFreeCOS.nir",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"log_26/outputs/myFreeCOS",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
-                { 
-                    "name": "myFreeCOS.freecos",
-                    "color":"#88A1AE",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"temp/mask",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },  
+                # { 
+                #     "name": "myFreeCOS.freecos",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"temp/mask",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
 
             ],
