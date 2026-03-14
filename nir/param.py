@@ -1264,7 +1264,11 @@ if True:
 
 
         { #测试分割网络的微调
-            "name": "myFreeCOS_test",
+            
+            "fineTuning": {
+                
+            },
+            "name": "myFreeCOS_test2",
             "precomputed": False,
             "noise_label":"orig",#None
             "input_mode": "orig",
@@ -1272,7 +1276,7 @@ if True:
             "binarize": True,
             "inferenceAll": False,#True,#False,
             "mergeMask": False,
-            "fineTuning": True,
+            
         },
 
 

@@ -697,7 +697,6 @@ def test():
     # 注意：您可以使用 calculate_mean_variance 函数计算训练集的均值和标准差
     # 此处简单使用默认的ToTensor()，即归一化到[0,1]
     mean, std = calculate_mean_variance(train_img_dir)
-    # print("{mean:",mean, "std:", std, "}")
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
@@ -783,7 +782,7 @@ def getAna0(
     if mean is None or std is None:
         mean, std = calculate_mean_variance(test_img_dir)
         # print("\r",videoId,mean,std,end="", flush=True)
-        print("\n",test_img_dir,"mean:",mean,"std:",std)
+        # print("\n",test_img_dir,"mean:",mean,"std:",std)
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
@@ -832,6 +831,7 @@ def getAna(
                 videoId=videoId,
                 mean=mean, std=std
             )
+            # print("videoId",videoId,"fn")
             ana["fn"] = ana["fn"] + ana0["fn"]
             ana["fp"] = ana["fp"] + ana0["fp"]
             ana["tp"] = ana["tp"] + ana0["tp"]
@@ -1137,8 +1137,126 @@ def train0_global(
 
     return segment_model, mean, std
 
+def findOptValue():
+    print("\nfindOptValue:\n")
+    import numpy as np
+    import time
+
+    # 1. 加载模型（只需一次）
+    datasetPath = "../DeNVeR_in/xca_dataset"
+    segment_model = getModel("../DeNVeR_in/models_config/freecos_Seg.pt")
+
+    # 初始参数（仅作为中心参考，实际搜索范围在其附近）
+    base_mean = 0.36372424163653405
+    base_std  = 0.08839974009304374
+    # {'dice': 0.7697980373035797, 'recall': 0.8100610036181871, 'precision': 0.7333479858632391}
+
+    # 2. 设置搜索范围和步长（可根据实际情况调整）
+    mean_range = np.arange(0.26, 0.47, 0.04)   # 从 0.26 到 0.465，步长 0.005
+    std_range  = np.arange(0.04, 0.14, 0.04)   # 从 0.04 到 0.135，步长 0.005
+    
+    base_mean = 0.36
+    ran_mean = 0.1
+    base_std  = 0.09
+    ran_std =0.05
+    step=0.04
+    mean_range = np.arange(base_mean-ran_mean, base_mean+ran_mean, step)   # 从 0.26 到 0.465，步长 0.005
+    std_range  = np.arange(base_std-ran_std,   base_std+ran_std,   step)
+    # mean = 0.4600, std = 0.1200
+    # 最优结果：dice=0.7703, recall=0.8009, precision=0.7419
+
+    num = 4 # step=0.04
+    base_mean = 0.46
+    ran_mean = 0.12
+    mean_range = np.arange(base_mean - ran_mean, base_mean + ran_mean + 0.1**9 , ran_mean/num)   # 从 0.26 到 0.465，步长 0.005
+    base_std  = 0.1
+    ran_std = 0.05
+    std_range  = np.arange(base_std - ran_std,   base_std + ran_std + 0.1**9 ,   ran_std/num)
+    # mean = 0.5800, std = 0.1250
+    # 最优结果：dice=0.7706, recall=0.8017, precision=0.7419
+
+    # 建议先粗搜，再精搜；这里给出一个示例范围
+    # mean_range = np.arange(0.26, 0.47, 0.005)   # 从 0.26 到 0.465，步长 0.005
+    # std_range  = np.arange(0.04, 0.14, 0.005)   # 从 0.04 到 0.135，步长 0.005
+
+    # 若想围绕中心值更精细地搜索，可使用：
+    # mean_range = np.linspace(base_mean - 0.1, base_mean + 0.1, 21)   # 0.01步长
+    # std_range  = np.linspace(base_std - 0.05, base_std + 0.05, 21)   # 0.005步长
+
+    # 3. 准备记录文件
+    log_file = "grid_search_results.txt"
+    with open(log_file, 'w', encoding='utf-8') as f:
+        f.write("mean\tstd\tdice\trecall\tprecision\n")  # 写入表头
+
+    best_dice = -1.0
+    best_mean = None
+    best_std = None
+    best_result = None
+
+    total_combinations = len(mean_range) * len(std_range)
+    print(f"开始网格搜索，共 {total_combinations} 种组合...")
+    start_time = time.time()
+
+    # 4. 遍历所有组合
+    for i, mean in enumerate(mean_range, 1):
+        for j, std in enumerate(std_range, 1):
+            print(f"\n测试组合 ({i}/{len(mean_range)}, {j}/{len(std_range)})：mean={mean:.4f}, std={std:.4f}")
+
+            try:
+                # 调用评估函数
+                result = getAna(segment_model=segment_model, mean=mean, std=std)
+
+                dice = result['dice']
+                recall = result['recall']
+                precision = result['precision']
+
+                # print(f"   dice={dice:.4f}, recall={recall:.4f}, precision={precision:.4f}")
+
+                # 将本次结果写入文件（追加模式）
+                with open(log_file, 'a', encoding='utf-8') as f:
+                    f.write(f"{mean:.6f}\t{std:.6f}\t{dice:.6f}\t{recall:.6f}\t{precision:.6f}\n")
+
+                # 更新最优
+                if dice > best_dice:
+                    best_dice = dice
+                    best_mean = mean
+                    best_std = std
+                    best_result = result
+                    print(f"\r   >>> 新的最优！dice={dice:.4f}")
+
+            except Exception as e:
+                error_msg = f"   组合 (mean={mean:.4f}, std={std:.4f}) 出错：{e}"
+                print(error_msg)
+                # 将错误也记录到文件（可选）
+                with open(log_file, 'a', encoding='utf-8') as f:
+                    f.write(f"{mean:.6f}\t{std:.6f}\tERROR\t{str(e)}\n")
+                continue
+
+    elapsed = (time.time() - start_time)/60
+    print("\n" + "="*50)
+    print(f"搜索完成，耗时 {elapsed:.1f} 分钟")
+    print(f"最优参数：mean = {best_mean:.4f}, std = {best_std:.4f}")
+    print(f"最优结果：dice={best_dice:.4f}, recall={best_result['recall']:.4f}, precision={best_result['precision']:.4f}")
+    print("="*50)
+
+    # 将最优结果单独写入文件末尾
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write("\n" + "="*40 + "\n")
+        f.write("最优参数：\n")
+        f.write(f"mean = {best_mean:.6f}\n")
+        f.write(f"std  = {best_std:.6f}\n")
+        f.write(f"dice = {best_dice:.6f}\n")
+        f.write(f"recall = {best_result['recall']:.6f}\n")
+        f.write(f"precision = {best_result['precision']:.6f}\n")
+
+    # 可选：将全部结果保存到文件
+    # import json
+    # with open('grid_search_results.json', 'w') as f:
+    #     json.dump(results_log, f, indent=2)
+
 # ========== 使用示例 ==========
 if __name__ == "__main__":
+    
     #################################
     datasetPath="../DeNVeR_in/xca_dataset"
     segment_model = getModel("../DeNVeR_in/models_config/freecos_Seg.pt")
@@ -1154,9 +1272,10 @@ if __name__ == "__main__":
     # result = getAna(segment_model=segment_model) # 每个视频单独归一化的结果
     # print(result)#(0.7681779952595764, 0.7615979381443299, 0.7748727440999538)
 
-    if False:
+    if True:
         result = getAna(segment_model=segment_model,mean=mean, std=std) #所有视频统一归一化
-        # print(result)
+        print("\nmean:",mean,"std:",std,"dice:",result["dice"])
+        print(result)
         # 训练模式：
         #   全局归一{'dice': 0.642078473856263, 'recall': 0.5775253262418497, 'precision': 0.72287854105246}
         #   局部归一{'dice': 0.641999244973987, 'recall': 0.5775235782315224, 'precision': 0.72268046097917}
@@ -1164,7 +1283,26 @@ if __name__ == "__main__":
         #   局部归一{'dice': 0.7682335231473698, 'recall': 0.8138804061832176, 'precision': 0.72743497467174}
         #   全局归一{'dice': 0.7697969438214193, 'recall': 0.8100602267247083, 'precision': 0.73334663781879}
 
-    # exit(0)
+
+        #{'dice': 0.8462867402129606, 'recall': 0.8571755341049453, 'precision': 0.8356711192382311}
+        '''
+            mean: -0.03627575836346597 std: 0.08839974009304374 dice: 0.8471440831505673
+            mean: 0.06372424163653406 std: 0.08839974009304374 dice: 0.8514077647386242
+            mean: 0.16372424163653404 std: 0.08839974009304374 dice: 0.8519700111660552
+            mean=0.2637242416365341 std=0.08839974009304374 dice:0.8493209597102761
+            mean=0.36372424163653405, std=0.08839974009304374 dice:0.8462867402129606, 'recall': 0.8571755341049453, 'precision': 0.8356711192382311}
+            mean=0.36372424163653405+0.1, 'dice': 0.8420092352742425, 'recall': 0.8550482638730043, 'precision': 0.8293619098331558}
+            mean 0.6637242416365341 std 0.08839974009304374
+            {'dice': 0.8369094863343871, 'recall': 0.8538130747060707, 'precision': 0.820662210887345}
+
+            搜索完成，耗时 1478.1 秒
+            最优参数: mean = 0.5800, std = 0.1250
+            最优结果: dice=0.7706, recall=0.8017, precision=0.7419
+        '''
+
+    findOptValue()
+    exit(0)
+    exit(0)
     # segment_model=train0(
     #     datasetPath="../DeNVeR_in/xca_dataset",
     #     segment_model=segment_model,
@@ -1191,6 +1329,8 @@ if __name__ == "__main__":
         epochs=20,
         mean=mean,std=std,
     )
+    # train2 首页和背景页为负样本、如何获取正样本？
+    
 
     result = getAna(segment_model=segment_model,mean=mean, std=std)
     #{'dice': 0.7622238680943861, 'recall': 0.8269151249701139, 'precision': 0.7069200691852502} #没有变化，甚至指标还下降了
