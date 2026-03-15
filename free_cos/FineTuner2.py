@@ -193,6 +193,7 @@ class FineTuner2(FineTuner):
                 loss_bg, bce_bg, dice_bg = self._compute_loss(pred_bg, zero_masks) #self._compute_loss(pred_bg, zero_masks)
 
                 # 总损失
+                # bg_loss_weight = (loss_l/loss_bg).detach().item()
                 loss = loss_l + bg_loss_weight * loss_bg
 
                 self.optimizer.zero_grad()
@@ -292,9 +293,9 @@ def main(
 
     # 超参数
     batch_size = 6 #7溢出 #8溢出 #4可行
-    epochs = 5
+    epochs = 100 #5
     lr = 1e-4
-    bg_loss_weight = 0.4#0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
+    bg_loss_weight = 1.4 #1.2过小 #1.6过大 #0.8小 #0.4小#0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
     print("bg_loss_weight:",bg_loss_weight)
 
     # 1. 构建 videoId -> userId 映射
