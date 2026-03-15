@@ -1,15 +1,40 @@
 import os
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-import glob
+import random
 
 from free_cos.FineTuner import getAna
+def testSave(tag,x):
+    x = x.clone().detach().cpu()
+    print("tag",x.shape,type(x))
+    # os.makedirs("temp/"+tag, exist_ok=True)
+    os.makedirs("temp_test", exist_ok=True)
+    from PIL import Image
+    import numpy as np
+
+    # 假设你的张量变量名为 tensor，形状为 [4, 1, 512, 512]
+    # tensor = your_tensor_here
+
+    # 将张量转换为numpy并保存为4张图片
+    for i in range(x.shape[0]):
+        # 提取单张图片 [1, 512, 512] -> [512, 512]
+        img_tensor = x[i, 0]  # 形状变为 [512, 512]
+        
+        # 归一化到 0-255 范围（假设张量值范围可能不是0-1）
+        img_np = img_tensor.numpy()
+        img_np = ((img_np - img_np.min()) / (img_np.max() - img_np.min()) * 255).astype(np.uint8)
+        
+        # 转换为PIL Image并保存（'L'模式表示灰度图）
+        img = Image.fromarray(img_np, mode='L')
+        img.save(f"temp_test/{tag}"+f'_{i+1}.png')
+        # print(f"已保存: output_image_{i+1}.png")
+
+    print("全部保存完成！")
 
 # ==================== 辅助函数：计算视频均值和标准差 ====================
 def compute_video_mean_std(video_img_dir):
@@ -48,7 +73,6 @@ def compute_video_stats(video_dirs, max_workers=4):
                 print(f"\rComputed stats for {video_dir}: mean={mean:.4f}, std={std:.4f}",end="")
             except Exception as e:
                 print(f"Failed to compute stats for {video_dir}: {e}")
-    # print()
     return video_stats
 
 # ==================== 数据集类 ====================
@@ -88,6 +112,7 @@ class LabeledSegmentationDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
+        # idx = np.random.randint(0, len(self.samples))
         img_path, label_path, video_dir = self.samples[idx]
         image = Image.open(img_path).convert('L')
         label = Image.open(label_path).convert('L')
@@ -100,32 +125,137 @@ class LabeledSegmentationDataset(Dataset):
         label = (label > 0.5).float()
         return image, label
 
+import torchvision.transforms.functional as F #用于BackgroundDataset的数据增强
+from torchvision.transforms import InterpolationMode #用于BackgroundDataset的数据增强
 class BackgroundDataset(Dataset):
     """背景数据集：加载背景图像，要求模型输出全0。每个epoch随机采样，可重复使用"""
-    def __init__(self, bg_paths, video_stats, length=None):
+    def __init__(self, bg_paths, video_stats, vessel_folder_path=None, length=None, crop_size=(256,256)):
         """
         bg_paths: 列表，每个元素为 (img_path, video_dir)
         video_stats: 视频统计字典
         length: 数据集长度，若为None则等于背景样本数；若指定，则每次随机采样，用于实现重复使用
         """
-        self.images = []
-        for img_path, video_dir in bg_paths:
-            image = Image.open(img_path).convert('L')
-            mean, std = video_stats[video_dir]
-            image = transforms.ToTensor()(image)
-            image = transforms.Normalize(mean=mean, std=std)(image)
-            self.images.append(image)
-        self.num_real_samples = len(self.images)
+        self.vessel_folder_path = vessel_folder_path
+        self.bg_paths = bg_paths
+        self.video_stats = video_stats
+        self.num_real_samples = len(self.bg_paths) 
         self.length = length if length is not None else self.num_real_samples
-        print(f"Background dataset: {self.num_real_samples} real samples, effective length={self.length}")
+        self.crop_size = crop_size
+
+    def _perturbation(self,vessel0):
+        random_float = random.uniform(1, 4) # 生成一个1到4之间的随机小数
+        return  vessel0 ** random_float
+
+    def _augmentation(self,img, gt, 
+                    # crop_size=(256,256), 
+                    p_flip=0.5, 
+                    p_rotate=0.5, 
+                    p_color_jitter=0.5,
+                    brightness_range=(0.5, 1.5), 
+                    contrast_range=(0.8, 2.1), 
+                    saturation_range=(0.5, 1.5),
+                    angle_range=(-180, 180)):
+        crop_size = self.crop_size
+        """
+        对 img 和 gt 同时应用数据增强。
+
+        Args:
+            img (torch.Tensor): 图像张量，形状 (C, H, W)，值范围 [0, 255] 或归一化后的任意范围。
+            gt (torch.Tensor): 标签张量，形状 (C, H, W)，通常为单通道（C=1）的掩码（值为0或1）。
+            crop_size (int or tuple): 裁剪后的尺寸。若为 int，则生成正方形裁剪；若为 (h, w)，则按指定尺寸裁剪。
+            p_flip (float): 应用随机翻转的概率（水平/垂直各独立概率，此处统一控制）。
+            p_rotate (float): 应用随机旋转的概率。
+            p_color_jitter (float): 应用颜色抖动的概率。
+            brightness_range (tuple): 亮度调整因子的范围，如 (0.5, 1.5)。
+            contrast_range (tuple): 对比度调整因子的范围。
+            saturation_range (tuple): 饱和度调整因子的范围。
+            angle_range (tuple): 旋转角度的范围，如 (-180, 180)。
+
+        Returns:
+            (torch.Tensor, torch.Tensor): 增强后的 img 和 gt。
+        """
+        # 确保输入为张量
+        assert isinstance(img, torch.Tensor) and isinstance(gt, torch.Tensor)
+        assert img.shape[1:] == gt.shape[1:], "img 和 gt 的空间尺寸必须相同"
+
+        # 1. 随机水平翻转
+        if random.random() < p_flip:
+            img = F.hflip(img)
+            gt = F.hflip(gt)
+
+        # 2. 随机垂直翻转
+        if random.random() < p_flip:
+            img = F.vflip(img)
+            gt = F.vflip(gt)
+
+        # 3. 颜色抖动（仅对 img）
+        if random.random() < p_color_jitter:
+            # 随机生成调整因子
+            brightness_factor = random.uniform(*brightness_range)
+            contrast_factor = random.uniform(*contrast_range)
+            saturation_factor = random.uniform(*saturation_range)
+            # 依次应用亮度、对比度、饱和度调整（顺序通常固定）
+            img = F.adjust_brightness(img, brightness_factor)
+            img = F.adjust_contrast(img, contrast_factor)
+            img = F.adjust_saturation(img, saturation_factor)
+
+        # 4. 随机旋转
+        if random.random() < p_rotate:
+            angle = random.uniform(*angle_range)
+            # 对 img 使用双线性插值，对 gt 使用最近邻插值（避免标签值被平滑）
+            img = F.rotate(img, angle, interpolation=InterpolationMode.BILINEAR, expand=True)
+            gt = F.rotate(gt, angle, interpolation=InterpolationMode.NEAREST, expand=True)
+
+        # 5. 随机裁剪到指定尺寸
+        if not crop_size is None: 
+            # 获取当前图像尺寸（旋转后可能已改变）
+            _, h, w = img.shape
+            if isinstance(crop_size, int):
+                crop_h, crop_w = crop_size, crop_size
+            else:
+                crop_h, crop_w = crop_size
+
+            # 确保裁剪尺寸不大于当前尺寸（否则无法裁剪）
+            assert crop_h <= h and crop_w <= w, f"裁剪尺寸 ({crop_h}, {crop_w}) 不能大于当前图像尺寸 ({h}, {w})"
+
+            # 生成随机裁剪起始点
+            top = random.randint(0, h - crop_h)
+            left = random.randint(0, w - crop_w)
+
+            img = F.crop(img, top, left, crop_h, crop_w)
+            gt = F.crop(gt, top, left, crop_h, crop_w)
+
+        return img, gt
+    
+    def _hasVessel(self, background, mean, std):
+        if self.vessel_folder_path is None:
+            return None, None, None
+        else:
+            l = len(os.listdir(self.vessel_folder_path))
+            idx = np.random.randint(0, l)
+            fileName =os.listdir(self.vessel_folder_path)[idx]
+            image = Image.open(os.path.join(self.vessel_folder_path,fileName)).convert('L')
+            vessel = transforms.ToTensor()(image)
+            vessel = self._perturbation(vessel)
+            gt = torch.zeros_like(vessel) # images_vessel.clone()[images_vessel]
+            gt[vessel<1]=1
+            synthesis = vessel*background
+            synthesis, gt = self._augmentation(synthesis,gt)
+            synthesis = transforms.Normalize(mean=mean, std=std)(synthesis)
+            return synthesis, gt, vessel
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, idx):
-        # 随机选择一个真实样本返回（允许重复）
-        idx = np.random.randint(0, self.num_real_samples)
-        return self.images[idx], torch.tensor(0.0)  # 第二个元素占位，不会被使用
+        idx = np.random.randint(0, self.num_real_samples) # 随机选择
+        img_path, video_dir = self.bg_paths[idx]
+        bg = Image.open(img_path).convert('L')
+        mean, std = self.video_stats[video_dir]
+        bg = transforms.ToTensor()(bg)
+        synthesis, gt, vessel = self._hasVessel(bg, mean, std)
+        bg = transforms.Normalize(mean=mean, std=std)(bg)
+        return bg, synthesis, gt, vessel
 
 # ==================== 扩展 FineTuner 类 ====================
 from free_cos.FineTuner import FineTuner
@@ -133,9 +263,11 @@ class FineTuner2(FineTuner):
     # ...（此处保留原有 __init__、_dice_loss、_compute_loss 等方法，省略以节省空间）
     # 您需要将之前的 FineTuner 类代码复制到这里，下面只展示新增的 fit2 方法
 
-    def fit2(self, labeled_loader, background_loader, epochs, lr=1e-4, weight_decay=1e-5,
+    def fit2(self, labeled_loader, background_loader, #vessel_loader,
+             epochs, lr=1e-4, weight_decay=1e-5,
              save_path=None, 
              bg_loss_weight=0.05, #1.0
+             reweightBg=0.2,
              ):
         """
         使用有标注数据和背景数据联合训练
@@ -150,6 +282,7 @@ class FineTuner2(FineTuner):
         no_improve_epochs = 0
 
         for epoch in range(1, epochs + 1):
+            start_time = time.time() # 记录开始时间
             self.model.train()
             total_loss = 0.0
             total_bce = 0.0
@@ -172,7 +305,7 @@ class FineTuner2(FineTuner):
                     bg_iter = iter(background_loader)
                     bg_batch = next(bg_iter)
 
-                # 处理标注数据
+                # 1.处理有标注数据（真实标注）
                 images_l, masks_l = labeled_batch
                 images_l = images_l.to(self.device)
                 masks_l = masks_l.to(self.device)
@@ -180,31 +313,69 @@ class FineTuner2(FineTuner):
                 pred_l = outputs_l['pred']
                 # print("masks_l",masks_l.max(),masks_l.min(),masks_l.mean())
                 # exit(0)
-                loss_l, bce_l, dice_l = self._compute_loss(pred_l*masks_l, masks_l) #_compute_loss(pred_l, masks_l)
+                loss_sup, bce_sup, dice_sup = self._compute_loss(pred_l*masks_l, masks_l) #_compute_loss(pred_l, masks_l)
 
-                # 处理背景数据
-                images_bg, _ = bg_batch
+                # 2.处理背景数据（无标注）
+                images_bg, images_syn, images_gt, images_vessel = bg_batch
                 images_bg = images_bg.to(self.device)
+                images_syn = images_syn.to(self.device)
+                images_gt = images_gt.to(self.device)
+                images_vessel = images_vessel.to(self.device)
                 # 生成全零掩膜，形状与输出一致 (B,1,H,W)
-                zero_masks = torch.zeros(images_bg.size(0), 1, images_bg.size(2), images_bg.size(3)).to(self.device)
+                zero_masks = torch.zeros_like(images_bg) #torch.zeros(images_bg.size(0), 1, images_bg.size(2), images_bg.size(3)).to(self.device)
                 outputs_bg = self.model(images_bg, mask=None, trained=True, fake=False)
                 pred_bg = outputs_bg['pred']
-                # pred_bg[pred_bg==1.0]=0#pred_bg*0.00001
                 loss_bg, bce_bg, dice_bg = self._compute_loss(pred_bg, zero_masks) #self._compute_loss(pred_bg, zero_masks)
 
+                # 3.处理合成标签数据（合成标注）
+                # testSave("images_syn",images_syn)
+                # testSave("images_vessel",images_vessel)
+                pred_syn = self.model(images_syn, mask=None, trained=True, fake=False)['pred']
+                # testSave("pred_syn",pred_syn)
+                # exit(0)
+                reweight=reweightBg#0.1 #背景区域的权重
+                reweight_mask = images_gt.clone()*(1-reweight)+reweight
+                loss_syn, bce_syn, dice_syn = self._compute_loss(reweight_mask*pred_syn, reweight_mask*images_gt)
+                # loss_v
+                # images_vessel, _ = vessel_batch
+                # testSave("images_vessel",images_vessel)
+                # def perturbation(vessel0):
+                #     random_float = 4#random.uniform(1, 4) # 生成一个1到4之间的随机小数
+                #     return  vessel0 ** random_float
+                # images_vessel = images_vessel.to(self.device)
+                # images_vessel_p = perturbation(images_vessel)
+                # testSave("images_vesselP",images_vessel_p)
+                # images_in = images_vessel_p * images_bg
+                # testSave("images_in",images_in)
+                # images_gt = torch.zeros_like(images_vessel)#images_vessel.clone()[images_vessel]
+                # images_gt[images_vessel<1]=1
+                # # print("images_gt",images_gt.shape,type(images_gt),images_bg.shape[0])
+                # testSave("images_gt",images_gt)
+                # testSave("images_bg",images_bg)
+                # pred_v = self.model(images_in, mask=None, trained=True, fake=False)["pred"]
+                # testSave("images_perd",pred_v)
+                # exit(0)
+                # loss_v, bce_v, dice_v = self._compute_loss(pred_v, images_gt)
+
+
+
                 # 总损失
-                # bg_loss_weight = (loss_l/loss_bg).detach().item()
-                loss = loss_l + bg_loss_weight * loss_bg
+                loss = (loss_syn + 
+                        loss_sup + # 
+                        bg_loss_weight * loss_bg) 
+                # loss = loss_syn
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
                 total_loss += loss.item()
-                total_bce += bce_l.item() + bce_bg.item()
-                total_dice += dice_l.item() + dice_bg.item()
+                total_bce += bce_sup.item() + bce_bg.item()
+                total_dice += dice_sup.item() + dice_bg.item()
                 num_batches += 1
-                print("\r",f"Epoch {epoch}/{epochs} | batches {num_batches}/{int(num_batches_all)} Loss_l {loss_l.item():.4f} Loss_b{(bg_loss_weight * loss_bg).item():.4f}", end="")
+                print("\r",f"Epoch {epoch}/{epochs} | batches {num_batches}/{int(num_batches_all)} Loss_sup {loss_sup.item():.4f} Loss_b{(bg_loss_weight * loss_bg).item():.4f} Loss_syn {loss_syn.item():.4f}", end="")
+                # if num_batches>100:
+                #     break
 
             avg_loss = total_loss / num_batches
             avg_bce = total_bce / num_batches
@@ -216,6 +387,10 @@ class FineTuner2(FineTuner):
             if False:
                 print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})")
             else:
+                end_time = time.time()# 记录结束时间
+                # 计算运行时间
+                elapsed_time = (end_time - start_time)/(60)
+                print(f"程序运行时间: {elapsed_time:.4f} 分钟")
                 print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})", getAna(segment_model=self.model))
 
             # 可选：验证（如果有验证集）
@@ -286,17 +461,20 @@ def main(
     image_root = '../DeNVeR_in/xca_dataset',
     label_root = './log_26/outputs/high_precision_refine',
     decouple_root = './log_26/xca_dataset',
+    vessel_folder_path='../DeNVeR_in/fake_grayvessel_bend',
     model_param_path = '../DeNVeR_in/models_config/freecos_Seg.pt',
     model = None,
 ):
     
 
     # 超参数
-    batch_size = 6 #7溢出 #8溢出 #4可行
-    epochs = 100 #5
+    batch_size = 4 #5溢出 #6溢出 #7溢出 #8溢出 #4可行
+    epochs = 50 #5
     lr = 1e-4
-    bg_loss_weight = 1.4 #1.2过小 #1.6过大 #0.8小 #0.4小#0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
-    print("bg_loss_weight:",bg_loss_weight)
+    bg_loss_weight = 3 #2 #1.2 # 0.8(太小) #0.4(太小) #0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
+    reweightBg = 0.2
+    # 当bg_loss_weight = 2，reweightBg = 0.2的时候，指标几乎不改变 #{'dice': 0.7639873924309365, 'recall': 0.820330952737491, 'precision': 0.7148}
+    print("bg_loss_weight:",bg_loss_weight,"reweightBg:",reweightBg)
 
     # 1. 构建 videoId -> userId 映射
     print("Building video->user mapping...")
@@ -327,19 +505,28 @@ def main(
     # 4. 计算视频统计量（如果已有缓存可跳过，这里简单计算）
     video_stats = compute_video_stats(video_dirs, max_workers=4)
 
-    # 5. 构建标注数据集
+    # 5. 构建数据集
     print("Building labeled dataset...")
+    num_workers = 4 #2
+    # 5.1 构建标注数据集
     labeled_dataset = LabeledSegmentationDataset(label_root, image_root, video_to_user, video_stats)
-    labeled_loader = DataLoader(labeled_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+    labeled_loader = DataLoader(labeled_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    dataset_length = len(labeled_loader)  # 每个 epoch 背景 loader 会产生这么多批
 
-    # 6. 构建背景数据集
+    # 5.2 构建背景数据集
     #    设置背景数据集长度为 labeled_loader 的批次数，使得每个 epoch 中背景样本数与标注样本数相当
-    bg_dataset_length = len(labeled_loader)  # 每个 epoch 背景 loader 会产生这么多批
-    background_dataset = BackgroundDataset(bg_paths, video_stats, length=bg_dataset_length)
-    background_loader = DataLoader(background_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    background_dataset = BackgroundDataset(
+        bg_paths, 
+        video_stats, 
+        vessel_folder_path=vessel_folder_path,
+        length=dataset_length,
+        crop_size=(256,256),#None,
+        )
+    background_loader = DataLoader(background_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     # 注意：shuffle=False 因为我们已经在 __getitem__ 中随机采样
 
-    # 7. 加载模型
+
+    # 6. 加载模型
     if model is None:
         from free_cos.ModelSegment import ModelSegment  # 根据实际路径导入
         n_channels = 1
@@ -351,19 +538,23 @@ def main(
         model = model.cuda()
 
     # 7.1. 可选：在测试集上评估
-    result1 = getAna(segment_model=model)
-    print("微调前的效果:",result1)
+    if False:
+        result1 = getAna(segment_model=model)
+        print("微调前的效果:",result1)
 
     # 8. 初始化微调器
     finetuner = FineTuner2(model)
 
     # 9. 开始训练
-    finetuner.fit2(labeled_loader, background_loader, epochs=epochs, lr=lr,
-                   bg_loss_weight=bg_loss_weight, save_path=None)
+    finetuner.fit2(labeled_loader, background_loader, 
+                #    vessel_loader,
+                   epochs=epochs, lr=lr,
+                   bg_loss_weight=bg_loss_weight, reweightBg=reweightBg,
+                   save_path=None)
 
     # 10. 可选：在测试集上评估
     result2 = getAna(segment_model=model)
-    print("微调前的效果:",result1)
+    # print("微调前的效果:",result1)
     print("微调后的效果:",result2)
 
 if __name__ == "__main__":
