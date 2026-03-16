@@ -775,7 +775,8 @@ def getAna0(
     segment_model = None,
     batch_size = 4, #10 #14 #16
     videoId="",
-    mean=None, std=None
+    mean=None, std=None,
+    output_dir=None,
 ):
     # 定义数据预处理（与推理代码保持一致，计算均值和标准差）
     # 此处简单使用默认的ToTensor()，即归一化到[0,1]
@@ -802,7 +803,9 @@ def getAna0(
     finetuner = FineTuner(segment_model)
 
     # 测试 # 79%
-    ana = finetuner.ana(test_loader, output_dir=os.path.join("temp","mask",videoId)) #finetuner.test(test_loader)
+    ana = finetuner.ana(test_loader, 
+                        output_dir=os.path.join("temp","mask",videoId) if output_dir is None else os.path.join(output_dir, videoId)
+                        ) #finetuner.test(test_loader)
     return ana
 
 def getAna(
@@ -810,7 +813,9 @@ def getAna(
     segment_model=None,#pathParam = "../DeNVeR_in/models_config/freecos_Seg.pt",
     batch_size = 16,
     mean=None, 
-    std=None
+    std=None,
+    singleVideoId=None,
+    output_dir=None,
 ):
     # 初始化微调器
     # segment_model = getModel(pathParam)
@@ -821,20 +826,22 @@ def getAna(
     }
     for userId in os.listdir(datasetPath):
         for videoId in os.listdir(os.path.join(datasetPath,userId,"images")):
-            ana0 = getAna0(
-                test_img_dir = os.path.join(datasetPath,userId,"images",videoId),
-                #"../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29",
-                test_gt_dir  = os.path.join(datasetPath,userId,"ground_truth",videoId),
-                #"../DeNVeR_in/xca_dataset/CVAI-1207/ground_truth/CVAI-1207LAO44_CRA29",
-                segment_model = segment_model,
-                batch_size =batch_size,
-                videoId=videoId,
-                mean=mean, std=std
-            )
-            # print("videoId",videoId,"fn")
-            ana["fn"] = ana["fn"] + ana0["fn"]
-            ana["fp"] = ana["fp"] + ana0["fp"]
-            ana["tp"] = ana["tp"] + ana0["tp"]
+            if singleVideoId is None or singleVideoId==videoId:
+                ana0 = getAna0(
+                    test_img_dir = os.path.join(datasetPath,userId,"images",videoId),
+                    #"../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29",
+                    test_gt_dir  = os.path.join(datasetPath,userId,"ground_truth",videoId),
+                    #"../DeNVeR_in/xca_dataset/CVAI-1207/ground_truth/CVAI-1207LAO44_CRA29",
+                    segment_model = segment_model,
+                    batch_size =batch_size,
+                    videoId=videoId,
+                    mean=mean, std=std,
+                    output_dir=output_dir
+                )
+                # print("videoId",videoId,"fn")
+                ana["fn"] = ana["fn"] + ana0["fn"]
+                ana["fp"] = ana["fp"] + ana0["fp"]
+                ana["tp"] = ana["tp"] + ana0["tp"]
     return FineTuner.getIndicator(ana)
    
 def train1_video(

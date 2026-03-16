@@ -78,7 +78,7 @@ def compute_video_stats(video_dirs, max_workers=4):
 # ==================== 数据集类 ====================
 class LabeledSegmentationDataset(Dataset):
     """有标注数据集：加载图像和对应的二值标签，并使用视频特定的归一化"""
-    def __init__(self, label_root, image_root, video_to_user, video_stats):
+    def __init__(self, label_root, image_root, video_to_user, video_stats,singleVideoId=None):
         """
         label_root: 标注根目录，如 './log_26/outputs/high_precision_refine'
         image_root: 图像根目录，如 '../DeNVeR_in/xca_dataset'
@@ -87,24 +87,25 @@ class LabeledSegmentationDataset(Dataset):
         """
         self.samples = []  # 每个元素为 (img_path, label_path, video_dir)
         for videoId in os.listdir(label_root):
-            label_video_dir = os.path.join(label_root, videoId)
-            if not os.path.isdir(label_video_dir):
-                continue
-            userId = video_to_user.get(videoId)
-            if userId is None:
-                print(f"Warning: videoId {videoId} not found in video_to_user mapping")
-                continue
-            img_video_dir = os.path.join(image_root, userId, 'images', videoId)
-            if not os.path.isdir(img_video_dir):
-                print(f"Warning: image video dir {img_video_dir} not found")
-                continue
-            # 遍历标签文件
-            for fname in os.listdir(label_video_dir):
-                if fname.endswith('.png'):
-                    label_path = os.path.join(label_video_dir, fname)
-                    img_path = os.path.join(img_video_dir, fname)
-                    if os.path.exists(img_path):
-                        self.samples.append((img_path, label_path, img_video_dir))
+            if singleVideoId is None or singleVideoId==videoId:
+                label_video_dir = os.path.join(label_root, videoId)
+                if not os.path.isdir(label_video_dir):
+                    continue
+                userId = video_to_user.get(videoId)
+                if userId is None:
+                    print(f"Warning: videoId {videoId} not found in video_to_user mapping")
+                    continue
+                img_video_dir = os.path.join(image_root, userId, 'images', videoId)
+                if not os.path.isdir(img_video_dir):
+                    print(f"Warning: image video dir {img_video_dir} not found")
+                    continue
+                # 遍历标签文件
+                for fname in os.listdir(label_video_dir):
+                    if fname.endswith('.png'):
+                        label_path = os.path.join(label_video_dir, fname)
+                        img_path = os.path.join(img_video_dir, fname)
+                        if os.path.exists(img_path):
+                            self.samples.append((img_path, label_path, img_video_dir))
         self.video_stats = video_stats
         print(f"Labeled dataset: {len(self.samples)} samples")
 
@@ -112,7 +113,7 @@ class LabeledSegmentationDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        # idx = np.random.randint(0, len(self.samples))
+        idx = np.random.randint(0, len(self.samples))
         img_path, label_path, video_dir = self.samples[idx]
         image = Image.open(img_path).convert('L')
         label = Image.open(label_path).convert('L')
@@ -268,6 +269,9 @@ class FineTuner2(FineTuner):
              save_path=None, 
              bg_loss_weight=0.05, #1.0
              reweightBg=0.2,
+             singleVideoId=None,
+             moduleOpen_positive = True,
+            #  moduleOpen_rigid = True,
              ):
         """
         使用有标注数据和背景数据联合训练
@@ -306,14 +310,19 @@ class FineTuner2(FineTuner):
                     bg_batch = next(bg_iter)
 
                 # 1.处理有标注数据（真实标注）
-                images_l, masks_l = labeled_batch
-                images_l = images_l.to(self.device)
-                masks_l = masks_l.to(self.device)
-                outputs_l = self.model(images_l, mask=None, trained=True, fake=False)
-                pred_l = outputs_l['pred']
-                # print("masks_l",masks_l.max(),masks_l.min(),masks_l.mean())
-                # exit(0)
-                loss_sup, bce_sup, dice_sup = self._compute_loss(pred_l*masks_l, masks_l) #_compute_loss(pred_l, masks_l)
+                if moduleOpen_positive:
+                    images_l, masks_l = labeled_batch
+                    images_l = images_l.to(self.device)
+                    masks_l = masks_l.to(self.device)
+                    outputs_l = self.model(images_l, mask=None, trained=True, fake=False)
+                    pred_l = outputs_l['pred']
+                    # print("masks_l",masks_l.max(),masks_l.min(),masks_l.mean())
+                    # exit(0)
+                    loss_sup, bce_sup, dice_sup = self._compute_loss(pred_l*masks_l, masks_l) #_compute_loss(pred_l, masks_l)
+                else:
+                    loss_sup=torch.tensor(0) 
+                    bce_sup=torch.tensor(0) 
+                    dice_sup=torch.tensor(0) 
 
                 # 2.处理背景数据（无标注）
                 images_bg, images_syn, images_gt, images_vessel = bg_batch
@@ -333,8 +342,8 @@ class FineTuner2(FineTuner):
                 pred_syn = self.model(images_syn, mask=None, trained=True, fake=False)['pred']
                 # testSave("pred_syn",pred_syn)
                 # exit(0)
-                reweight=reweightBg#0.1 #背景区域的权重
-                reweight_mask = images_gt.clone()*(1-reweight)+reweight
+                reweight_mask = images_gt.clone()*(1-reweightBg)+reweightBg
+                reweight_mask[pred_syn.clone().detach()>0.5] = 1
                 loss_syn, bce_syn, dice_syn = self._compute_loss(reweight_mask*pred_syn, reweight_mask*images_gt)
                 # loss_v
                 # images_vessel, _ = vessel_batch
@@ -360,7 +369,7 @@ class FineTuner2(FineTuner):
 
 
                 # 总损失
-                loss = (loss_syn + 
+                loss = (2 * loss_syn + 
                         loss_sup + # 
                         bg_loss_weight * loss_bg) 
                 # loss = loss_syn
@@ -374,8 +383,8 @@ class FineTuner2(FineTuner):
                 total_dice += dice_sup.item() + dice_bg.item()
                 num_batches += 1
                 print("\r",f"Epoch {epoch}/{epochs} | batches {num_batches}/{int(num_batches_all)} Loss_sup {loss_sup.item():.4f} Loss_b{(bg_loss_weight * loss_bg).item():.4f} Loss_syn {loss_syn.item():.4f}", end="")
-                # if num_batches>100:
-                #     break
+                if num_batches>100:
+                    break
 
             avg_loss = total_loss / num_batches
             avg_bce = total_bce / num_batches
@@ -391,7 +400,7 @@ class FineTuner2(FineTuner):
                 # 计算运行时间
                 elapsed_time = (end_time - start_time)/(60)
                 print(f"程序运行时间: {elapsed_time:.4f} 分钟")
-                print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})", getAna(segment_model=self.model))
+                print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})", getAna(segment_model=self.model, singleVideoId=singleVideoId))
 
             # 可选：验证（如果有验证集）
             # if val_loader is not None:
@@ -411,7 +420,7 @@ class FineTuner2(FineTuner):
         print("Training completed.")
 
 # ==================== 构建数据集所需映射 ====================
-def build_video_to_user(image_root):
+def build_video_to_user(image_root,singleVideoId=None):
     """遍历 image_root 下的 userId/images，构建 videoId -> userId 映射"""
     video_to_user = {}
     for userId in os.listdir(image_root):
@@ -419,11 +428,12 @@ def build_video_to_user(image_root):
         if not os.path.isdir(user_img_dir):
             continue
         for videoId in os.listdir(user_img_dir):
-            if os.path.isdir(os.path.join(user_img_dir, videoId)):
-                video_to_user[videoId] = userId
+            if singleVideoId is None or singleVideoId==videoId:
+                if os.path.isdir(os.path.join(user_img_dir, videoId)):
+                    video_to_user[videoId] = userId
     return video_to_user
 
-def collect_background_paths(image_root, decouple_root):
+def collect_background_paths(image_root, decouple_root,singleVideoId,moduleOpen_rigid=True):
     """
     收集所有背景图像路径
     返回列表，每个元素为 (img_path, video_dir)
@@ -436,23 +446,26 @@ def collect_background_paths(image_root, decouple_root):
         if not os.path.isdir(user_img_dir):
             continue
         for videoId in os.listdir(user_img_dir):
-            img_dir = os.path.join(user_img_dir, videoId)
-            first_frame = os.path.join(img_dir, '00000.png')
-            if os.path.isfile(first_frame):
-                bg_paths.append((first_frame, img_dir))  # video_dir 为原始图像目录
+            if singleVideoId is None or singleVideoId==videoId:
+                img_dir = os.path.join(user_img_dir, videoId)
+                first_frame = os.path.join(img_dir, '00000.png')
+                if os.path.isfile(first_frame):
+                    bg_paths.append((first_frame, img_dir))  # video_dir 为原始图像目录
 
         # 来源2：decouple 背景
-        user_decouple_dir = os.path.join(decouple_root, userId, 'decouple')
-        if not os.path.isdir(user_decouple_dir):
-            continue
-        for videoId in os.listdir(user_decouple_dir):
-            bg_dir = os.path.join(user_decouple_dir, videoId, 'A26-03.rigid.non1')
-            bg_file = os.path.join(bg_dir, '00000.png')
-            if os.path.isfile(bg_file):
-                # 对应的原始视频目录
-                original_video_dir = os.path.join(image_root, userId, 'images', videoId)
-                if os.path.isdir(original_video_dir):
-                    bg_paths.append((bg_file, original_video_dir))
+        if moduleOpen_rigid:
+            user_decouple_dir = os.path.join(decouple_root, userId, 'decouple')
+            if not os.path.isdir(user_decouple_dir):
+                continue
+            for videoId in os.listdir(user_decouple_dir):
+                if singleVideoId is None or singleVideoId==videoId:
+                    bg_dir = os.path.join(user_decouple_dir, videoId, 'A26-03.rigid.non1')
+                    bg_file = os.path.join(bg_dir, '00000.png')
+                    if os.path.isfile(bg_file):
+                        # 对应的原始视频目录
+                        original_video_dir = os.path.join(image_root, userId, 'images', videoId)
+                        if os.path.isdir(original_video_dir):
+                            bg_paths.append((bg_file, original_video_dir))
     return bg_paths
 
 # ==================== 主训练流程 ====================
@@ -464,6 +477,12 @@ def main(
     vessel_folder_path='../DeNVeR_in/fake_grayvessel_bend',
     model_param_path = '../DeNVeR_in/models_config/freecos_Seg.pt',
     model = None,
+
+    singleVideoId = "CVAI-1207LAO44_CRA29",#None 
+    moduleOpen_positive = True,
+    moduleOpen_rigid = True,
+    output_dir=None
+    
 ):
     
 
@@ -471,19 +490,22 @@ def main(
     batch_size = 4 #5溢出 #6溢出 #7溢出 #8溢出 #4可行
     epochs = 50 #5
     lr = 1e-4
-    bg_loss_weight = 3 #2 #1.2 # 0.8(太小) #0.4(太小) #0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
-    reweightBg = 0.2
+    bg_loss_weight = 2#2.5 #3过大 #2 略小 #1.2 # 0.8(太小) #0.4(太小) #0.1 #0.05 # 1.0  # 背景损失权重，可调整 #可减少面积
+    
+    reweightBg = 0.4 #0.2
+    crop_size=(512,512)
+    
     # 当bg_loss_weight = 2，reweightBg = 0.2的时候，指标几乎不改变 #{'dice': 0.7639873924309365, 'recall': 0.820330952737491, 'precision': 0.7148}
-    print("bg_loss_weight:",bg_loss_weight,"reweightBg:",reweightBg)
+    print("bg_loss_weight:",bg_loss_weight,"reweightBg:",reweightBg,"crop_size:",crop_size)
 
     # 1. 构建 videoId -> userId 映射
     print("Building video->user mapping...")
-    video_to_user = build_video_to_user(image_root)
+    video_to_user = build_video_to_user(image_root,singleVideoId=singleVideoId)
     print(f"Found {len(video_to_user)} videos.")
 
     # 2. 收集所有背景路径
     print("Collecting background images...")
-    bg_paths = collect_background_paths(image_root, decouple_root)
+    bg_paths = collect_background_paths(image_root, decouple_root,singleVideoId=singleVideoId,moduleOpen_rigid=moduleOpen_rigid)
     print(f"Collected {len(bg_paths)} background images.")
 
     # 3. 收集所有需要计算统计量的视频目录
@@ -496,9 +518,10 @@ def main(
     for videoId in os.listdir(label_root):
         userId = video_to_user.get(videoId)
         if userId:
-            video_dir = os.path.join(image_root, userId, 'images', videoId)
-            if os.path.isdir(video_dir):
-                video_dirs_set.add(video_dir)
+            if singleVideoId is None or singleVideoId==videoId:
+                video_dir = os.path.join(image_root, userId, 'images', videoId)
+                if os.path.isdir(video_dir):
+                    video_dirs_set.add(video_dir)
     video_dirs = list(video_dirs_set)
     print(f"Need to compute stats for {len(video_dirs)} video directories.")
 
@@ -509,7 +532,7 @@ def main(
     print("Building labeled dataset...")
     num_workers = 4 #2
     # 5.1 构建标注数据集
-    labeled_dataset = LabeledSegmentationDataset(label_root, image_root, video_to_user, video_stats)
+    labeled_dataset = LabeledSegmentationDataset(label_root, image_root, video_to_user, video_stats, singleVideoId=singleVideoId)
     labeled_loader = DataLoader(labeled_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     dataset_length = len(labeled_loader)  # 每个 epoch 背景 loader 会产生这么多批
 
@@ -520,7 +543,8 @@ def main(
         video_stats, 
         vessel_folder_path=vessel_folder_path,
         length=dataset_length,
-        crop_size=(256,256),#None,
+        crop_size=crop_size,#(512,512),#(256,256),#None,
+        # moduleOpen_rigid=moduleOpen_rigid,
         )
     background_loader = DataLoader(background_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     # 注意：shuffle=False 因为我们已经在 __getitem__ 中随机采样
@@ -538,8 +562,8 @@ def main(
         model = model.cuda()
 
     # 7.1. 可选：在测试集上评估
-    if False:
-        result1 = getAna(segment_model=model)
+    if True:
+        result1 = getAna(segment_model=model, singleVideoId=singleVideoId,output_dir=output_dir)
         print("微调前的效果:",result1)
 
     # 8. 初始化微调器
@@ -550,17 +574,61 @@ def main(
                 #    vessel_loader,
                    epochs=epochs, lr=lr,
                    bg_loss_weight=bg_loss_weight, reweightBg=reweightBg,
+                   singleVideoId=singleVideoId,
+                   moduleOpen_positive = moduleOpen_positive,
+                #    moduleOpen_rigid = moduleOpen_rigid,
                    save_path=None)
 
     # 10. 可选：在测试集上评估
-    result2 = getAna(segment_model=model)
-    # print("微调前的效果:",result1)
+    result2 = getAna(segment_model=model, singleVideoId=singleVideoId)
+    print("微调前的效果:",result1)
     print("微调后的效果:",result2)
+
+def start(
+        moduleOpen_positive = True,
+        moduleOpen_rigid = True,  
+        image_root = '../DeNVeR_in/xca_dataset',
+        output_dir=None,
+):
+    if not output_dir is None:
+        os.makedirs(output_dir, exist_ok=True)
+    datasetPath = image_root
+    print("moduleOpen_positive",moduleOpen_positive)
+    print("moduleOpen_rigid:",moduleOpen_rigid)
+    for userId in os.listdir(datasetPath):
+        for videoId in os.listdir(os.path.join(datasetPath,userId,"images")):
+            main(
+                singleVideoId = videoId, #"CVAI-1207LAO44_CRA29",#None 
+                moduleOpen_positive = moduleOpen_positive,
+                moduleOpen_rigid = moduleOpen_rigid,   
+                image_root=image_root,
+                output_dir=output_dir
+            )
 
 if __name__ == "__main__":
     import time
     start_time = time.time() # 记录开始时间
-    main()
+    start(
+        moduleOpen_positive = True,
+        moduleOpen_rigid = True, 
+        output_dir = os.path.join("temp","mask_YesYes")
+    )
+    start(
+        moduleOpen_positive = False,#True,
+        moduleOpen_rigid = False,#True, 
+        output_dir = os.path.join("temp","mask_NoNo")
+    )
+    start(
+        moduleOpen_positive = False,#True,
+        moduleOpen_rigid = True, 
+        output_dir = os.path.join("temp","mask_NoPositive")
+    )
+    start(
+        moduleOpen_positive = True,
+        moduleOpen_rigid = False,#True, 
+        output_dir = os.path.join("temp","mask_NoRigid")
+    )
+    #main()
     end_time = time.time()# 记录结束时间
     # 计算运行时间
     elapsed_time = (end_time - start_time)/(60*60)
