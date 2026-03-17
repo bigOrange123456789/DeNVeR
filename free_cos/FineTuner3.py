@@ -337,24 +337,25 @@ def collect_background_paths(image_root, decouple_root, singleVideoId, moduleOpe
 
 # ==================== 主训练流程 ====================
 def main(
-    image_root='../DeNVeR_in/xca_dataset',
-    label_root='./log_26/outputs/high_precision_refine',
-    decouple_root='./log_26/xca_dataset',
-    vessel_folder_path='../DeNVeR_in/fake_grayvessel_bend',
-    model_param_path='../DeNVeR_in/models_config/freecos_Seg.pt',
-    model=None,
-    singleVideoId="CVAI-1207LAO44_CRA29", #是否只对单个视频进行微调
-    moduleOpen_positive=True, #是否对标定区域进行学习
-    moduleOpen_rigid=True, #是否去除刚体
-    output_dir=None,
+    image_root = '../DeNVeR_in/xca_dataset',
+    label_root = './log_26/outputs/high_precision_refine',
+    decouple_root = './log_26/xca_dataset',
+    vessel_folder_path = '../DeNVeR_in/fake_grayvessel_bend',
+    model_param_path = '../DeNVeR_in/models_config/freecos_Seg.pt',
+    model = None,
+    singleVideoId = "CVAI-1207LAO44_CRA29", #是否只对单个视频进行微调
+    moduleOpen_positive = True, #是否对标定区域进行学习
+    moduleOpen_rigid = True, #是否去除刚体
+    output_dir = None,
     epochs = 50,
-    crop_size = (512, 512),
+    crop_size = (512, 512),#(256,256),#
     batch_size = 4
 ):
+    
     # 超参数
     lr = 1e-4
-    bg_loss_weight = 0.4#2  #背景区域的学习权重
-    reweightBg = 0#0.4 #合成血管的背景区域的学习权重
+    bg_loss_weight = 0#0.1 #0.4#2  #背景图像的学习权重
+    reweightBg = 0.1#0.4 #合成血管的背景区域的学习权重 #判断一下这个权重是否为0对结果是否有影响
     num_workers = 0  # 修改为 0，避免多进程导致的显存残留
     print("bg_loss_weight:", bg_loss_weight, "reweightBg:", reweightBg, "crop_size:", crop_size)
 
@@ -445,14 +446,21 @@ def main(
     print("Cleanup done.")
 
 def start(
+    image_root = '../DeNVeR_in/xca_dataset',
+    label_root = './log_26/outputs/high_precision_refine',
+    decouple_root = './log_26/xca_dataset',
+    vessel_folder_path = '../DeNVeR_in/fake_grayvessel_bend',
+    model_param_path = '../DeNVeR_in/models_config/freecos_Seg.pt',
+
     moduleOpen_positive=True,
-    moduleOpen_rigid=True,
-    image_root='../DeNVeR_in/xca_dataset',
+    moduleOpen_rigid=False, # True, # 不用刚体效果更好
     output_dir=None,
     epochs = 50,
+    crop_size = (512, 512),
 ):
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
+    print("output_dir:", output_dir)
     datasetPath = image_root
     print("moduleOpen_positive:", moduleOpen_positive)
     print("moduleOpen_rigid:", moduleOpen_rigid)
@@ -464,12 +472,18 @@ def start(
         for videoId in os.listdir(user_images_dir):
             print(f"\n=== Processing video {videoId} ===")
             main(
+                image_root=image_root,
+                label_root=label_root,
+                decouple_root=decouple_root,
+                vessel_folder_path=vessel_folder_path,
+                model_param_path=model_param_path,
+                ########################################
                 singleVideoId=videoId,
                 moduleOpen_positive=moduleOpen_positive,
                 moduleOpen_rigid=moduleOpen_rigid,
-                image_root=image_root,
                 output_dir=output_dir,
                 epochs = epochs,
+                crop_size=crop_size,
             )
             # 再次清理（双重保障）
             gc.collect()
@@ -477,6 +491,22 @@ def start(
 
 if __name__ == "__main__":
     start_time = time.time()
+    if True:
+        import yaml
+        script_path = os.path.abspath(__file__)
+        ROOT1 = os.path.dirname(script_path)
+        file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+        print("file_path:",file_path)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            config0 = yaml.safe_load(file)
+            image_root = config0["my"]["datasetPath"] # "../DeNVeR_in/xca_dataset"
+            decouple_root = config0["my"]["datasetPath_rigid.out"] # "log_27/xca_dataset"
+            label_root = os.path.join(
+                config0["my"]["filePathRoot"], # "log_27"
+                config0["my"]["subPath"]["outputs"], #"outputs"
+                "high_precision_refine"
+            )
+    # 只用首帧学习或只用刚体学习、两者差异？
 
     # 运行三种配置
     # start(
@@ -485,12 +515,53 @@ if __name__ == "__main__":
     #     output_dir=os.path.join("temp", "mask_YesYes"),
     #     epochs = 5,
     # )
-    start(
-        moduleOpen_positive=True,
-        moduleOpen_rigid=True,
-        output_dir=os.path.join("temp", "mask_YesYes"),
-        epochs = 5,
-    )
+
+    # 需要验证是整体微调效果好、还是逐视频微调效果好 #我猜测逐个视频微调效果更好
+    # 一、逐帧微调
+    if False:
+        print("逐帧微调")
+        start(#
+            image_root = image_root,
+            label_root = label_root,#'./log_26/outputs/high_precision_refine',
+            decouple_root = decouple_root,#'./log_26/xca_dataset',
+
+            moduleOpen_positive=False,#True,
+            moduleOpen_rigid=False,
+            output_dir=os.path.join("temp", "mask_test02"), #Autodl-H设备
+            epochs = 10, #训练多少批次比较合适？            
+        )
+    if True: # 二、整体微调
+        print("整体微调") # 指标下降了：0.76=>0.73
+        batch_size = 5
+        print("batch_size",batch_size)
+        # main( # 微调前是76，微调后是75
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive=True,
+        #     moduleOpen_rigid=True,
+        #     output_dir = os.path.join("temp", "mask_test_g02"),  #Autodl-G设备
+        #     epochs = 5,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+        # )
+
+
+        print("crop_size = (256,256)") #没有显著区别
+        main(
+            image_root = image_root,
+            label_root = label_root,#'./log_26/outputs/high_precision_refine',
+            decouple_root = decouple_root,#'./log_26/xca_dataset',
+            moduleOpen_positive=True,
+            moduleOpen_rigid=True,
+            output_dir = os.path.join("temp", "mask_test_g03"),  #Autodl-J设备
+            epochs = 5,
+            singleVideoId = None,
+            batch_size = batch_size,#15
+
+            crop_size = (256,256), 
+        )
+
     # start(
     #     moduleOpen_positive=False,
     #     moduleOpen_rigid=False,
