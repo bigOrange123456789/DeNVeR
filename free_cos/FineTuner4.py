@@ -12,6 +12,8 @@ import gc
 
 from free_cos.FineTuner import getAna, FineTuner
 
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
 def testSave(tag,x):
     x = x.clone().detach().cpu()
     print("tag",x.shape,type(x))
@@ -193,69 +195,188 @@ class BackgroundDataset(Dataset):
 
 # ==================== 扩展 FineTuner 类 ====================
 class FineTuner2(FineTuner):
+    def __init__(self, model, use_proto=True):
+        super().__init__(model)
+        self.use_proto = use_proto          # 是否使用原型预测
+        self.bg_proto = None
+        self.fg_proto = None
+        self.temperature = 1.0
+
+    def compute_prototypes(self, bg_loader, labeled_loader, num_batches=10):
+        """使用当前模型从数据加载器中采样，计算背景和前景的原型向量（包含进度输出）"""
+        self.model.eval()
+        bg_sum = None
+        bg_count = 0
+        fg_sum = None
+        fg_count = 0
+
+        print("开始计算背景原型...")
+        with torch.no_grad():
+            # 计算背景原型
+            for i, batch in enumerate(bg_loader):
+                if i >= num_batches:
+                    break
+                images_bg, _, _, _ = batch
+                images_bg = images_bg.to(self.device)
+                features = self.model(images_bg, mask=None, trained=True, fake=False)['feature']
+                C = features.size(1)
+                feat_flat = features.permute(0, 2, 3, 1).reshape(-1, C)
+                if bg_sum is None:
+                    bg_sum = feat_flat.sum(dim=0).cpu()
+                else:
+                    bg_sum += feat_flat.sum(dim=0).cpu()
+                bg_count += feat_flat.size(0)
+                # 每处理2个batch打印一次进度
+                if (i + 1) % 2 == 0 or i == num_batches - 1:
+                    print(f"\r  背景 batch {i+1}/{num_batches} 处理完成，已累积 {bg_count} 个像素", end="")
+
+            # 计算前景原型
+            print("开始计算前景原型...")
+            for i, batch in enumerate(labeled_loader):
+                if i >= num_batches:
+                    break
+                images_l, masks_l = batch
+                images_l = images_l.to(self.device)
+                masks_l = masks_l.to(self.device)
+                features = self.model(images_l, mask=None, trained=True, fake=False)['feature']
+                C = features.size(1)
+                feat_flat = features.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
+                mask_flat = (masks_l > 0.5).view(-1)                     # [B*H*W]
+                fg_features = feat_flat[mask_flat]                       # [N, C]
+                if fg_features.size(0) > 0:
+                    if fg_sum is None:
+                        fg_sum = fg_features.sum(dim=0).cpu()
+                    else:
+                        fg_sum += fg_features.sum(dim=0).cpu()
+                    fg_count += fg_features.size(0)
+                # 每处理2个batch打印一次进度
+                if (i + 1) % 2 == 0 or i == num_batches - 1:
+                    print(f"\r  前景 batch {i+1}/{num_batches} 处理完成，已累积 {fg_count} 个前景像素", end="")
+
+        # 计算均值并归一化
+        if bg_sum is not None and bg_count > 0:
+            bg_proto = bg_sum / bg_count
+            self.bg_proto = bg_proto.to(self.device)
+            self.bg_proto = self.bg_proto / (self.bg_proto.norm(p=2) + 1e-8)
+            print(f"背景原型向量形状: {self.bg_proto.shape}")
+        else:
+            print("警告：未收集到背景特征，原型未初始化")
+            self.bg_proto = None
+
+        if fg_sum is not None and fg_count > 0:
+            fg_proto = fg_sum / fg_count
+            self.fg_proto = fg_proto.to(self.device)
+            self.fg_proto = self.fg_proto / (self.fg_proto.norm(p=2) + 1e-8)
+            print(f"前景原型向量形状: {self.fg_proto.shape}")
+        else:
+            print("警告：未收集到前景特征，原型未初始化")
+            self.fg_proto = None
+
+        self.model.train()
+        print("原型计算完成。")
+
+    def compute_proto_pred(self, feature):
+        if self.bg_proto is None or self.fg_proto is None:
+            raise RuntimeError("Prototypes not initialized. Call compute_prototypes first.")
+        B, C, H, W = feature.shape
+        if self.fg_proto.numel() != C:
+            raise RuntimeError(f"Prototype dimension mismatch: fg_proto has {self.fg_proto.numel()} elements, but feature has {C} channels.")
+        # 归一化特征向量
+        feat_norm = feature / (feature.norm(p=2, dim=1, keepdim=True) + 1e-8)
+        fg_proto = self.fg_proto.view(1, C, 1, 1).to(feature.device)
+        bg_proto = self.bg_proto.view(1, C, 1, 1).to(feature.device)
+        cos_fg = (feat_norm * fg_proto).sum(dim=1, keepdim=True)
+        cos_bg = (feat_norm * bg_proto).sum(dim=1, keepdim=True)
+        score = cos_fg - cos_bg
+        pred = torch.sigmoid(score / self.temperature)
+        return pred
+
     def fit2(self, labeled_loader, background_loader,
-             epochs, lr=1e-4, weight_decay=1e-5,
-             save_path=None,
-             bg_loss_weight=0.05,
-             reweightBg=0.2,
-             singleVideoId=None,
-             moduleOpen_positive=True):
+         epochs, lr=1e-4, weight_decay=1e-5,
+         save_path=None,
+         bg_loss_weight=0.05,
+         reweightBg=0.2,
+         singleVideoId=None,
+         moduleOpen_positive=True,
+         proto_update_freq=1,
+         proto_num_batches=10):
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=5, factor=0.5)
 
         best_val_dice = 0.0
         no_improve_epochs = 0
 
+        if epochs==0:
+            self.compute_prototypes(background_loader, labeled_loader, num_batches=proto_num_batches)
         for epoch in range(1, epochs + 1):
-            start_time = time.time()
+            epoch_start_time = time.time()
             self.model.train()
             total_loss = 0.0
             total_bce = 0.0
             total_dice = 0.0
             num_batches = 0
 
+            # 仅在启用原型且需要更新时计算原型
+            if self.use_proto and (epoch == 1 or (proto_update_freq > 0 and (epoch - 1) % proto_update_freq == 0)):
+                print(f"\n[Epoch {epoch}] Updating prototypes...")
+                self.compute_prototypes(background_loader, labeled_loader, num_batches=proto_num_batches)
+                torch.cuda.empty_cache()
+                print(f"[Epoch {epoch}] Prototypes updated.")
+
             labeled_iter = iter(labeled_loader)
             bg_iter = iter(background_loader)
 
-            num_batches_all = 0
-            for labeled_batch in labeled_iter:
-                num_batches_all += 1
-            labeled_iter = iter(labeled_loader)
+            num_batches_all = len(labeled_loader)
+            print(f"\n[Epoch {epoch}] Starting training with {num_batches_all} batches. Batch size: {labeled_loader.batch_size}")
 
-            for labeled_batch in labeled_iter:
+            print_interval = 1  # 按需调整进度输出频率
+            last_print_time = time.time()
+
+            for batch_idx, labeled_batch in enumerate(labeled_iter, 1):
                 try:
                     bg_batch = next(bg_iter)
                 except StopIteration:
                     bg_iter = iter(background_loader)
                     bg_batch = next(bg_iter)
 
-                # 1.确定性区域锚定
+                # ---------- 有标注图像 ----------
                 if moduleOpen_positive:
                     images_l, masks_l = labeled_batch
                     images_l = images_l.to(self.device)
                     masks_l = masks_l.to(self.device)
                     outputs_l = self.model(images_l, mask=None, trained=True, fake=False)
-                    pred_l = outputs_l['pred']
+                    if self.use_proto:
+                        pred_l = self.compute_proto_pred(outputs_l['feature'])
+                    else:
+                        pred_l = outputs_l['pred']
                     loss_sup, bce_sup, dice_sup = self._compute_loss(pred_l * masks_l, masks_l)
                 else:
-                    loss_sup = torch.tensor(0)
-                    bce_sup = torch.tensor(0)
-                    dice_sup = torch.tensor(0)
+                    loss_sup = torch.tensor(0.0, device=self.device)
+                    bce_sup = torch.tensor(0.0, device=self.device)
+                    dice_sup = torch.tensor(0.0, device=self.device)
 
-                # 2.背景
+                # ---------- 背景与合成图像 ----------
                 images_bg, images_syn, images_gt, images_vessel = bg_batch
                 images_bg = images_bg.to(self.device)
                 images_syn = images_syn.to(self.device)
                 images_gt = images_gt.to(self.device)
                 images_vessel = images_vessel.to(self.device)
-                # 2.1 背景监督
+
+                # 背景监督
                 zero_masks = torch.zeros_like(images_bg)
                 outputs_bg = self.model(images_bg, mask=None, trained=True, fake=False)
-                pred_bg = outputs_bg['pred']
+                if self.use_proto:
+                    pred_bg = self.compute_proto_pred(outputs_bg['feature'])
+                else:
+                    pred_bg = outputs_bg['pred']
                 loss_bg, bce_bg, dice_bg = self._compute_loss(pred_bg, zero_masks)
 
-                # 2.2 合成血管监督损失(核心)
-                pred_syn = self.model(images_syn, mask=None, trained=True, fake=False)['pred']
+                # 合成血管监督
+                outputs_syn = self.model(images_syn, mask=None, trained=True, fake=False)
+                if self.use_proto:
+                    pred_syn = self.compute_proto_pred(outputs_syn['feature'])
+                else:
+                    pred_syn = outputs_syn['pred']
                 reweight_mask = images_gt.clone() * (1 - reweightBg) + reweightBg
                 reweight_mask[pred_syn.clone().detach() > 0.5] = 1
                 loss_syn, bce_syn, dice_syn = self._compute_loss(reweight_mask * pred_syn, reweight_mask * images_gt)
@@ -270,13 +391,20 @@ class FineTuner2(FineTuner):
                 total_bce += bce_sup.item() + bce_bg.item()
                 total_dice += dice_sup.item() + dice_bg.item()
                 num_batches += 1
-                print("\r", f"Epoch {epoch}/{epochs} | batches {num_batches}/{int(num_batches_all)} "
-                      +f"Loss_sup {loss_sup.item():.4f} Loss_b{(bg_loss_weight * loss_bg).item():.4f} Loss_syn {loss_syn.item():.4f}", 
-                      end="")
-                # print("\r", f"Epoch {epoch}/{epochs} | batches {num_batches}/{int(num_batches_all)} "
-                #       +f"Loss_sup {loss_sup.item():.4f} Loss_b{(bg_loss_weight * loss_bg).item():.4f} Loss_syn {loss_syn.item():.4f}", 
-                #       end="")
-                if num_batches > 100:
+
+                # 进度输出
+                if batch_idx % print_interval == 0 or batch_idx == num_batches_all:
+                    elapsed = time.time() - last_print_time
+                    avg_loss_sofar = total_loss / num_batches
+                    print("\r", f"[Epoch {epoch}] Batch {batch_idx}/{num_batches_all} | "
+                        f"Loss: {loss.item():.4f} (sup: {loss_sup.item():.4f}, bg: {loss_bg.item():.4f}, syn: {loss_syn.item():.4f}) | "
+                        f"Avg loss so far: {avg_loss_sofar:.4f} | "
+                        f"Time since last print: {elapsed:.2f}s", end="")
+                    last_print_time = time.time()
+                    torch.cuda.empty_cache() # 清理可能存在的临时变量
+
+                # 可选的提前停止调试（例如处理 100 个 batch 后停止）
+                if batch_idx >= 150:
                     break
 
             avg_loss = total_loss / num_batches
@@ -285,13 +413,13 @@ class FineTuner2(FineTuner):
 
             self.scheduler.step(avg_loss)
 
-            if False:
-                print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})")
-            else:
-                end_time = time.time()
-                elapsed_time = (end_time - start_time) / 60
-                print(f"程序运行时间: {elapsed_time:.4f} 分钟")
-                print(f"Epoch {epoch}/{epochs} | Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})", getAna(segment_model=self.model, singleVideoId=singleVideoId))
+            epoch_time = time.time() - epoch_start_time
+            print(f"\n[Epoch {epoch}] Completed in {epoch_time:.2f}s | Avg Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Dice: {avg_dice:.4f})")
+
+            # 可选评估
+            if hasattr(self, 'evaluate') or 'getAna' in globals():
+                result = getAna(segment_model=self.model, singleVideoId=singleVideoId)
+                print(f"[Epoch {epoch}] Evaluation: {result}")
 
         print("Training completed.")
 
@@ -349,7 +477,9 @@ def main(
     output_dir = None,
     epochs = 50,
     crop_size = (512, 512),#(256,256),#
-    batch_size = 4
+    batch_size = 4,
+    rigidTag="A26-02.rigid.non1",
+    use_proto = True,          # 新增：是否使用特征原型
 ):
     
     # 超参数
@@ -416,9 +546,16 @@ def main(
     if False:
         result1 = getAna(segment_model=model, singleVideoId=singleVideoId)
         print("微调前的效果:", result1)
+        result1_nr = getAna(segment_model=model, 
+                            singleVideoId=singleVideoId, 
+                            output_dir=None if output_dir is None else (output_dir+"nr"),
+                            rigidTag=rigidTag,
+                            decouple_root=decouple_root)
+        print("微调后的效果(去除刚体层):", result1_nr)
+        # exit(0)
 
     # 8. 初始化微调器
-    finetuner = FineTuner2(model)
+    finetuner = FineTuner2(model,use_proto=use_proto)
 
     # 9. 开始训练
     finetuner.fit2(labeled_loader, background_loader,
@@ -428,10 +565,50 @@ def main(
                    moduleOpen_positive=moduleOpen_positive,
                    save_path=None)
 
+    # # 10. 微调后评估（可选）
+    # if True:
+    #     result2 = getAna(segment_model=model, singleVideoId=singleVideoId, output_dir=output_dir)
+    #     print("微调后的效果:", result2)
+    #     result2_nr = getAna(segment_model=model, 
+    #                         singleVideoId=singleVideoId, 
+    #                         output_dir=None if output_dir is None else (output_dir+"nr"),
+    #                         rigidTag=rigidTag,
+    #                         decouple_root=decouple_root)
+    #     print("微调后的效果(去除刚体层):", result2_nr)
     # 10. 微调后评估（可选）
     if True:
-        result2 = getAna(segment_model=model, singleVideoId=singleVideoId, output_dir=output_dir)
+        # 从 finetuner 获取原型参数
+        use_proto_eval = finetuner.use_proto
+        bg_proto_eval = finetuner.bg_proto.cpu() if finetuner.bg_proto is not None else None
+        fg_proto_eval = finetuner.fg_proto.cpu() if finetuner.fg_proto is not None else None
+        temperature_eval = finetuner.temperature
+
+        print("use_proto_eval",use_proto_eval)
+        print("bg_proto_eval",type(bg_proto_eval))
+        print("fg_proto_eval",type(fg_proto_eval))
+        result2 = getAna(
+            segment_model=model,
+            singleVideoId=singleVideoId,
+            output_dir=output_dir,
+            use_proto=use_proto_eval,
+            bg_proto=bg_proto_eval,
+            fg_proto=fg_proto_eval,
+            temperature=temperature_eval
+        )
         print("微调后的效果:", result2)
+
+        result2_nr = getAna(
+            segment_model=model,
+            singleVideoId=singleVideoId,
+            output_dir=None if output_dir is None else (output_dir + "nr"),
+            rigidTag=rigidTag,
+            decouple_root=decouple_root,
+            use_proto=use_proto_eval,
+            bg_proto=bg_proto_eval,
+            fg_proto=fg_proto_eval,
+            temperature=temperature_eval
+        )
+        print("微调后的效果(去除刚体层):", result2_nr)
 
     # ========== 关键：清理当前视频的显存占用 ==========
     print(f"Cleaning up for video {singleVideoId}...")
@@ -457,6 +634,7 @@ def start(
     output_dir=None,
     epochs = 50,
     crop_size = (512, 512),
+    use_proto = True,          # 新增：是否使用特征原型
 ):
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
@@ -484,6 +662,7 @@ def start(
                 output_dir=output_dir,
                 epochs = epochs,
                 crop_size=crop_size,
+                use_proto=use_proto,
             )
             # 再次清理（双重保障）
             gc.collect()
@@ -506,6 +685,7 @@ if __name__ == "__main__":
                 config0["my"]["subPath"]["outputs"], #"outputs"
                 "high_precision_refine"
             )
+            #A26-02.rigid.non1
     # 只用首帧学习或只用刚体学习、两者差异？
 
     # 运行三种配置
@@ -517,22 +697,23 @@ if __name__ == "__main__":
     # )
 
     # 需要验证是整体微调效果好、还是逐视频微调效果好 #我猜测逐个视频微调效果更好
-    # 一、逐视频微调
+    # 一、逐帧微调
     if False:
-        print("逐视频微调")
-        start(#0.7566
+        print("逐帧微调")
+        start(#
             image_root = image_root,
             label_root = label_root,#'./log_26/outputs/high_precision_refine',
             decouple_root = decouple_root,#'./log_26/xca_dataset',
 
             moduleOpen_positive=False,#True,
             moduleOpen_rigid=False,
-            output_dir=os.path.join("temp", "mask_test02(2)"), #Autodl-H设备
-            epochs = 10, #训练多少批次比较合适？            
+            output_dir=os.path.join("temp", "mask_test02"), #Autodl-H设备
+            epochs = 10, #训练多少批次比较合适？       
+            use_proto = True,     
         )
     if True: # 二、整体微调
         print("整体微调") # 指标下降了：0.76=>0.73
-        batch_size = 5
+        batch_size = 4#5
         print("batch_size",batch_size)
         # main( # 微调前是76，微调后是75
         #     image_root = image_root,
@@ -559,8 +740,23 @@ if __name__ == "__main__":
             singleVideoId = None,
             batch_size = batch_size,#15
 
-            crop_size = (256,256), 
+            crop_size = (512,512),#(256,256), 
+            use_proto = True,
         )
+        # main(
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive=True,
+        #     moduleOpen_rigid=True,
+        #     output_dir = os.path.join("temp", "mask_test_g03"),  #Autodl-J设备
+        #     epochs = 5,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+
+        #     crop_size = (512,512),#(256,256), 
+        #     use_proto = False,#True,
+        # )
 
     # start(
     #     moduleOpen_positive=False,

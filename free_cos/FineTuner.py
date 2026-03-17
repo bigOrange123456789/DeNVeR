@@ -90,24 +90,28 @@ class SegmentationDatasetNoGT(Dataset):
         #     mask = (mask > 0.5).float()
 
         return image#, mask
-    
+
 class FineTuner:
     """
     图像分割模型微调类
     支持二值分割（num_classes=1），使用BCEWithLogitsLoss + DiceLoss组合损失
+    新增特征原型模式支持（通过 use_proto 开关）
     """
-    def __init__(self, model):
+    def __init__(self, model, use_proto=False, bg_proto=None, fg_proto=None, temperature=1.0):
         """
         参数:
-            model_class: 模型类（如 ModelSegment），用于实例化新模型
-            pretrained_params_path: 预训练权重文件路径（.pth.tar 或 .pth）
-            num_classes: 输出类别数（默认为1，即二分类）
-            device: 训练设备，若为None则自动选择cuda或cpu
+            model: 分割模型
+            use_proto: 是否使用特征原型预测
+            bg_proto: 背景原型向量 (C,)，归一化后
+            fg_proto: 前景原型向量 (C,)，归一化后
+            temperature: 原型预测时的温度参数
         """
         self.model = model
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") #next(model.parameters()).device
-        # print("self.device", self.device)
-        # exit(0)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.use_proto = use_proto
+        self.bg_proto = bg_proto
+        self.fg_proto = fg_proto
+        self.temperature = temperature
 
         # 损失函数：组合 BCE + Dice
         self.bce_loss = nn.BCEWithLogitsLoss()
@@ -117,9 +121,15 @@ class FineTuner:
         self.optimizer = None
         self.scheduler = None
 
+    def set_prototypes(self, bg_proto, fg_proto, temperature=1.0):
+        """设置原型向量（应在使用原型模式前调用）"""
+        self.bg_proto = bg_proto
+        self.fg_proto = fg_proto
+        self.temperature = temperature
+        self.use_proto = True
+
     def _dice_loss(self, pred, target, smooth=1e-6):
         """Dice损失，适用于二分类，pred为logits，target为0/1浮点数"""
-        # pred = torch.sigmoid(pred)  # 转换为概率
         intersection = (pred * target).sum(dim=(2,3))
         union = pred.sum(dim=(2,3)) + target.sum(dim=(2,3))
         dice = (2.0 * intersection + smooth) / (union + smooth)
@@ -131,11 +141,37 @@ class FineTuner:
         dice = self.dice_loss(pred, target)
         weight_dice = 1.0
         weight_ce = 3.0
-        return (
-            weight_ce * bce + weight_dice * dice
-            ), bce, dice
+        return weight_ce * bce + weight_dice * dice, bce, dice
 
-    def train_one_epoch(self, dataloader, epoch, epochs=None, print_freq=5,mean=None,std=None):
+    def _compute_proto_pred(self, feature):
+        """基于特征图和原型计算血管概率图（与 FineTuner2 中一致）"""
+        if self.bg_proto is None or self.fg_proto is None:
+            raise RuntimeError("Prototypes not initialized. Call set_prototypes first or set use_proto=False.")
+        B, C, H, W = feature.shape
+        if self.fg_proto.numel() != C:
+            raise RuntimeError(f"Prototype dimension mismatch: fg_proto has {self.fg_proto.numel()} elements, but feature has {C} channels.")
+        # 归一化特征向量
+        feat_norm = feature / (feature.norm(p=2, dim=1, keepdim=True) + 1e-8)
+        fg_proto = self.fg_proto.view(1, C, 1, 1).to(feature.device)
+        bg_proto = self.bg_proto.view(1, C, 1, 1).to(feature.device)
+        cos_fg = (feat_norm * fg_proto).sum(dim=1, keepdim=True)
+        cos_bg = (feat_norm * bg_proto).sum(dim=1, keepdim=True)
+        score = cos_fg - cos_bg
+        pred = torch.sigmoid(score / self.temperature)
+        return pred
+
+    def _get_pred(self, outputs):
+        """
+        根据 use_proto 标志和原型状态获取预测结果。
+        如果 use_proto 为 True 且原型已设置，则基于特征计算原型预测；
+        否则直接返回模型输出的 'pred'。
+        """
+        if self.use_proto and self.bg_proto is not None and self.fg_proto is not None:
+            return self._compute_proto_pred(outputs['feature'])
+        else:
+            return outputs['pred']
+
+    def train_one_epoch(self, dataloader, epoch, epochs=None, print_freq=5, mean=None, std=None):
         """训练一个epoch"""
         self.model.train()
         total_loss = 0.0
@@ -146,10 +182,8 @@ class FineTuner:
             images = images.to(self.device)
             masks = masks.to(self.device)
 
-            # 前向传播（注意模型返回格式与推理代码保持一致）
-            # 假设模型返回字典，包含 'pred' 键
-            outputs = self.model(images, mask=None, trained=True, fake=False)  # 训练模式
-            pred = outputs['pred']  # 形状 (B,1,H,W) 的logits
+            outputs = self.model(images, mask=None, trained=True, fake=False)
+            pred = self._get_pred(outputs)  # 根据模式获取预测
 
             loss, bce, dice = self._compute_loss(pred, masks)
 
@@ -161,7 +195,7 @@ class FineTuner:
             total_bce += bce.item()
             total_dice += dice.item()
 
-            if (i+1) % print_freq == 0 or i==len(dataloader):
+            if (i+1) % print_freq == 0 or i == len(dataloader)-1:
                 print(f"\rEpoch {epoch}/{epochs} | Batch {i+1}/{len(dataloader)} | Loss: {loss.item():.4f} (BCE: {bce.item():.4f}, Dice: {dice.item():.4f})", end="", flush=True)
 
         avg_loss = total_loss / len(dataloader)
@@ -180,8 +214,9 @@ class FineTuner:
             images = images.to(self.device)
             masks = masks.to(self.device)
 
-            outputs = self.model(images, mask=None, trained=False, fake=False)  # 推理模式
-            pred = outputs['pred']
+            outputs = self.model(images, mask=None, trained=False, fake=False)
+            pred = self._get_pred(outputs)
+
             loss, _, dice = self._compute_loss(pred, masks)
 
             total_loss += loss.item()
@@ -191,19 +226,9 @@ class FineTuner:
         avg_dice = total_dice / len(dataloader)
         return avg_loss, avg_dice
 
-    def fit0(self, train_loader, val_loader, epochs, lr=1e-4, weight_decay=1e-5, 
-            save_path='best_model.pth', early_stopping_patience=None,mean=None,std=None):
-        """
-        完整训练流程
-        参数:
-            train_loader: 训练数据加载器
-            val_loader: 验证数据加载器
-            epochs: 最大训练轮数
-            lr: 学习率
-            weight_decay: 权重衰减
-            save_path: 最佳模型保存路径
-            early_stopping_patience: 早停耐心值（可选）
-        """
+    def fit0(self, train_loader, val_loader, epochs, lr=1e-4, weight_decay=1e-5,
+             save_path='best_model.pth', early_stopping_patience=None, mean=None, std=None):
+        """完整训练流程（与原来一致，但内部调用的 train_one_epoch/evaluate 已修改）"""
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=5, factor=0.5)
 
@@ -211,19 +236,14 @@ class FineTuner:
         no_improve_epochs = 0
 
         for epoch in range(1, epochs+1):
-            # print(f"\n========== Epoch {epoch}/{epochs} ==========")
-            train_loss, train_bce, train_dice = self.train_one_epoch(train_loader, epoch,epochs=epochs,mean=mean,std=std)
+            train_loss, train_bce, train_dice = self.train_one_epoch(train_loader, epoch, epochs=epochs, mean=mean, std=std)
             val_loss, val_dice = self.evaluate(val_loader)
 
-            # 调整学习率
             self.scheduler.step(val_loss)
 
-            # print(f"\rTrain Loss: {train_loss:.4f} (BCE: {train_bce:.4f}, Dice: {train_dice:.4f}) | Val Loss: {val_loss:.4f}, Val Dice: {val_dice:.4f}", end="", flush=True)
-
-            # 保存最佳模型（根据验证集Dice）
-            if False and val_dice > best_val_dice:
+            if val_dice > best_val_dice:
                 best_val_dice = val_dice
-                if not save_path is None:
+                if save_path:
                     torch.save({
                         'epoch': epoch,
                         'model_state_dict': self.model.state_dict(),
@@ -235,63 +255,43 @@ class FineTuner:
             else:
                 no_improve_epochs += 1
 
-            # 早停
             if early_stopping_patience and no_improve_epochs >= early_stopping_patience:
                 print(f"Early stopping triggered after {epoch} epochs.")
                 break
 
         print("Training completed.")
-    
-    def fit1(self, loader, epochs, lr=1e-4, weight_decay=1e-5, 
-            save_path='best_model.pth', early_stopping_patience=None#,mean=None,std=None
-            ):
-        """
-        完整训练流程
-        参数:
-            train_loader: 训练数据加载器
-            val_loader: 验证数据加载器
-            epochs: 最大训练轮数
-            lr: 学习率
-            weight_decay: 权重衰减
-            save_path: 最佳模型保存路径
-            early_stopping_patience: 早停耐心值（可选）
-        """
+
+    def fit1(self, loader, epochs, lr=1e-4, weight_decay=1e-5,
+             save_path='best_model.pth', early_stopping_patience=None):
+        """另一种训练流程（使用MaskWarpLoss），内部也需使用 self._get_pred"""
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=5, factor=0.5)
 
         from loss import MaskWarpLoss
-        f_warp = MaskWarpLoss(1, +1)  # MaskWarpLoss() #Mask扭曲损失
+        f_warp = MaskWarpLoss(1, +1)
         b_warp = MaskWarpLoss(1, -1)
-        # train_loader
-        for epoch in range(1, epochs+1):#for epoch in range(1):
+
+        for epoch in range(1, epochs+1):
             for batch in loader:
                 batch_in = batch
                 batch["rgb"] = batch["rgb"].to("cuda")
-                # for i in batch:
-                #     print(i)
-                #     batch[i]=batch[i].to("cuda")
-                # batch = batch.to("cuda")
                 vessel = batch["epi"]
                 rgb = batch["rgb"]
-                # model = model.to("cuda")
-                #   
-                # print(type(rgb))
-                # print(rgb[:,0:1].shape)
-                # exit(0)
-                batch_out = {
-                    "masks":self.model(rgb[:,0:1], mask=None, trained=False, fake=False)["pred"] # None
-                }
-                # masks = batch_out["masks"]
-                # print("masks",type(masks))
-                # print(masks.shape)
+
+                outputs = self.model(rgb[:,0:1], mask=None, trained=False, fake=False)
+                pred = self._get_pred(outputs)  # 修改点
+
+                batch_out = {"masks": pred}
                 loss_f = f_warp(batch_in, batch_out)
                 loss_b = b_warp(batch_in, batch_out)
-                # print("loss1",loss1)
-                # exit(0)
                 loss = loss_f + loss_b
-                # print("loss",loss)
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
                 self.scheduler.step(loss)
-            print("\repoch:",epoch,f"Train Loss: {loss:.4f} ",end="", flush=True)
+
+            print(f"\rEpoch: {epoch} | Train Loss: {loss:.4f} ", end="", flush=True)
 
     @torch.no_grad()
     def test(self, test_loader, model_path=None):
@@ -307,7 +307,8 @@ class FineTuner:
 
     @torch.no_grad()
     def seg(self, test_loader, model_path=None, output_dir=None, apply_sigmoid=False, threshold=0.5):
-        if False:#if model_path:
+        """生成分割结果（保存图像）"""
+        if model_path:
             checkpoint = torch.load(model_path, map_location=self.device)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             print(f"Loaded model from {model_path} for testing")
@@ -316,7 +317,7 @@ class FineTuner:
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-            print(f"\rSegmentation results will be saved to {output_dir}",end="", flush=True)
+            print(f"\rSegmentation results will be saved to {output_dir}", end="", flush=True)
 
         dataset = test_loader.dataset
         if not hasattr(dataset, 'img_names'):
@@ -325,23 +326,17 @@ class FineTuner:
         sample_idx = 0
         for images in test_loader:
             images = images.to(self.device)
-            # masks = masks.to(self.device)  # masks 是 0/1 的 float 张量
-
             outputs = self.model(images, mask=None, trained=False, fake=False)
-            pred_logits = outputs['pred']  # 形状 (B,1,H,W)
+            pred = self._get_pred(outputs)  # 修改点
 
             # 转换为概率并二值化
-            pred_probs = pred_logits # torch.sigmoid(pred_logits)
+            pred_probs = pred  # 注意：如果是logits，可能需要sigmoid，这里保持原逻辑
             pred_binary = (pred_probs > threshold).float()
 
-            # 保存预测结果
             if output_dir:
-                # 根据 apply_sigmoid 决定保存内容
                 if apply_sigmoid:
-                    # 保存概率图 (0-1) 映射到 0-255
                     save_tensor = (pred_probs * 255).byte()
                 else:
-                    # 保存二值图 (0/1) 映射到 0/255
                     save_tensor = (pred_binary * 255).byte()
 
                 for i in range(save_tensor.size(0)):
@@ -349,7 +344,6 @@ class FineTuner:
                     save_path = os.path.join(output_dir, filename)
                     img_array = save_tensor[i, 0].cpu().numpy()
                     Image.fromarray(img_array, mode='L').save(save_path)
-                    # print("save_path:",save_path)
 
             sample_idx += len(images)
 
@@ -357,24 +351,10 @@ class FineTuner:
     def ana(self, test_loader, output_dir=None, apply_sigmoid=False, threshold=0.5):
         """
         在测试集上评估，计算 Dice、Recall、Precision，并可选择保存分割结果。
-
-        参数:
-            test_loader: 测试数据加载器（要求 dataset 具有 img_names 属性，且 shuffle=False）
-            model_path: 可选，加载指定模型权重
-            output_dir: 可选，保存分割结果的文件夹路径，如果为 None 则不保存
-            apply_sigmoid: 如果为 True，保存的图像为经过 sigmoid 的概率图（0-255 映射）；
-                        否则保存为二值化后的图像（0 或 255）
-            threshold: 二值化阈值，默认为 0.5
+        （内部使用 self._get_pred 获取预测）
         """
-        # if model_path:
-        #     checkpoint = torch.load(model_path, map_location=self.device)
-        #     self.model.load_state_dict(checkpoint['model_state_dict'])
-        #     print(f"Loaded model from {model_path} for testing")
-
-        # self.model.train()#
         self.model.eval()
 
-        # 用于累积指标
         total_tp = 0
         total_fp = 0
         total_fn = 0
@@ -382,8 +362,7 @@ class FineTuner:
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-            print(f"\rSegmentation results will be saved to {output_dir}",end="", flush=True)
-            # print(f"Segmentation results will be saved to {output_dir} !!!")
+            print(f"\rSegmentation results will be saved to {output_dir}", end="", flush=True)
 
         dataset = test_loader.dataset
         if not hasattr(dataset, 'img_names'):
@@ -391,161 +370,60 @@ class FineTuner:
 
         sample_idx = 0
         for images, masks in test_loader:
-            # print(f"Segmentation results will be saved to {output_dir} !!! sample_idx:{sample_idx}")
-            # images = images.to(self.device)
-            masks = masks.to(self.device)  # masks 是 0/1 的 float 张量
-            # print("self.device",self.device)
-
-            # print("images",type(images))
-            # print("images:",images.shape)
-            # print(images)
             images = images.to(self.device)
-            outputs = self.model(images, mask=None, trained=False, fake=False)
-            pred_logits = outputs['pred']  # 形状 (B,1,H,W)
-            # print("flag1")
+            masks = masks.to(self.device)
 
-            # 转换为概率并二值化
-            pred_probs = pred_logits 
+            outputs = self.model(images, mask=None, trained=False, fake=False)
+            pred = self._get_pred(outputs)  # 修改点
+
+            pred_probs = pred  # 保持原逻辑：若需要sigmoid，请在此处添加
             pred_binary = (pred_probs > threshold).float()
 
-            # 将 masks 转为整数便于统计
             masks_int = masks.long()
-            # print("flag2")
 
-            # 展平每个样本（保留 batch 维度）
-            pred_binary_flat = pred_binary.view(pred_binary.size(0), -1).cpu()  # (B, H*W)
+            pred_binary_flat = pred_binary.view(pred_binary.size(0), -1).cpu()
             masks_flat = masks_int.view(masks_int.size(0), -1).cpu()
 
-            # 计算每个样本的 TP, FP, FN
-            tp = (pred_binary_flat * masks_flat).sum(dim=1)  # (B,)
+            tp = (pred_binary_flat * masks_flat).sum(dim=1)
             fp = (pred_binary_flat * (1 - masks_flat)).sum(dim=1)
             fn = ((1 - pred_binary_flat) * masks_flat).sum(dim=1)
-            # print("flag3")
 
             total_tp += tp.sum().item()
             total_fp += fp.sum().item()
             total_fn += fn.sum().item()
             total_images += images.size(0)
-            # print("flag4",apply_sigmoid)
 
-            # 保存预测结果
             if output_dir:
-                # 根据 apply_sigmoid 决定保存内容
                 if apply_sigmoid:
                     save_tensor = (pred_probs * 255).byte()
                 else:
-                    # 保存二值图 (0/1) 映射到 0/255
                     save_tensor = (pred_binary * 255).byte()
 
                 for i in range(save_tensor.size(0)):
                     filename = dataset.img_names[sample_idx + i]
                     save_path = os.path.join(output_dir, filename)
-                    # print("flag5,save_path",save_path)
                     img_array = save_tensor[i, 0].cpu().numpy()
                     Image.fromarray(img_array, mode='L').save(save_path)
 
             sample_idx += len(images)
-            # print("flag6")
 
+        return {"tp": total_tp, "fp": total_fp, "fn": total_fn}
 
-        return {
-            "tp":total_tp,
-            "fp":total_fp,
-            "fn":total_fn
-            } ##############################为啥推理结果不对
-    
     @staticmethod
     def getIndicator(opt):
-        total_tp = opt["tp"] 
-        total_fp = opt["fp"]  
+        """根据 tp, fp, fn 计算指标"""
+        total_tp = opt["tp"]
+        total_fp = opt["fp"]
         total_fn = opt["fn"]
-        # 计算总体指标
-        if (2 * total_tp + total_fp + total_fn) > 0:
-            dice = (2 * total_tp) / (2 * total_tp + total_fp + total_fn)
-        else:
-            dice = 0.0
+        dice = (2 * total_tp) / (2 * total_tp + total_fp + total_fn) if (2 * total_tp + total_fp + total_fn) > 0 else 0.0
         recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
         precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
-        return {"dice":dice, "recall":recall, "precision":precision} #return dice, recall, precision
+        return {"dice": dice, "recall": recall, "precision": precision}
 
     @torch.no_grad()
     def inference(self, test_loader, model_path=None, output_dir=None, apply_sigmoid=False, threshold=0.5):
-        """
-        在测试集上评估，计算 Dice、Recall、Precision，并可选择保存分割结果。
-
-        参数:
-            test_loader: 测试数据加载器（要求 dataset 具有 img_names 属性，且 shuffle=False）
-            model_path: 可选，加载指定模型权重
-            output_dir: 可选，保存分割结果的文件夹路径，如果为 None 则不保存
-            apply_sigmoid: 如果为 True，保存的图像为经过 sigmoid 的概率图（0-255 映射）；
-                        否则保存为二值化后的图像（0 或 255）
-            threshold: 二值化阈值，默认为 0.5
-        """
-        if model_path:
-            checkpoint = torch.load(model_path, map_location=self.device)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Loaded model from {model_path} for testing")
-
-        # self.model.eval()
-
-        # 用于累积指标
-        total_tp = 0
-        total_fp = 0
-        total_fn = 0
-        total_images = 0
-
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-            print(f"\rSegmentation results will be saved to {output_dir}",end="", flush=True)
-
-        dataset = test_loader.dataset
-        if not hasattr(dataset, 'img_names'):
-            raise AttributeError("Dataset must have 'img_names' attribute to save images.")
-
-        sample_idx = 0
-        for images, masks in test_loader:
-            images = images.to(self.device)
-            masks = masks.to(self.device)  # masks 是 0/1 的 float 张量
-
-            outputs = self.model(images, mask=None, trained=False, fake=False)
-            pred_logits = outputs['pred']  # 形状 (B,1,H,W)
-
-            # 转换为概率并二值化
-            pred_probs = pred_logits # torch.sigmoid(pred_logits)
-            pred_binary = (pred_probs > threshold).float()
-
-            # 将 masks 转为整数便于统计
-            masks_int = masks.long()
-
-            # 展平每个样本（保留 batch 维度）
-            pred_binary_flat = pred_binary.view(pred_binary.size(0), -1).cpu()  # (B, H*W)
-            masks_flat = masks_int.view(masks_int.size(0), -1).cpu()
-
-            # 计算每个样本的 TP, FP, FN
-            tp = (pred_binary_flat * masks_flat).sum(dim=1)  # (B,)
-            fp = (pred_binary_flat * (1 - masks_flat)).sum(dim=1)
-            fn = ((1 - pred_binary_flat) * masks_flat).sum(dim=1)
-
-            total_tp += tp.sum().item()
-            total_fp += fp.sum().item()
-            total_fn += fn.sum().item()
-            total_images += images.size(0)
-
-            # 保存预测结果
-            if output_dir:
-                # 根据 apply_sigmoid 决定保存内容
-                if apply_sigmoid:
-                    # 保存概率图 (0-1) 映射到 0-255
-                    save_tensor = (pred_probs * 255).byte()
-                else:
-                    # 保存二值图 (0/1) 映射到 0/255
-                    save_tensor = (pred_binary * 255).byte()
-
-                for i in range(save_tensor.size(0)):
-                    filename = dataset.img_names[sample_idx + i]
-                    save_path = os.path.join(output_dir, filename)
-                    img_array = save_tensor[i, 0].cpu().numpy()
-                    Image.fromarray(img_array, mode='L').save(save_path)
+        """同 ana，保留原方法名以兼容旧代码"""
+        return self.ana(test_loader, model_path, output_dir, apply_sigmoid, threshold)   
 
 import numpy as np
 import data
@@ -770,24 +648,26 @@ def test():
 
 # ========== 使用示例 ==========
 def getAna0(
-    test_img_dir = "../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29",
-    test_gt_dir  = "../DeNVeR_in/xca_dataset/CVAI-1207/ground_truth/CVAI-1207LAO44_CRA29",
-    segment_model = None,
-    batch_size = 4, #10 #14 #16
+    test_img_dir,
+    test_gt_dir,
+    segment_model=None,
+    batch_size=4,
     videoId="",
-    mean=None, std=None,
+    mean=None,
+    std=None,
     output_dir=None,
+    # 新增原型相关参数
+    use_proto=False,
+    bg_proto=None,
+    fg_proto=None,
+    temperature=1.0
 ):
     # 定义数据预处理（与推理代码保持一致，计算均值和标准差）
-    # 此处简单使用默认的ToTensor()，即归一化到[0,1]
     if mean is None or std is None:
         mean, std = calculate_mean_variance(test_img_dir)
-        # print("\r",videoId,mean,std,end="", flush=True)
-        # print("\n",test_img_dir,"mean:",mean,"std:",std)
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
-        # 如果需要标准化，可以添加 transforms.Normalize(mean, std)
     ])
     target_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -797,53 +677,75 @@ def getAna0(
 
     # 创建数据集和数据加载器
     test_dataset = SegmentationDataset(test_img_dir, test_gt_dir, transform=transform, target_transform=target_transform)
-    test_loader = DataLoader(test_dataset,   batch_size=batch_size, shuffle=False, num_workers=2)
-    
-    # 使用占位模型演示，实际应替换为您的 ModelSegment
-    finetuner = FineTuner(segment_model)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
 
-    # 测试 # 79%
-    ana = finetuner.ana(test_loader, 
-                        output_dir=os.path.join("temp","mask",videoId) if output_dir is None else os.path.join(output_dir, videoId)
-                        ) #finetuner.test(test_loader)
+    # 创建 FineTuner 实例，传入原型相关参数
+    finetuner = FineTuner(
+        segment_model,
+        use_proto=use_proto,
+        bg_proto=bg_proto,
+        fg_proto=fg_proto,
+        temperature=temperature
+    )
+
+    # 推理并返回累积指标
+    ana = finetuner.ana(
+        test_loader,
+        output_dir=os.path.join("temp", "mask", videoId) if output_dir is None else os.path.join(output_dir, videoId)
+    )
     return ana
 
 def getAna(
     datasetPath="../DeNVeR_in/xca_dataset",
-    segment_model=None,#pathParam = "../DeNVeR_in/models_config/freecos_Seg.pt",
-    batch_size = 16,
-    mean=None, 
+    decouple_root=None,
+    segment_model=None,  # 模型实例
+    batch_size=16,
+    mean=None,
     std=None,
     singleVideoId=None,
     output_dir=None,
+    rigidTag="",
+    # 新增原型相关参数
+    use_proto=False,
+    bg_proto=None,
+    fg_proto=None,
+    temperature=1.0
 ):
-    # 初始化微调器
-    # segment_model = getModel(pathParam)
     ana = {
-        "tp":0,
-        "fp":0,
-        "fn":0
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
     }
     for userId in os.listdir(datasetPath):
-        for videoId in os.listdir(os.path.join(datasetPath,userId,"images")):
-            if singleVideoId is None or singleVideoId==videoId:
+        for videoId in os.listdir(os.path.join(datasetPath, userId, "images")):
+            if singleVideoId is None or singleVideoId == videoId:
+                # 根据是否提供 decouple_root 确定图像目录
+                if decouple_root is None:
+                    test_img_dir = os.path.join(datasetPath, userId, "images", videoId)
+                else:
+                    test_img_dir = os.path.join(decouple_root, userId, "decouple", videoId, rigidTag)
+                test_gt_dir = os.path.join(datasetPath, userId, "ground_truth", videoId)
+
                 ana0 = getAna0(
-                    test_img_dir = os.path.join(datasetPath,userId,"images",videoId),
-                    #"../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29",
-                    test_gt_dir  = os.path.join(datasetPath,userId,"ground_truth",videoId),
-                    #"../DeNVeR_in/xca_dataset/CVAI-1207/ground_truth/CVAI-1207LAO44_CRA29",
-                    segment_model = segment_model,
-                    batch_size =batch_size,
+                    test_img_dir=test_img_dir,
+                    test_gt_dir=test_gt_dir,
+                    segment_model=segment_model,
+                    batch_size=batch_size,
                     videoId=videoId,
-                    mean=mean, std=std,
-                    output_dir=output_dir
+                    mean=mean,
+                    std=std,
+                    output_dir=output_dir,
+                    # 传递原型参数
+                    use_proto=use_proto,
+                    bg_proto=bg_proto,
+                    fg_proto=fg_proto,
+                    temperature=temperature
                 )
-                # print("videoId",videoId,"fn")
-                ana["fn"] = ana["fn"] + ana0["fn"]
-                ana["fp"] = ana["fp"] + ana0["fp"]
-                ana["tp"] = ana["tp"] + ana0["tp"]
+                ana["tp"] += ana0["tp"]
+                ana["fp"] += ana0["fp"]
+                ana["fn"] += ana0["fn"]
     return FineTuner.getIndicator(ana)
-   
+
 def train1_video(
     test_img_dir = "../DeNVeR_in/xca_dataset/CVAI-1207/images/CVAI-1207LAO44_CRA29",
     test_gt_dir  = "../DeNVeR_in/xca_dataset/CVAI-1207/ground_truth/CVAI-1207LAO44_CRA29",

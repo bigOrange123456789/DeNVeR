@@ -580,8 +580,8 @@ def main(
                    save_path=None)
 
     # 10. 可选：在测试集上评估
-    if False:
-        result2 = getAna(segment_model=model, singleVideoId=singleVideoId)
+    if True:
+        result2 = getAna(segment_model=model, singleVideoId=singleVideoId,output_dir=output_dir)
         print("微调前的效果:",result1)
         print("微调后的效果:",result2)
 

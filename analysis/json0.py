@@ -202,15 +202,15 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },  
 
-                # { 
-                #     "name": "myFreeCOS.freecos",
-                #     "color":"#88A1AE",
-                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                #     "pred_path":"temp/mask",
-                #     "block_cath":False,
-                #     "threshold": 0.5,
-                # },  
+                { 
+                    "name": "myFreeCOS.freecos",
+                    "color":"#88A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"temp/mask",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
 
 
             ],
@@ -230,7 +230,19 @@ config_data0 = {
             "onlyVideoId":None,
             "onlyFrameId":None
         }
-
+if False:
+    path="log_26/outputs"
+    for folder in [item for item in os.listdir(path) if os.path.isdir(os.path.join(path, item))]:
+        datapath = path+"/"+folder
+        config_data0["experiments"].append({
+            "name": folder,
+            "color":"#000000",
+            "gt_path":"outputs/xca_dataset_copy/ground_truth",
+            "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+            "pred_path":datapath,
+            "block_cath":False,
+            "threshold": 0.5,
+    })
 experiments=[]#{}
 for e in config_data0["experiments"]:
     # if True:
