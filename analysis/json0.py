@@ -3,15 +3,15 @@ import os
 config_data0 = {
             "experiments" : [
 
-                { 
-                    "name": "A23-01",
-                    "color":"#29510E",
-                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/noRigid1",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },
+                # { 
+                #     "name": "A23-01",
+                #     "color":"#29510E",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_result/noRigid1",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },
 
                 # { 
                 #     "name": "_001old_hessian",
@@ -202,12 +202,23 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },  
 
+                # { 
+                #     "name": "myFreeCOS.freecos",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                #     "pred_path":"temp/mask",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
+
+
                 { 
-                    "name": "myFreeCOS.freecos",
+                    "name": "mask_test02(2)",
                     "color":"#88A1AE",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"temp/mask",
+                    "pred_path":"outputs/xca_dataset_result/mask_test02(2)",
                     "block_cath":False,
                     "threshold": 0.5,
                 },  

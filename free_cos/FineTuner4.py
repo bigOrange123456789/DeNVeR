@@ -114,13 +114,18 @@ from torchvision.transforms import InterpolationMode
 
 class BackgroundDataset(Dataset):
     """背景数据集：加载背景图像，要求模型输出全0。每个epoch随机采样，可重复使用"""
-    def __init__(self, bg_paths, video_stats, vessel_folder_path=None, length=None, crop_size=(256,256)):
+    def __init__(self, bg_paths, video_stats, 
+                 vessel_folder_path=None, length=None, 
+                 crop_size=(256,256),
+                 augMode=2 #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+                 ):
         self.vessel_folder_path = vessel_folder_path
         self.bg_paths = bg_paths
         self.video_stats = video_stats
         self.num_real_samples = len(self.bg_paths)
         self.length = length if length is not None else self.num_real_samples
         self.crop_size = crop_size
+        self.augMode = augMode
 
     def _perturbation(self, vessel0):
         random_float = random.uniform(1, 4)
@@ -133,23 +138,28 @@ class BackgroundDataset(Dataset):
         assert isinstance(img, torch.Tensor) and isinstance(gt, torch.Tensor)
         assert img.shape[1:] == gt.shape[1:], "img 和 gt 的空间尺寸必须相同"
 
+        # 1.翻转图像
         if random.random() < p_flip:
             img = F.hflip(img)
             gt = F.hflip(gt)
         if random.random() < p_flip:
             img = F.vflip(img)
             gt = F.vflip(gt)
-        if random.random() < p_color_jitter:
-            brightness_factor = random.uniform(*brightness_range)
-            contrast_factor = random.uniform(*contrast_range)
-            saturation_factor = random.uniform(*saturation_range)
-            img = F.adjust_brightness(img, brightness_factor)
-            img = F.adjust_contrast(img, contrast_factor)
-            img = F.adjust_saturation(img, saturation_factor)
+        # 2.亮度调整
+        if not self.augMode==1: #不对血管进行亮度调整
+            if random.random() < p_color_jitter:
+                brightness_factor = random.uniform(*brightness_range)
+                contrast_factor = random.uniform(*contrast_range)
+                saturation_factor = random.uniform(*saturation_range)
+                img = F.adjust_brightness(img, brightness_factor)
+                img = F.adjust_contrast(img, contrast_factor)
+                img = F.adjust_saturation(img, saturation_factor)
+        # 3.旋转图像
         if random.random() < p_rotate:
             angle = random.uniform(*angle_range)
             img = F.rotate(img, angle, interpolation=InterpolationMode.BILINEAR, expand=True)
             gt = F.rotate(gt, angle, interpolation=InterpolationMode.NEAREST, expand=True)
+        # 3.裁剪图像
         if crop_size is not None:
             _, h, w = img.shape
             if isinstance(crop_size, int):
@@ -175,8 +185,11 @@ class BackgroundDataset(Dataset):
             vessel = self._perturbation(vessel)
             gt = torch.zeros_like(vessel)
             gt[vessel < 1] = 1
+            if self.augMode==1: #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+                vessel, gt = self._augmentation(vessel, gt)
             synthesis = vessel * background
-            synthesis, gt = self._augmentation(synthesis, gt)
+            if self.augMode==2: #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+                synthesis, gt = self._augmentation(synthesis, gt)
             synthesis = transforms.Normalize(mean=mean, std=std)(synthesis)
             return synthesis, gt, vessel
 
@@ -357,6 +370,11 @@ class FineTuner2(FineTuner):
 
                 # ---------- 背景与合成图像 ----------
                 images_bg, images_syn, images_gt, images_vessel = bg_batch
+                # testSave("images_bg",    images_bg    )
+                # testSave("images_syn",   images_syn   )
+                # testSave("images_gt",    images_gt    )
+                # testSave("images_vessel",images_vessel)
+                # exit(0)
                 images_bg = images_bg.to(self.device)
                 images_syn = images_syn.to(self.device)
                 images_gt = images_gt.to(self.device)
@@ -397,7 +415,7 @@ class FineTuner2(FineTuner):
                     elapsed = time.time() - last_print_time
                     avg_loss_sofar = total_loss / num_batches
                     print("\r", f"[Epoch {epoch}] Batch {batch_idx}/{num_batches_all} | "
-                        f"Loss: {loss.item():.4f} (sup: {loss_sup.item():.4f}, bg: {loss_bg.item():.4f}, syn: {loss_syn.item():.4f}) | "
+                        f"Loss: {loss.item():.4f} (sup: {loss_sup.item():.4f}, bg: {(bg_loss_weight *loss_bg).item():.4f}, syn: {loss_syn.item():.4f}) | "
                         f"Avg loss so far: {avg_loss_sofar:.4f} | "
                         f"Time since last print: {elapsed:.2f}s", end="")
                     last_print_time = time.time()
@@ -436,7 +454,7 @@ def build_video_to_user(image_root, singleVideoId=None):
                     video_to_user[videoId] = userId
     return video_to_user
 
-def collect_background_paths(image_root, decouple_root, singleVideoId, moduleOpen_rigid=True):
+def collect_background_paths(image_root, decouple_root, singleVideoId, moduleOpen_rigid=True,rigidTag="A26-03.rigid.non1"):
     bg_paths = []
     for userId in os.listdir(image_root):
         user_img_dir = os.path.join(image_root, userId, 'images')
@@ -455,12 +473,13 @@ def collect_background_paths(image_root, decouple_root, singleVideoId, moduleOpe
                 continue
             for videoId in os.listdir(user_decouple_dir):
                 if singleVideoId is None or singleVideoId == videoId:
-                    bg_dir = os.path.join(user_decouple_dir, videoId, 'A26-03.rigid.non1')
+                    bg_dir = os.path.join(user_decouple_dir, videoId, rigidTag)
                     bg_file = os.path.join(bg_dir, '00000.png')
-                    if os.path.isfile(bg_file):
-                        original_video_dir = os.path.join(image_root, userId, 'images', videoId)
-                        if os.path.isdir(original_video_dir):
-                            bg_paths.append((bg_file, original_video_dir))
+                    bg_paths.append((bg_file, bg_dir))
+                    # if os.path.isfile(bg_file):
+                    #     original_video_dir = os.path.join(image_root, userId, 'images', videoId)
+                    #     if os.path.isdir(original_video_dir):
+                    #         bg_paths.append((bg_file, original_video_dir))
     return bg_paths
 
 # ==================== 主训练流程 ====================
@@ -480,6 +499,7 @@ def main(
     batch_size = 4,
     rigidTag="A26-02.rigid.non1",
     use_proto = True,          # 新增：是否使用特征原型
+    augMode =2, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
 ):
     
     # 超参数
@@ -496,8 +516,12 @@ def main(
 
     # 2. 收集所有背景路径
     print("Collecting background images...")
-    bg_paths = collect_background_paths(image_root, decouple_root, singleVideoId=singleVideoId, moduleOpen_rigid=moduleOpen_rigid)
+    bg_paths = collect_background_paths(image_root, decouple_root, singleVideoId=singleVideoId, moduleOpen_rigid=moduleOpen_rigid,rigidTag=rigidTag)
     print(f"Collected {len(bg_paths)} background images.")
+    print("moduleOpen_rigid",moduleOpen_rigid)
+    # print("bg_paths[0]",bg_paths[0])
+    # print("bg_paths[-1]",bg_paths[-1])
+    # exit(0)
 
     # 3. 收集所有需要计算统计量的视频目录
     video_dirs_set = set()
@@ -528,6 +552,7 @@ def main(
         vessel_folder_path=vessel_folder_path,
         length=dataset_length,
         crop_size=crop_size,
+        augMode = augMode,
     )
     background_loader = DataLoader(background_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
@@ -700,7 +725,7 @@ if __name__ == "__main__":
     # 一、逐帧微调
     if False:
         print("逐帧微调")
-        start(#
+        start(# 效果不佳 0.7627
             image_root = image_root,
             label_root = label_root,#'./log_26/outputs/high_precision_refine',
             decouple_root = decouple_root,#'./log_26/xca_dataset',
@@ -713,7 +738,7 @@ if __name__ == "__main__":
         )
     if True: # 二、整体微调
         print("整体微调") # 指标下降了：0.76=>0.73
-        batch_size = 4#5
+        batch_size = 4 # 5
         print("batch_size",batch_size)
         # main( # 微调前是76，微调后是75
         #     image_root = image_root,
@@ -727,22 +752,148 @@ if __name__ == "__main__":
         #     batch_size = batch_size,#15
         # )
 
+        
+        # 用原型、bg_loss_weight为0、开启正锚定 #768=>715
+        # main(
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive=True,
+        #     moduleOpen_rigid=True,
+        #     output_dir = os.path.join("temp", "mask_test_g03"),  
+        #     epochs = 5,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+        #     crop_size = (512,512),#(256,256), 
+        #     use_proto = True,
+        # )#768=>715
 
-        print("crop_size = (256,256)") #没有显著区别
-        main(
+        # 不用原型、不用正锚定、不用负锚定
+        if False:
+            main(#2023.03.18.1055
+                image_root = image_root,
+                label_root = label_root,#'./log_26/outputs/high_precision_refine',
+                decouple_root = decouple_root,#'./log_26/xca_dataset',
+                moduleOpen_positive=False,
+                moduleOpen_rigid=True,
+                output_dir = os.path.join("temp", "mask_test04"),  
+                epochs = 1,
+                singleVideoId = None,
+                batch_size = batch_size,#15
+                crop_size = (512,512),#(256,256), 
+                use_proto = False,
+            )
+        # print("2026.03.18.1305 ; 使用去刚背景、并单独进行归一化")
+        # main( # 2026.03.18.1305 # 使用去刚背景、并单独进行归一化
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive = False,
+        #     moduleOpen_rigid = True,#False,
+        #     output_dir = os.path.join("temp", "mask_test04"),  
+        #     epochs = 1,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+        #     crop_size = (512,512),#(256,256), 
+        #     use_proto = False,
+        #     augMode = 2, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+        # )
+
+        # print("2026.03.18.1447 ; 对合成血管而不是整个图像进行增强")
+        # main( 
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive = False,
+        #     moduleOpen_rigid = True,#False,
+        #     output_dir = os.path.join("temp", "mask_test05"),  
+        #     epochs = 1,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+        #     crop_size = (512,512),#(256,256), 
+        #     use_proto = False,
+        #     augMode = 1, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+        # )
+        print("实验4-2026.03.18.1513")
+        main( 
             image_root = image_root,
             label_root = label_root,#'./log_26/outputs/high_precision_refine',
             decouple_root = decouple_root,#'./log_26/xca_dataset',
-            moduleOpen_positive=True,
-            moduleOpen_rigid=True,
-            output_dir = os.path.join("temp", "mask_test_g03"),  #Autodl-J设备
-            epochs = 5,
+            moduleOpen_positive = False,
+            moduleOpen_rigid = True,#False,
+            output_dir = os.path.join("temp", "mask_test06"),  
+            epochs = 1,
             singleVideoId = None,
             batch_size = batch_size,#15
-
             crop_size = (512,512),#(256,256), 
-            use_proto = True,
+            use_proto = False,
+            augMode = 0, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
         )
+        '''
+            实验结果：
+                微调前: A26-02.rigid.non1
+                    Autodl-G设备、M设备
+                        {'dice': 0.7685781528935374, 'recall': 0.8142418558742178, 'precision': 0.7277642238175274}
+                        {'dice': 0.7824758658322162, 'recall': 0.8121360860999967, 'precision': 0.7549057679840246}
+                实验1-2023.03.18.1055
+                    Autodl-G设备
+                    output_dir = os.path.join("temp", "mask_test04")
+                    方案：
+                        不用原型、不用正锚定、不用负锚定
+                        代码有误、可能没有使用刚体层做背景
+                    实验前的期望：
+                        只平衡查全和查准-希望指标尽量不变
+                    实验结果：                
+                        {'dice': 0.7426693655928825, 'recall': 0.7432755499386157, 'precision': 0.7420641691984434}
+                        {'dice': 0.7455212523667258, 'recall': 0.7357728953907104, 'precision': 0.7555313924057196}
+                    分析：
+                        指标显著下降、实验失败 
+                        失败的原因是对背景中的导管影像(刚体中的主干血管)进行了抑制   
+                实验2-2026.03.18.1305
+                    Autodl-M设备
+                    output_dir = os.path.join("temp", "mask_test04")
+                    方案：
+                        使用去刚背景、并单独进行归一化
+                    实验的期望：
+                        能够好于实验1
+                    实验结果：成功
+                        {'dice': 0.7469111162572603, 'recall': 0.7946318991297046, 'precision': 0.7045972684290454}
+                        {'dice': 0.7530848570203539, 'recall': 0.7788172612523795, 'precision': 0.7289984832472725}
+                    分析：
+                        微调效果好于实验1、但仍低于微调之前
+                实验3-2026.03.18.1447
+                    Autodl-M设备
+                    output_dir = os.path.join("temp", "mask_test05")
+                    方案：
+                        follow实验2,对合成血管而不是整个图像进行增强
+                    实验的期望：
+                        能够好于实验2
+                    实验结果：成功
+                        {'dice': 0.7559960675866872, 'recall': 0.7488695714325392, 'precision': 0.7632595031990594}
+                        {'dice': 0.7565786587415133, 'recall': 0.7402312928420337, 'precision': 0.7736643650348188}
+                    分析：
+                        效果更好一点，这是因为之前的方案中归一化是固定的，数据增强后归一化就不对应了
+                实验4-2026.03.18.1513
+                    Autodl-M设备
+                    output_dir = os.path.join("temp", "mask_test06")
+                    方案：
+                        follow实验3(3的血管过于明显),我想去除数据增强
+                    实验的期望：
+                        能够好于实验3
+                    实验结果：
+                        {'dice': 0.746259785828765, 'recall': 0.7337900690095055, 'precision': 0.759160639346387}
+                        {'dice': 0.7449506319311128, 'recall': 0.7150071153731488, 'precision': 0.7775117570889433}
+                    分析：
+                        
+                        
+
+
+                    
+        '''
+        #一个新的想法，用去刚后的首帧做背景，用刚体微调效果不好的原因是否是归一化的原因
+
+        
+
         # main(
         #     image_root = image_root,
         #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
@@ -753,7 +904,6 @@ if __name__ == "__main__":
         #     epochs = 5,
         #     singleVideoId = None,
         #     batch_size = batch_size,#15
-
         #     crop_size = (512,512),#(256,256), 
         #     use_proto = False,#True,
         # )
