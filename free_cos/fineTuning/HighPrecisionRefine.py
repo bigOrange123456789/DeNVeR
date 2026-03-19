@@ -193,11 +193,13 @@ class HighPrecisionRefine:
         if myprint:print("计算光流特征...")
         mag_fwd, err = self._compute_features()
 
+        ###################################### 开始提升查准率 ######################################
         # 阈值
         if self.use_otsu:
             if myprint:print("应用 Otsu 自适应阈值...")
-            high_mag, th_mag = self._otsu_threshold(mag_fwd)
+            high_mag, th_mag = self._otsu_threshold(mag_fwd) # 前向光流图 # 光流图
             high_err, th_err = self._otsu_threshold(err)
+            # 对前后向一致性误差张量应用 Otsu 自适应阈值，自动分割出高误差区域，得到二值掩码和对应的阈值，为后续构建高置信度运动区域提供误差维度的依据。
             if myprint:print(f"  前向幅值阈值: {th_mag:.4f}, 误差阈值: {th_err:.4f}")
         else:
             # 固定阈值模式（可自定义）
@@ -233,6 +235,7 @@ class HighPrecisionRefine:
 
         # 去除小面积（可选，已通过组件筛选处理）
         refined_final = torch.from_numpy(refined.astype(bool)).to(self.device)
+        ###################################### 完成提升查准率 ######################################
 
         # 保存结果
         result_img = Image.fromarray(refined)
@@ -387,3 +390,4 @@ if __name__ == "__main__":
     # tag=configs[0]["decouple"]["tag"]
     tag = "A26-03"
     getPrecisionMask(tag, needAna=True)
+

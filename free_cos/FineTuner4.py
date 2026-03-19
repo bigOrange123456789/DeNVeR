@@ -500,11 +500,12 @@ def main(
     rigidTag="A26-02.rigid.non1",
     use_proto = True,          # 新增：是否使用特征原型
     augMode =2, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+    bg_loss_weight=0,
 ):
     
     # 超参数
     lr = 1e-4
-    bg_loss_weight = 0#0.1 #0.4#2  #背景图像的学习权重
+    # bg_loss_weight = 0#0.1 #0.4#2  #背景图像的学习权重
     reweightBg = 0.1#0.4 #合成血管的背景区域的学习权重 #判断一下这个权重是否为0对结果是否有影响
     num_workers = 0  # 修改为 0，避免多进程导致的显存残留
     print("bg_loss_weight:", bg_loss_weight, "reweightBg:", reweightBg, "crop_size:", crop_size)
@@ -814,21 +815,21 @@ if __name__ == "__main__":
         #     use_proto = False,
         #     augMode = 1, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
         # )
-        print("实验4-2026.03.18.1513")
-        main( 
-            image_root = image_root,
-            label_root = label_root,#'./log_26/outputs/high_precision_refine',
-            decouple_root = decouple_root,#'./log_26/xca_dataset',
-            moduleOpen_positive = False,
-            moduleOpen_rigid = True,#False,
-            output_dir = os.path.join("temp", "mask_test06"),  
-            epochs = 1,
-            singleVideoId = None,
-            batch_size = batch_size,#15
-            crop_size = (512,512),#(256,256), 
-            use_proto = False,
-            augMode = 0, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
-        )
+        # print("实验4-2026.03.18.1513")
+        # main( 
+        #     image_root = image_root,
+        #     label_root = label_root,#'./log_26/outputs/high_precision_refine',
+        #     decouple_root = decouple_root,#'./log_26/xca_dataset',
+        #     moduleOpen_positive = False,
+        #     moduleOpen_rigid = True,#False,
+        #     output_dir = os.path.join("temp", "mask_test06"),  
+        #     epochs = 1,
+        #     singleVideoId = None,
+        #     batch_size = batch_size,#15
+        #     crop_size = (512,512),#(256,256), 
+        #     use_proto = False,
+        #     augMode = 0, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+        # )
         '''
             实验结果：
                 微调前: A26-02.rigid.non1
@@ -880,17 +881,29 @@ if __name__ == "__main__":
                         follow实验3(3的血管过于明显),我想去除数据增强
                     实验的期望：
                         能够好于实验3
-                    实验结果：
+                    实验结果：失败
                         {'dice': 0.746259785828765, 'recall': 0.7337900690095055, 'precision': 0.759160639346387}
                         {'dice': 0.7449506319311128, 'recall': 0.7150071153731488, 'precision': 0.7775117570889433}
                     分析：
-                        
-                        
-
-
-                    
+                        *** 
         '''
         #一个新的想法，用去刚后的首帧做背景，用刚体微调效果不好的原因是否是归一化的原因
+        # print("实验4-2026.03.18.1513")
+        main( 
+            image_root = image_root,
+            label_root = label_root,#'./log_26/outputs/high_precision_refine',
+            decouple_root = decouple_root,#'./log_26/xca_dataset',
+            moduleOpen_positive = True,
+            moduleOpen_rigid = True,#False,
+            output_dir = os.path.join("temp", "mask_test07"),  
+            epochs = 1,
+            singleVideoId = None,
+            batch_size = batch_size,#15
+            crop_size = (512,512),#(256,256), 
+            use_proto = False,
+            augMode = 0, #数据增强模式{0:不进行数据增强,1:只对合成血管进行增强,2:对整个合成图像进行增强}
+            bg_loss_weight=0.1,
+        )
 
         
 

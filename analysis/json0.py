@@ -214,15 +214,34 @@ config_data0 = {
 
 
                 { 
-                    "name": "mask_test02(2)",
+                    "name": "mask_test06",
                     "color":"#88A1AE",
                     "gt_path":"outputs/xca_dataset_copy/ground_truth",
                     "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_result/mask_test02(2)",
+                    "pred_path":"outputs/xca_dataset_result/mask_test06",
                     "block_cath":False,
                     "threshold": 0.5,
                 },  
 
+                { 
+                    "name": "mask_test06nr",
+                    "color":"#88A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/mask_test06nr",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
+
+                { 
+                    "name": "mask_test07nr",
+                    "color":"#88A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/mask_test07nr",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
 
             ],
             "usedVideoId":
@@ -256,14 +275,14 @@ if False:
     })
 experiments=[]#{}
 for e in config_data0["experiments"]:
-    # if True:
-    #     experiments.append(e)
-
     if True:
-        e2=e.copy()
-        e2["name"]=e["name"]+"-CATH"
-        e2["block_cath"]=True
-        experiments.append(e2)
+        experiments.append(e)
+
+    # if True:
+    #     e2=e.copy()
+    #     e2["name"]=e["name"]+"-CATH"
+    #     e2["block_cath"]=True
+    #     experiments.append(e2)
 
     # if True:#不如0.8的效果
     #     e2=e.copy()
