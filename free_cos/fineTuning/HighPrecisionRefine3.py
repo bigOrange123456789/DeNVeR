@@ -1,3 +1,4 @@
+
 import os
 import struct
 import numpy as np
@@ -5,6 +6,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 import cv2
+import yaml
 
 class HighPrecisionRefine:
     """
@@ -20,7 +22,8 @@ class HighPrecisionRefine:
                  use_otsu=True, motion_combine='and',    # 固定为 'and' 以获得最严格区域
                  keep_largest_only=True,                  # 是否只保留最大连通组件
                  min_component_area=200,                   # 最小连通组件面积（若 keep_largest_only=False 则使用）
-                 morph_kernel=3):
+                 morph_kernel=3,
+                 save_intermediate=False):                 # 新增：是否保存中间结果
         """
         Args:
             fwd_flo_path: 前向光流 .flo 路径
@@ -35,6 +38,7 @@ class HighPrecisionRefine:
             keep_largest_only: 若 True，只保留面积最大的连通组件；若 False，保留面积 >= min_component_area 的组件
             min_component_area: 最小连通组件面积（当 keep_largest_only=False 时有效）
             morph_kernel: 形态学操作的核大小（可选，设为0则跳过）
+            save_intermediate: 是否保存中间结果图像（调试用）
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         self.fwd_flo_path = fwd_flo_path
@@ -49,6 +53,7 @@ class HighPrecisionRefine:
         self.keep_largest_only = keep_largest_only
         self.min_component_area = min_component_area
         self.morph_kernel = morph_kernel
+        self.save_intermediate = save_intermediate          # 保存标志
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._load_data()
@@ -226,6 +231,52 @@ class HighPrecisionRefine:
         candidate = pred_binary & high_motion
         candidate_np = candidate.cpu().numpy().astype(np.uint8) * 255
 
+        # 保存中间结果（新增功能）
+        if self.save_intermediate:
+            debug_dir = os.path.join(os.path.dirname(self.output_path), "debug")
+            os.makedirs(debug_dir, exist_ok=True)
+            base = os.path.splitext(os.path.basename(self.output_path))[0]
+
+            # 幅值灰度图（归一化）
+            mag_np = mag_fwd.cpu().numpy()
+            mag_norm = cv2.normalize(mag_np, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            Image.fromarray(mag_norm).save(os.path.join(debug_dir, f"{base}_mag_fwd_gray.png"))
+            '''
+                幅值灰度图:
+                    前向光流的幅值（运动速度大小）归一化后的灰度图像。亮度越高表示该像素处的运动幅度越大。
+            '''
+
+            # 误差灰度图（归一化）
+            err_np = err.cpu().numpy()
+            err_norm = cv2.normalize(err_np, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            Image.fromarray(err_norm).save(os.path.join(debug_dir, f"{base}_err_gray.png"))
+            '''
+                误差灰度图:
+                    前后向一致性误差（光流误差）归一化后的灰度图像。
+                    亮度越高表示该像素的前向光流与后向光流越不一致，即光流估计可能不可靠（如遮挡、运动边界、光照变化等）。
+            '''
+
+            # 二值掩码
+            Image.fromarray((high_mag.cpu().numpy() * 255).astype(np.uint8)).save(
+                os.path.join(debug_dir, f"{base}_high_mag.png"))
+            Image.fromarray((high_err.cpu().numpy() * 255).astype(np.uint8)).save(
+                os.path.join(debug_dir, f"{base}_high_err.png"))
+            Image.fromarray((high_motion.cpu().numpy() * 255).astype(np.uint8)).save(
+                os.path.join(debug_dir, f"{base}_high_motion.png"))
+            Image.fromarray(candidate_np).save(
+                os.path.join(debug_dir, f"{base}_candidate.png"))
+            '''
+                高幅值二值图high_mag:
+                    由 Otsu 自适应阈值从幅值图中分割出的二值掩码。白色表示运动幅值高于阈值的像素，黑色表示低于阈值的像素。
+                高误差二值图high_err: #判断处了前向光流与后向光流之和是否为0 #出错的区域反而更有可能是血管所在的区域
+                    由 Otsu 自适应阈值从误差图中分割出的二值掩码。白色表示误差高于阈值的像素，黑色表示误差较低的像素。
+                高置信度运动区域二值图: *_high_motion.png
+                    高幅值和高误差的交集。同时满足“高幅值”和“高误差”的区域。
+                候选区域二值图:*_candidate.png
+                    原始预测掩码与高置信度运动区域的交集。原始预测中位于高置信度运动区域内的部分。
+
+            '''
+
         # 连通组件筛选
         if myprint:print("进行连通组件筛选...")
         selected = self._select_components(candidate_np)
@@ -266,32 +317,26 @@ class HighPrecisionRefine:
                 print(f"  Precision 变化: {delta:+.4f}")
                 print("="*50)
 
-            # 保存中间结果用于调试
-            if False:
-                debug_dir = os.path.join(os.path.dirname(self.output_path), "debug")
-                os.makedirs(debug_dir, exist_ok=True)
-                base = os.path.splitext(os.path.basename(self.output_path))[0]
-                Image.fromarray((high_mag.cpu().numpy() * 255).astype(np.uint8)).save(
-                    os.path.join(debug_dir, f"{base}_high_mag.png"))
-                Image.fromarray((high_err.cpu().numpy() * 255).astype(np.uint8)).save(
-                    os.path.join(debug_dir, f"{base}_high_err.png"))
-                Image.fromarray((high_motion.cpu().numpy() * 255).astype(np.uint8)).save(
-                    os.path.join(debug_dir, f"{base}_high_motion.png"))
-                Image.fromarray(candidate_np).save(
-                    os.path.join(debug_dir, f"{base}_candidate.png"))
-
-        # print("\n处理完成。")
-        # 在 run() 方法的末尾（原评估打印之后）
-        if self.gt_path is not None:
-            # ... 原有打印代码保持不变 ...
-            return metrics_orig, metrics_final   # 新增返回
+            # 返回指标（用于外部聚合）
+            return metrics_orig, metrics_final
         else:
             return None, None
-import yaml
+
+
 script_path = os.path.abspath(__file__)
 ROOT1 = os.path.dirname(script_path)
 file_path = os.path.join(ROOT1, "../..", 'confs/newConfig.yaml')
-def getPrecisionMask(tag,needAna=False): 
+
+def getPrecisionMask(tag, needAna=False, video_list=None, save_intermediate=False):
+    """
+    对指定视频列表（或全部视频）进行高精度后处理，并可选择保存中间结果。
+
+    Args:
+        tag: 预测掩码的标签（如 'A26-03'）
+        needAna: 是否计算评估指标（需提供GT）
+        video_list: 要处理的视频列表，每个元素为 (userId, videoId) 元组；若为None则处理所有视频
+        save_intermediate: 是否保存中间结果图像
+    """
     with open(file_path, 'r', encoding='utf-8') as file:
         config0 = yaml.safe_load(file)
     datasetPath = config0["my"]["datasetPath_rigid.in"]
@@ -306,94 +351,114 @@ def getPrecisionMask(tag,needAna=False):
     total_fn_refined = 0
 
     num_all = 0
-    for userId in os.listdir(datasetPath):
-        user_img_dir = os.path.join(datasetPath, userId, "images")
-        user_gt_dir = os.path.join(datasetPath, userId, "ground_truth")
-        if not os.path.isdir(user_img_dir) or not os.path.isdir(user_gt_dir):
-            continue
-        for videoId in os.listdir(user_img_dir):
-            img_dir = os.path.join(user_img_dir, videoId)
-            num_all = num_all+len(os.listdir(img_dir))-2
-    
-    num_all0 =0
+    # 计算总帧数用于进度显示
+    if video_list is None:
+        # 原逻辑：遍历所有用户和视频
+        for userId in os.listdir(datasetPath):
+            user_img_dir = os.path.join(datasetPath, userId, "images")
+            if not os.path.isdir(user_img_dir):
+                continue
+            for videoId in os.listdir(user_img_dir):
+                img_dir = os.path.join(user_img_dir, videoId)
+                # 减去第一帧和最后一帧（光流需要前后帧）
+                num_all += len([f for f in os.listdir(img_dir) if f.endswith('.png')]) - 2
+    else:
+        # 只统计指定视频的帧数
+        for userId, videoId in video_list:
+            img_dir = os.path.join(datasetPath, userId, "images", videoId)
+            if os.path.isdir(img_dir):
+                num_all += len([f for f in os.listdir(img_dir) if f.endswith('.png')]) - 2
+
+    num_all0 = 0
     print("getPrecisionMask...")
-    for userId in os.listdir(datasetPath):
-        user_img_dir = os.path.join(datasetPath, userId, "images")
-        user_gt_dir = os.path.join(datasetPath, userId, "ground_truth")
-        if not os.path.isdir(user_img_dir) or not os.path.isdir(user_gt_dir):
+
+    # 确定要遍历的视频项
+    if video_list is None:
+        items = []
+        for userId in os.listdir(datasetPath):
+            user_img_dir = os.path.join(datasetPath, userId, "images")
+            if not os.path.isdir(user_img_dir):
+                continue
+            for videoId in os.listdir(user_img_dir):
+                items.append((userId, videoId))
+    else:
+        items = video_list
+
+    for userId, videoId in items:
+        img_dir = os.path.join(datasetPath, userId, "images", videoId)
+        if not os.path.isdir(img_dir):
+            print(f"警告：{img_dir} 不存在，跳过")
             continue
-        for videoId in os.listdir(user_img_dir):
-            img_dir = os.path.join(user_img_dir, videoId)
-            # gt_dir = os.path.join(user_gt_dir, videoId)
-            outpath = os.path.join(
-                config0["my"]["datasetPath_rigid.out"],
-                userId, "decouple", videoId)
-            maskPath = os.path.join(outpath, tag + ".orig_mask")
-            for frameId_png in os.listdir(img_dir):
-                frameId = frameId_png.split(".png")[0]
-                if not int(frameId)==0 and not int(frameId)==len(os.listdir(img_dir))-1:
-                    num_all0 = num_all0+1
-                    print("\rprocess:",num_all0,"/",num_all,end="")
-                    
-                    fwd_flo = os.path.join(customPath, "raw_flows_gap1", videoId, frameId + ".flo")
-                    bwd_flo = os.path.join(customPath, "raw_flows_gap-1", videoId, frameId + ".flo")
-                    gt_mask = os.path.join(datasetPath, userId, "ground_truth", videoId + "CATH", frameId + ".png")
-                    if not needAna: gt_mask = None
-                    pred_mask = os.path.join(maskPath, frameId + ".png")
-                    output_mask = os.path.join(
-                        config0["my"]["filePathRoot"],
-                        config0["my"]["subPath"]["outputs"],
-                        "high_precision_refine",
-                        videoId, frameId + ".png")
-                    
-                    refiner = HighPrecisionRefine(
-                        fwd_flo, bwd_flo, pred_mask, output_mask,
-                        gt_path=gt_mask,
-                        black_thresh=50, white_thresh=200,
-                        use_otsu=True,
-                        motion_combine='and',
-                        keep_largest_only=True,
-                        min_component_area=200,
-                        morph_kernel=3
-                    )
+        # gt_dir = os.path.join(user_gt_dir, videoId)
+        outpath = os.path.join(
+            config0["my"]["datasetPath_rigid.out"],
+            userId, "decouple", videoId)
+        maskPath = os.path.join(outpath, tag + ".orig_mask")
+        for frameId_png in os.listdir(img_dir):
+            if not frameId_png.endswith('.png'):
+                continue
+            frameId = frameId_png.split(".png")[0]
+            if int(frameId) == 0 or int(frameId) == len(os.listdir(img_dir)) - 1:
+                continue
+            num_all0 += 1
+            print(f"\rprocess: {num_all0}/{num_all}", end="")
 
-                # 运行并获取指标
-                metrics_orig, metrics_refined = refiner.run()
+            fwd_flo = os.path.join(customPath, "raw_flows_gap1", videoId, frameId + ".flo")
+            bwd_flo = os.path.join(customPath, "raw_flows_gap-1", videoId, frameId + ".flo")
+            gt_mask = os.path.join(datasetPath, userId, "ground_truth", videoId + "CATH", frameId + ".png") if needAna else None
+            pred_mask = os.path.join(maskPath, frameId + ".png")
+            output_mask = os.path.join(
+                config0["my"]["filePathRoot"],
+                config0["my"]["subPath"]["outputs"],
+                "high_precision_refine",
+                videoId, frameId + ".png")
 
-                if metrics_orig is not None and metrics_refined is not None:
-                    total_tp_orig += metrics_orig['TP']
-                    total_fp_orig += metrics_orig['FP']
-                    total_fn_orig += metrics_orig['FN']
-                    total_tp_refined += metrics_refined['TP']
-                    total_fp_refined += metrics_refined['FP']
-                    total_fn_refined += metrics_refined['FN']
+            refiner = HighPrecisionRefine(
+                fwd_flo, bwd_flo, pred_mask, output_mask,
+                gt_path=gt_mask,
+                black_thresh=50, white_thresh=200,
+                use_otsu=True,
+                motion_combine='and',
+                keep_largest_only=True,
+                min_component_area=200,
+                morph_kernel=3,
+                save_intermediate=save_intermediate   # 传递保存标志
+            )
 
-    # 计算总体 Dice
-    dice_orig = 2 * total_tp_orig / (2 * total_tp_orig + total_fp_orig + total_fn_orig + 1e-8)
-    dice_refined = 2 * total_tp_refined / (2 * total_tp_refined + total_fp_refined + total_fn_refined + 1e-8)
+            # 运行并获取指标
+            metrics_orig, metrics_refined = refiner.run()
 
-    def pre(TP,FP,FN):
-        return TP/(TP+FP)
-        # Precision（精确率） = TP / (TP + FP) —— 预测为正例中实际为正例的比例
-    def sn(TP,FP,FN):
-        return TP/(TP+FN)
-        # Recall（召回率） = TP / (TP + FN) —— 实际为正例中被正确预测的比例
-    print("\n" + "=" * 50)
-    print("整个数据集评估结果（所有帧聚合）")
-    print(f"原始预测: TP={total_tp_orig}, FP={total_fp_orig}, FN={total_fn_orig}, Dice={dice_orig:.4f},pre={pre(total_tp_orig,total_fp_orig,total_fn_orig):.4f},sn={sn(total_tp_orig,total_fp_orig,total_fn_orig):.4f}")
-    print(f"修正后:   TP={total_tp_refined}, FP={total_fp_refined}, FN={total_fn_refined}, Dice={dice_refined:.4f},pre={pre(total_tp_refined, total_fp_refined, total_fn_refined):.4f},sn={sn(total_tp_refined, total_fp_refined, total_fn_refined):.4f}")
-    print("=" * 50)
+            if needAna and metrics_orig is not None and metrics_refined is not None:
+                total_tp_orig += metrics_orig['TP']
+                total_fp_orig += metrics_orig['FP']
+                total_fn_orig += metrics_orig['FN']
+                total_tp_refined += metrics_refined['TP']
+                total_fp_refined += metrics_refined['FP']
+                total_fn_refined += metrics_refined['FN']
+
+    # 如果有评估数据，打印整体结果
+    if needAna:
+        dice_orig = 2 * total_tp_orig / (2 * total_tp_orig + total_fp_orig + total_fn_orig + 1e-8)
+        dice_refined = 2 * total_tp_refined / (2 * total_tp_refined + total_fp_refined + total_fn_refined + 1e-8)
+
+        def pre(TP, FP, FN):
+            return TP / (TP + FP)
+        def sn(TP, FP, FN):
+            return TP / (TP + FN)
+
+        print("\n" + "=" * 50)
+        print("整个数据集评估结果（所有帧聚合）")
+        print(f"原始预测: TP={total_tp_orig}, FP={total_fp_orig}, FN={total_fn_orig}, Dice={dice_orig:.4f}, pre={pre(total_tp_orig,total_fp_orig,total_fn_orig):.4f}, sn={sn(total_tp_orig,total_fp_orig,total_fn_orig):.4f}")
+        print(f"修正后:   TP={total_tp_refined}, FP={total_fp_refined}, FN={total_fn_refined}, Dice={dice_refined:.4f}, pre={pre(total_tp_refined, total_fp_refined, total_fn_refined):.4f}, sn={sn(total_tp_refined, total_fp_refined, total_fn_refined):.4f}")
+        print("=" * 50)
+
 
 # ---------- 使用示例 ----------
 if __name__ == "__main__":
     # from nir.param import configs 
     # tag=configs[0]["decouple"]["tag"]
     tag = "A26-03"
-    getPrecisionMask(tag, needAna=True)
-
-'''
-    目标: 将查准率提升到99%
-    查看最差的分割案例
-    看不同分割维度的具体形式
-'''
-
+    # 示例：只处理特定视频，并保存中间结果
+    video_list = [("CVAI-1207", "CVAI-1207RAO2_CAU30")]
+    # [("user1", "video1"), ("user2", "video2")]  # 请替换为实际存在的用户和视频ID #######
+    getPrecisionMask(tag, needAna=True, video_list=video_list, save_intermediate=True)
