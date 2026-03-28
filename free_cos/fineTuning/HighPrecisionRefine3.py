@@ -334,7 +334,7 @@ def getPrecisionMask(tag, needAna=False, video_list=None, save_intermediate=Fals
     Args:
         tag: 预测掩码的标签（如 'A26-03'）
         needAna: 是否计算评估指标（需提供GT）
-        video_list: 要处理的视频列表，每个元素为 (userId, videoId) 元组；若为None则处理所有视频
+        video_list: 要处理的视频列表，每个元素为 (userId, videoId) 元组;若为None则处理所有视频;
         save_intermediate: 是否保存中间结果图像
     """
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -462,3 +462,7 @@ if __name__ == "__main__":
     video_list = [("CVAI-1207", "CVAI-1207RAO2_CAU30")]
     # [("user1", "video1"), ("user2", "video2")]  # 请替换为实际存在的用户和视频ID #######
     getPrecisionMask(tag, needAna=True, video_list=video_list, save_intermediate=True)
+    '''
+        我现在只是想去除血管中的错误区域
+        有两个模块
+    '''
