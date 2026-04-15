@@ -323,7 +323,8 @@ class Decouple_rigid(nn.Module):
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
                 step, epochs0, vesselMask=None): # soft, rigid, fluid
-        xyt = self.undateXY(xyt, blurriness=8)
+        if False: #降低坐标的分辨率，会让拟合结果产生锯齿
+            xyt = self.undateXY(xyt, blurriness=8)
         # xyt = xyt_raw
         # print("type(xyt):",type(xyt))
         # print("xyt.shape:",xyt.shape)

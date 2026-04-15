@@ -494,7 +494,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if True: #True: # #处理全部数据 ####
+    if False:#True: #True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -509,7 +509,7 @@ def main():
         # usedVideoId = ['CVAI-2855LAO26_CRA31.5']
         # usedVideoId = ["CVAI-2855LAO26_CRA31_new"]
         usedVideoId = ['CVAI-1253LAO0_CAU29']
-        # usedVideoId = ['CVAI-1207LAO44_CRA29']
+        usedVideoId = ['CVAI-1207LAO44_CRA29']
         # usedVideoId = ['CVAI-1207LAO44_CRA29','CVAI-1253LAO0_CAU29','CVAI-2174LAO42_CRA18','CVAI-2855LAO26_CRA31']
 
         # usedVideoId = [
@@ -518,6 +518,10 @@ def main():
         #     # 'CVAI-1251LAO30_CRA19', 'CVAI-1251LAO59_CAU24', 'CVAI-1253LAO0_CAU29', 'CVAI-1253RAO29_CAU19', 
         #     # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
         #     ]
+        usedVideoId = [
+            "CVAI-1264LAO33_CRA22"
+            # "CVAI-1257RAO0_CRA1"
+            ]
     ''' 将视频在这里进行解耦 '''
     
     print("代码分为三个阶段:视频解耦->分割推理->对比分析")
@@ -532,7 +536,7 @@ def main():
                       repeating=False, #True
                       )
     print("视频解耦完成!")
-    # exit(0)
+    exit(0)
 
     print("二、分割推理部分")
     configs1=[]

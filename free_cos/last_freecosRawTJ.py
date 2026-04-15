@@ -70,8 +70,18 @@ def compute_video_stats(video_dirs, max_workers=4):
 # ==================== 数据集类 ====================
 class LabeledSegmentationDataset(Dataset):
     """有标注数据集：加载图像和对应的二值标签，并使用视频特定的归一化"""
-    def __init__(self, label_root, image_root, video_to_user, video_stats, singleVideoId=None):
+    def __init__(self, 
+                 label_root, 
+                 image_root, 
+                 video_to_user, video_stats, singleVideoId=None):
+        '''
+            label_root = './log_26/outputs/high_precision_refine',
+            image_root = '../DeNVeR_in/CADICA_sim',
+        '''
         self.samples = []
+        for userId in os.listdir(image_root):
+            for videoId in os.listdir():
+                print()
         for videoId in os.listdir(label_root):
             if singleVideoId is None or singleVideoId == videoId:
                 label_video_dir = os.path.join(label_root, videoId)
@@ -484,7 +494,7 @@ def collect_background_paths(image_root, decouple_root, singleVideoId, moduleOpe
 
 # ==================== 主训练流程 ====================
 def main(
-    image_root = '../DeNVeR_in/xca_dataset',
+    image_root = '../DeNVeR_in/CADICA_sim',#'../DeNVeR_in/xca_dataset',
     label_root = './log_26/outputs/high_precision_refine',
     decouple_root = './log_26/xca_dataset',
     vessel_folder_path = '../DeNVeR_in/fake_grayvessel_bend',
@@ -528,15 +538,18 @@ def main(
     video_dirs_set = set()
     for _, video_dir in bg_paths:
         video_dirs_set.add(video_dir)
-    for videoId in os.listdir(label_root):
-        userId = video_to_user.get(videoId)
-        if userId:
+    # **--** #
+    for userId in os.listdir(image_root):
+        print("userId:",userId)
+        for videoId in os.listdir(os.path.join(image_root, userId, 'images')):
+            print("videoId:",videoId)
             if singleVideoId is None or singleVideoId == videoId:
                 video_dir = os.path.join(image_root, userId, 'images', videoId)
                 if os.path.isdir(video_dir):
                     video_dirs_set.add(video_dir)
     video_dirs = list(video_dirs_set)
     print(f"Need to compute stats for {len(video_dirs)} video directories.")
+    exit(0)
 
     # 4. 计算视频统计量
     video_stats = compute_video_stats(video_dirs, max_workers=4)

@@ -167,7 +167,8 @@ class SineLayer(nn.Module):
         self.activationFun = activationFun
         
         self.in_features = in_features
-        self.linear = nn.Linear(in_features, out_features, bias=bias)
+        self.linear = nn.Linear(int(in_features), int(out_features), bias=bias) 
+        # self.linear = nn.Linear(in_features, out_features, bias=bias)
         
         if self.activationFun=="sin":
             self.init_weights()

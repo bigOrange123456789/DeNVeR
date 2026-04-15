@@ -233,6 +233,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         if useMask:
             if True:#not os.path.exists(maskPath):
                 Segment_model=mainFreeCOS_sim(paramPath,pathIn,maskPath)
+    # maskPath=os.path.join(outpath, "output_seg")
+    # print("maskPath:",maskPath)
 
     # 刚体解耦
     if not flagHadRigid:
@@ -325,16 +327,18 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 save1(
                     orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                     tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
+            if NUM_rigid>1:
+                for i in range(len(layers["r"])):
+                    save1(layers["r"][i], tag+".rigid" + str(i))
         if False:
-            for i in range(len(layers["r"])):
-                save1(layers["r"][i], tag+".rigid" + str(i))
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
         # fluid结果
         if NUM_fluid>0:#"f" in layers:
             save1(p["o_fluid_all"], tag+".fluid")
-            for i in range(len(layers["f"])):
-                save1(layers["f"][i], tag+".fluid" + str(i))
+            if NUM_fluid>1:
+                for i in range(len(layers["f"])):
+                    save1(layers["f"][i], tag+".fluid" + str(i))
 
         # rigid (推理分割图，并评估指标，推理分割图+连通后处理)
         if False:
@@ -801,9 +805,9 @@ def startDecouple2_sim(videoId,paramPath,pathIn,outpath,config=None,origVideoPat
         save1(orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non")
         save1(p["o_soft_all"], tag+".soft")
 
-        # if len(layers["r"])>1:
-        #  for i in range(len(layers["r"])):
-        #     save1(layers["r"][i], "rigid" + str(i))
+        if len(layers["r"])>1:
+         for i in range(len(layers["r"])):
+            save1(layers["r"][i], "rigid" + str(i))
         # if len(layers["s"]) > 1:
         #  for i in range(len(layers["s"])):
         #     save1(layers["s"][i], "soft" + str(i))
