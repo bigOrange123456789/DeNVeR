@@ -137,6 +137,8 @@ class Decouple_rigid(nn.Module):
                 reconFlow=False
                  ):
         super().__init__()
+        self.softHasSelfGlobal = configSofts["layer"]["useGlobal"]
+        print("softHasSelfGlobal:",self.softHasSelfGlobal,"用于判断软体层是否有自己的运动")
         self.dynamicVesselMask = dynamicVesselMask
         self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
@@ -244,8 +246,10 @@ class Decouple_rigid(nn.Module):
             #     config=configRigid,
             #     use_dynamicFeatureMask=use_dynamicFeatureMask,
             # ))
+            print("type(configRigids[layer]) is list",type(configRigids["layer"]) is list ,type(configRigids["layer"]))
             self.f_rigid_list.append(Layer2(
-                config=configRigids["layer"],
+                # config=configRigids["layer"],
+                config=configRigids["layer"][i] if (type(configRigids["layer"]) is list) else configRigids["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 # useMatrix=True,
@@ -484,7 +488,9 @@ class Decouple_rigid(nn.Module):
         o_soft_mask_list = []
         loss_conciseS = torch.tensor(0.0)
         for i in range(self.NUM_soft):
-            o_soft0, _ = self.f_soft_list[i](xyt+h_global, step) #软体运动基于刚体运动
+            o_soft0, _ = self.f_soft_list[i](
+                xyt if self.softHasSelfGlobal else xyt+h_global, #xyt+h_global, #使用自己的运动还是刚体的运动
+                step) #软体运动基于刚体运动
             o_soft0_gray = o_soft0[:, 0:1]
             if self.useSoftMask:#如果使用了软体遮挡
                 o_soft_mask = self.f_soft_mask_list[i](xyt,epochs0)#(xyt, step)
