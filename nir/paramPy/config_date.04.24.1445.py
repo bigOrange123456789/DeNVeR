@@ -1,22 +1,22 @@
-config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
+config_A26_03={ #follow A26-03: 渐进式学习 
             "decouple":{ # 解耦
-                "tag":"A27-09.moveRigid2",
+                "tag":"A26-03",
                 "de-rigid":"1_sim",#去噪框架
-                #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000,          #只兼容了startDecouple1 #recon_all=0.00011
-                "epochs":0.625,#欠拟合和过拟合都没太大差别
-                "batch_size_scale":0.5,#1/8,
+                #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
+                "epochs":0.625,#
+                "batch_size_scale":1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    # "startEpoch":1000*10,
-                    # "intervalEpoch":3000,#300,
-                    "startStep":0.5*10,
-                    "intervalStep":1.5,
+                    # "startStep":0.5*10, #False
+                    # "intervalStep":1.5,
+                    "startStep":0.5, #True
+                    "intervalStep":0.2, #更新三次
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":False,#True,
                 # 1 模型本身
                 # 1.1 刚体模块
-                "NUM_rigid":2,#只有一个运动的刚体
+                "NUM_rigid":1,#只有一个运动的刚体
                 "configRigids":{ # 整个刚体层模块的参数
                     "layer":{
                         "use_residual":{
@@ -25,9 +25,9 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                             "T":False,
                         },
                         # 整体运动
-                        "useGlobal":True,
-                        'hidden_layers_global':4,
-                        'hidden_features_global':128,
+                        "useGlobal":False,
+                        'hidden_layers_global':1,
+                        'hidden_features_global':1,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -38,7 +38,7 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                         # 纹理
                         "dynamicTex":False, #动态纹理
                         'hidden_layers_map':2,#1,#2,#4,#32,#4,
-                        'hidden_features_map': 0.5*8*512,#8*512,#256,#64,#8,#2*4*512,#16*4*512,#128,#512, #128,
+                        'hidden_features_map': 8*512,#256,#64,#8,#2*4*512,#16*4*512,#128,#512, #128,
                         "posEnc":False,
                         "use_featureMask":False,
                     },
@@ -46,7 +46,7 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                 "openLocalDeform":False, #True,
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
-                "NUM_soft":0,
+                "NUM_soft":1,
                 "configSofts":{ # 软体
                     "layer":{
                         "use_residual":{
@@ -103,8 +103,8 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                         "useLocal":False,
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
-                        "hidden_layers_map": 2,#4, 
-                        "hidden_features_map": 0.5*4*512,#256,#64,#8,#256,#3*256,#7*256, 
+                        "hidden_layers_map": 4, 
+                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -112,14 +112,13 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                         }, 
                         "use_featureMask":False,#True,
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
-                    },        
+                    },                    
                     #######################
                     "vesselMaskInference":True,#False,
                     "gradualImageLayers":False, #没啥用的功能
                     # "use_maskP":False, #自动学习MASK遮挡图、无效功能
                 }, # 现在的首要问题是无损失地拟合出来视频
                 # 2.损失函数
-                "reconFlow":False,#True,#False,#
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
                 "weight_concise":0.00001,
@@ -132,11 +131,11 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                 #     "rv":"F", #前景
                 #     }, 
                 "lossParam":{ 
-                    "ra":"R,S,F", 
-                    "rm":"", 
-                    "rv":"", 
+                    "ra":"R", 
+                    "rm":"S", 
+                    "rv":"F", 
                     }, 
-                "lossParam_vessel":{ #只训练血管时的参数
+                "lossParam_vessel":{ 
                     "ra":"F", 
                     "rm":None, 
                     "rv":None, 
@@ -153,12 +152,12 @@ config_sim={ #刚体层运动的拟合效果很好 #刚体层可移动，
                 ########################
                 "de-soft":None,
             },
-            "name": "A27-09.moveRigid2", #提高模型的拟合能力
+            "name": "A26-03", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A27-09.moveRigid.rigid",
-            "input_mode": "A27-09.moveRigid.rigid.non1",
+            "noise_label":"A26-03.rigid",
+            "input_mode": "A26-03.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll":True,# False,#True,#
+            "inferenceAll": True,#False,
             "mergeMask": False,
         }

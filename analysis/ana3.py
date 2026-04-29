@@ -271,7 +271,8 @@ def plot_roc_curves(roc_data, colors):
         plt.plot(fpr, tpr, color=colors[name], lw=2,
                 label=f'{name} (AUC = {roc_auc:.3f})')
     
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', alpha=0.5, label='Random Classifier')
+    if False:
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', alpha=0.5, label='Random Classifier')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
@@ -292,7 +293,8 @@ def plot_pr_curves(pr_data, colors):
     
     # 添加随机分类器的参考线
     no_skill = len(np.where(np.array(pr_data[list(pr_data.keys())[0]][0]) > 0.5)[0]) / len(pr_data[list(pr_data.keys())[0]][0]) if pr_data else 0.5
-    plt.plot([0, 1], [no_skill, no_skill], linestyle='--', color='navy', alpha=0.5, label='Random Classifier')
+    if False:
+        plt.plot([0, 1], [no_skill, no_skill], linestyle='--', color='navy', alpha=0.5, label='Random Classifier')
     
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])

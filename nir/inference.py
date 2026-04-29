@@ -494,7 +494,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False:#True: #True: # #处理全部数据 ####
+    if True: #True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -537,7 +537,7 @@ def main():
                       repeating=False, #True
                       )
     print("视频解耦完成!")
-    exit(0)
+    # exit(0)
 
     print("二、分割推理部分")
     configs1=[]

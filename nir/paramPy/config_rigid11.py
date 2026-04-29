@@ -156,7 +156,7 @@ config_rigid11={ #流体层进行渐进式学习
                 ########################
                 "de-soft":None,
             },
-            "name": "A27-09.moveRigid2", #提高模型的拟合能力
+            "name": "A27-09.moveRigid2", 
             "precomputed": False,
             "noise_label":"A27-09.moveRigid.rigid",
             "input_mode": "A27-09.moveRigid.rigid.non1",
