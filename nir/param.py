@@ -18,6 +18,11 @@ from nir.paramPy.config_rigid11 import config_rigid11 #双刚体
 from nir.paramPy.config_rigid12 import config_rigid12 #单刚体
 from nir.paramPy.config_soft00 import config_soft00
 from nir.paramPy.config_A26_03 import config_A26_03 #最好的效果
+from nir.paramPy.config_A26_03_01 import config_A26_03_01 #和03一样
+from nir.paramPy.config_A26_03_01B import config_A26_03_01B #
+from nir.paramPy.config_A26_03_01C import config_A26_03_01C #测试没有软体是否不降低指标
+from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
+from nir.paramPy.config_A26_03_02B import config_A26_03_02B
 
 # 目前最重要的是确认论文中使用的量化结果是如何获取到的
 if True:
@@ -79,13 +84,17 @@ if True:
         --test33: 主刚运动网络的宽度加倍、batch减半
         --test34: 增加主刚纹理信息
     ''' 
-    c0=config_rigid12
+    # config_rigid12
     
     # ***--二、提取流体--***
     # config_fluid00,
 
     # ***--三、提取软体--***
     # config_soft00
+
+    # ***--四、最佳效果--***
+    c0 = config_A26_03_01C
+    print("使用了最佳效果:config_A26_03_01C")
     
     # 定义多个配置
     configs = [#在短视频数据上的测试结果

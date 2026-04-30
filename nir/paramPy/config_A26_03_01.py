@@ -1,17 +1,18 @@
 '''
-    实验设备: AutoDL_H、DeNVeR.26-3
+    实验设备: AutoDL_H、DeNVeR.26-3_new
+    我希望能够作为新的baseline
     ECLU:
         分为两部分,
             一部分是渐进式ECLU: 
                 只作用于软体
-                没有启用
+                启用
             另外一部分是动态ECLU: 
                 作用于刚体和软体两部分
                 这个测试没有启用
 '''
-config_A26_03={ #follow 25: 测试动态血管遮挡
+config_A26_03_01={ #follow 25: 测试动态血管遮挡
             "decouple":{ # 解耦
-                "tag":"A26-03",
+                "tag":"A26-03-01",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -163,10 +164,10 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03", #提高模型的拟合能力
+            "name": "A26-03-01", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03.rigid",
-            "input_mode": "A26-03.rigid.non1",
+            "noise_label":"A26-03-01.rigid",
+            "input_mode": "A26-03-01.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

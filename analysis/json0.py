@@ -3,25 +3,25 @@ import os
 config_data0 = {
             "experiments" : [
 
-                { 
-                    "name": "_011_continuity_01",
-                    "color":"#88A1AE",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_01",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },  
+                # { 
+                #     "name": "_011_continuity_01",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_01",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
-                { 
-                    "name": "_011_continuity_02",
-                    "color":"#88A1AE",
-                    "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
-                    "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
-                    "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_02",
-                    "block_cath":False,
-                    "threshold": 0.5,
-                },  
+                # { 
+                #     "name": "_011_continuity_02",
+                #     "color":"#88A1AE",
+                #     "gt_path":"outputs/xca_dataset_sim2_copy/ground_truth",
+                #     "cath_path":"outputs/xca_dataset_sim2_copy/ground_truth_CATH",
+                #     "pred_path":"outputs/xca_dataset_sim2_result/_011_continuity_02",
+                #     "block_cath":False,
+                #     "threshold": 0.5,
+                # },  
 
                 # { 
                 #     "name": "A23-01",
@@ -263,15 +263,63 @@ config_data0 = {
                 #     "threshold": 0.5,
                 # },  
 
+                { 
+                    "name": "A26-03",
+                    "color":"#88A18E",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A26-03",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
+                { 
+                    "name": "A26-03-01",
+                    "color":"#88A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A26-03-01",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
+                { 
+                    "name": "A26-03-02",
+                    "color":"#78A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A26-03-02",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
+
+                { 
+                    "name": "A26-03-01B",
+                    "color":"#89A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A26-03-01B",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                },  
+                { 
+                    "name": "A26-03-02B",
+                    "color":"#79A1AE",
+                    "gt_path":"outputs/xca_dataset_copy/ground_truth",
+                    "cath_path":"outputs/xca_dataset_copy/ground_truth_CATH",
+                    "pred_path":"outputs/xca_dataset_result/A26-03-02B",
+                    "block_cath":False,
+                    "threshold": 0.5,
+                }, 
+
             ],
             "usedVideoId":
-                # [
-                #     # 'CVAI-1207LAO44_CRA29',
-                #     'CVAI-1253LAO0_CAU29',
-                #     # 'CVAI-2174LAO42_CRA18', 
-                #     # 'CVAI-2855LAO26_CRA31',
-                # ],
-                os.listdir("outputs/xca_dataset_copy/ground_truth"),
+                [
+                    # 'CVAI-1207LAO44_CRA29',
+                    # 'CVAI-1253LAO0_CAU29',
+                    # 'CVAI-2174LAO42_CRA18', 
+                    # 'CVAI-2855LAO26_CRA31',
+                    "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
+                ],
+                # os.listdir("outputs/xca_dataset_copy/ground_truth"),
                 # os.listdir("outputs/xca_dataset_result/_0_1.masks"),
             "DataFiltering": 
                 # "T",

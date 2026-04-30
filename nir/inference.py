@@ -494,7 +494,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if True: #True: # #处理全部数据 ####
+    if False: #True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -519,9 +519,10 @@ def main():
         #     # 'CVAI-1255LAO52_CAU1', 'CVAI-1255LAO57_CRA18'
         #     ]
         usedVideoId = [
-            "CVAI-2855RAO4_CRA35",
+            # "CVAI-2855RAO4_CRA35",
             # "CVAI-1264LAO33_CRA22"
             # "CVAI-1257RAO0_CRA1"
+            "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
             ]
     ''' 将视频在这里进行解耦 '''
     

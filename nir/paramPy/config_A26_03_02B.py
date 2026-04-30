@@ -1,17 +1,20 @@
 '''
-    实验设备: AutoDL_H、DeNVeR.26-3
+    这是"渐进式ECLU"的消融实验，我希望它的结果很差
+        失败、指标没有显著下降
+    实验设备: AutoDL_I、DeNVeR.26-3_new
+    Running time: 14.35880614048905 hours
     ECLU:
         分为两部分,
             一部分是渐进式ECLU: 
-                只作用于软体
+                只作用于流体
                 没有启用
             另外一部分是动态ECLU: 
                 作用于刚体和软体两部分
                 这个测试没有启用
 '''
-config_A26_03={ #follow 25: 测试动态血管遮挡
+config_A26_03_02B={ #follow 25: 测试动态血管遮挡
             "decouple":{ # 解耦
-                "tag":"A26-03",
+                "tag":"A26-03-02B",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -58,7 +61,7 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
                 "NUM_soft":1,
-                "configSofts":{ # 软体
+                "configSofts":{ # 真刚体
                     "layer":{
                         "use_residual":{
                             "R":False,
@@ -66,23 +69,23 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                             "T":False,
                         },
                         # 1.整体运动
-                        "useGlobal":False, #True,
-                        'hidden_layers_global':1,#2, 
-                        'hidden_features_global':1,#8*128, 
+                        "useGlobal":False,
+                        'hidden_layers_global':2, 
+                        'hidden_features_global':8*128, 
                         # 2.局部运动
                         "useLocal":False, #True,
                         'hidden_layers_local':1,#2,
                         'hidden_features_local':1,#8*128, # Mask遮挡
                         # 3.纹理
-                        "dynamicTex":True, #动态纹理
-                        'hidden_layers_map':4, # 1, # 2, # 4, # 32, # 4,
-                        'hidden_features_map': 64,#8*512, # 将隐含层特征维度变为1/8
+                        "dynamicTex":False, #动态纹理
+                        'hidden_layers_map':2,#4, # 1, # 2, # 4, # 32, # 4,
+                        'hidden_features_map': 4*512,#64,#8*512, # 将隐含层特征维度变为1/8
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":True, #渐进式遮挡向量
+                        "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -163,10 +166,10 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03", #提高模型的拟合能力
+            "name": "A26-03-02B", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03.rigid",
-            "input_mode": "A26-03.rigid.non1",
+            "noise_label":"A26-03-02B.rigid",
+            "input_mode": "A26-03-02B.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

@@ -1,17 +1,19 @@
 '''
-    实验设备: AutoDL_H、DeNVeR.26-3
+    实验设备: AutoDL_H、DeNVeR.26-3_new
+    Running time: 14.100851207706663 hours
+    我希望能够作为新的baseline(本身达到了目标、但是对称组没有显著下降)
     ECLU:
         分为两部分,
             一部分是渐进式ECLU: 
                 只作用于软体
-                没有启用
+                启用
             另外一部分是动态ECLU: 
                 作用于刚体和软体两部分
                 这个测试没有启用
 '''
-config_A26_03={ #follow 25: 测试动态血管遮挡
+config_A26_03_01B={ #follow 25: 测试动态血管遮挡
             "decouple":{ # 解耦
-                "tag":"A26-03",
+                "tag":"A26-03-01B",#这里测试的时候写错了，写成了"A26-03-01"
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -66,17 +68,17 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                             "T":False,
                         },
                         # 1.整体运动
-                        "useGlobal":False, #True,
-                        'hidden_layers_global':1,#2, 
-                        'hidden_features_global':1,#8*128, 
+                        "useGlobal":False,
+                        'hidden_layers_global':2, 
+                        'hidden_features_global':8*128, 
                         # 2.局部运动
                         "useLocal":False, #True,
                         'hidden_layers_local':1,#2,
                         'hidden_features_local':1,#8*128, # Mask遮挡
                         # 3.纹理
-                        "dynamicTex":True, #动态纹理
-                        'hidden_layers_map':4, # 1, # 2, # 4, # 32, # 4,
-                        'hidden_features_map': 64,#8*512, # 将隐含层特征维度变为1/8
+                        "dynamicTex":False, #动态纹理
+                        'hidden_layers_map':2,#4, # 1, # 2, # 4, # 32, # 4,
+                        'hidden_features_map': 4*512,#64,#8*512, # 将隐含层特征维度变为1/8
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -163,10 +165,10 @@ config_A26_03={ #follow 25: 测试动态血管遮挡
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03", #提高模型的拟合能力
+            "name": "A26-03-01B", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03.rigid",
-            "input_mode": "A26-03.rigid.non1",
+            "noise_label":"A26-03-01B.rigid",
+            "input_mode": "A26-03-01B.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
