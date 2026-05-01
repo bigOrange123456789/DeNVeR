@@ -1,8 +1,8 @@
 '''
-    实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: ?? hours
+    实验设备: AutoDL_J、DeNVeR.26-3_new
+    Running time: 5.65118171022998 hours
     实验内容：
-        测试没有软体的效果【后面要测试没有流体、刚体参数减少的效果】
+        测试没有软体和流体的效果【后面要测试刚体参数减少的效果】
     预期目标：
         我希望能在不降低指标的情况下加快分析速度
     ECLU:
@@ -14,15 +14,15 @@
                 作用于刚体和软体两部分
                 这个测试没有启用
 '''
-config_A26_03_01C={ #follow 25: 测试动态血管遮挡
+config_A26_03_01D={ #follow 25: 测试动态血管遮挡
             "decouple":{ # 解耦
-                "tag":"A26-03-01C",#这里测试的时候写错了，写成了"A26-03-01"
+                "tag":"A26-03-01D",#这里测试的时候写错了，写成了"A26-03-01"
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
                 "batch_size_scale":1/2,#1/3,#,1/4,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    # "startStep":0.5*10, #False
+                    # "startStep":0.5*10, # False
                     # "intervalStep":1.5,
                     "startStep":0.5, #True
                     "intervalStep":0.2, #更新三次
@@ -105,7 +105,7 @@ config_A26_03_01C={ #follow 25: 测试动态血管遮挡
                     },
                 },
                 # 1.3 流体模块
-                "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                "NUM_fluid":0, # 0.00019 -> 0.00016、0.00015
                 "configFluids":{ #参数数量
                     "layer":{
                         "use_residual":{
@@ -168,10 +168,10 @@ config_A26_03_01C={ #follow 25: 测试动态血管遮挡
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01C", #提高模型的拟合能力
+            "name": "A26-03-01D", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01C.rigid",
-            "input_mode": "A26-03-01C.rigid.non1",
+            "noise_label":"A26-03-01D.rigid",
+            "input_mode": "A26-03-01D.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

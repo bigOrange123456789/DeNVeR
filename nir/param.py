@@ -20,9 +20,13 @@ from nir.paramPy.config_soft00 import config_soft00
 from nir.paramPy.config_A26_03 import config_A26_03 #最好的效果
 from nir.paramPy.config_A26_03_01 import config_A26_03_01 #和03一样
 from nir.paramPy.config_A26_03_01B import config_A26_03_01B #
-from nir.paramPy.config_A26_03_01C import config_A26_03_01C #测试没有软体是否不降低指标
+from nir.paramPy.config_A26_03_01C import config_A26_03_01C #测试没有软体是否不降低指标            #?
+from nir.paramPy.config_A26_03_01D import config_A26_03_01D #测试没有软体和流体是否不降低指标       #指标显著下降(流体很重要?)
+from nir.paramPy.config_A26_03_01E import config_A26_03_01E #测试只有宽度减半的刚体是否不降低指标    #指标显著下降
+from nir.paramPy.config_A26_03_01F import config_A26_03_01F
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
 from nir.paramPy.config_A26_03_02B import config_A26_03_02B
+from nir.paramPy.config_A26_03_02F import config_A26_03_02F
 
 # 目前最重要的是确认论文中使用的量化结果是如何获取到的
 if True:
@@ -93,8 +97,8 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01C
-    print("使用了最佳效果:config_A26_03_01C")
+    c0 = config_A26_03_01F
+    print("执行参数:config_A26_03_01F")
     
     # 定义多个配置
     configs = [#在短视频数据上的测试结果
