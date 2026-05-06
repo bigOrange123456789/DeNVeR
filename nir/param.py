@@ -20,10 +20,12 @@ from nir.paramPy.config_soft00 import config_soft00
 from nir.paramPy.config_A26_03 import config_A26_03 #最好的效果
 from nir.paramPy.config_A26_03_01 import config_A26_03_01 #和03一样
 from nir.paramPy.config_A26_03_01B import config_A26_03_01B #
+from nir.paramPy.config_A26_03_01B2 import config_A26_03_01B2
 from nir.paramPy.config_A26_03_01C import config_A26_03_01C #没软体            #下降、当相对流体消融下降的很少
 from nir.paramPy.config_A26_03_01D import config_A26_03_01D #没软体和流体       #显著下降(流体很重要?)
 from nir.paramPy.config_A26_03_01E import config_A26_03_01E #只有宽度减半的刚体    #显著下降
 from nir.paramPy.config_A26_03_01F import config_A26_03_01F #用渐进式破坏软体干扰
+from nir.paramPy.config_A26_03_01F2 import config_A26_03_01F2
 from nir.paramPy.config_A26_03_01G import config_A26_03_01G
 from nir.paramPy.config_A26_03_01H import config_A26_03_01H
 from nir.paramPy.config_A26_03_01I import config_A26_03_01I
@@ -103,7 +105,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01I
+    c0 = config_A26_03_01F2
     print("config-name:",c0["name"])
     
     # 定义多个配置

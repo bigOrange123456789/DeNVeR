@@ -1,18 +1,18 @@
 '''
-    测试自适应特征向量遮挡算法
-        希望能够作为新的baseline、希望指标较高;
-    结果
-        比渐进式遮挡效果好一点、但好得不多
     实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: 5.9077992545233835 hours
+    目的:
+        测试batch_size对效果的影响
+    预计:
+        期望指标不变、batch_size不影响结果
+    Running time: ?? hours
 '''
-config_A26_03_01G={ # follow: config_A26_03_01B
+config_A26_03_01B2={ #follow config_A26_03_01B: 测试batch_size对效果的影响
             "decouple":{ # 解耦
-                "tag":"A26-03-01G",
+                "tag":"A26-03-01B2",#这里测试的时候写错了，写成了"A26-03-01"
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":0.3,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -21,7 +21,7 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
-                "use_dynamicFeatureMask":True,#False,#True,
+                "use_dynamicFeatureMask":False,#True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -33,16 +33,16 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                             "T":False,
                         },
                         # 整体运动
-                        "useGlobal":True,#False,
-                        'hidden_layers_global':2,#1,
-                        'hidden_features_global':8*128,#1,
+                        "useGlobal":False,
+                        'hidden_layers_global':1,
+                        'hidden_features_global':1,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
                         # 局部运动
                         "useLocal":False,
-                        'hidden_layers_local':0,#1,
-                        'hidden_features_local':0,#1,
+                        'hidden_layers_local':1,
+                        'hidden_features_local':1,
                         # 纹理
                         "dynamicTex":False, #动态纹理
                         'hidden_layers_map':2,#1,#2,#4,#32,#4,
@@ -60,21 +60,20 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                         "use_residual":{
                             "R":False,
                             "S":False,
-                            "L":False,
                             "T":False,
                         },
                         # 1.整体运动
                         "useGlobal":False,
-                        'hidden_layers_global':0,#1,#2, 
-                        'hidden_features_global':0,#1,#8*128, 
+                        'hidden_layers_global':2, 
+                        'hidden_features_global':8*128, 
                         # 2.局部运动
-                        "useLocal":True,#False, #True,
-                        'hidden_layers_local':2,#1,#2,
-                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        "useLocal":False, #True,
+                        'hidden_layers_local':1,#2,
+                        'hidden_features_local':1,#8*128, # Mask遮挡
                         # 3.纹理
-                        "dynamicTex":True,#False, #动态纹理
-                        'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
-                        'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
+                        "dynamicTex":False, #动态纹理
+                        'hidden_layers_map':2,#4, # 1, # 2, # 4, # 32, # 4,
+                        'hidden_features_map': 4*512,#64,#8*512, # 将隐含层特征维度变为1/8
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -108,12 +107,8 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                         },
                         # 整体运动
                         "useGlobal":False,
-                        'hidden_layers_global':0, 
-                        'hidden_features_global':0,
                         # 局部运动
                         "useLocal":False,
-                        'hidden_layers_local':0,
-                        'hidden_features_local':0,
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
                         "hidden_layers_map": 4, 
@@ -134,7 +129,7 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
-                "weight_concise":1,#0.01,#0.00001,
+                "weight_concise":0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
@@ -165,10 +160,10 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01G", #提高模型的拟合能力
+            "name": "A26-03-01B2", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01G.rigid",
-            "input_mode": "A26-03-01G.rigid.non1",
+            "noise_label":"A26-03-01B2.rigid",
+            "input_mode": "A26-03-01B2.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
