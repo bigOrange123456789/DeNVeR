@@ -1,16 +1,19 @@
 '''
-    测试自适应特征向量遮挡算法
-        希望能够作为新的baseline、希望指标较高
-    实验设备: AutoDL_J、DeNVeR.26-3_new
+    测试内容:
+        关闭自适应的效果
+        与config_A26_03_01G的区别只有use_dynamicFeatureMask
+    结果预测：
+        希望作为一个负面的消融案例、预计指标会下降
+    实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours
 '''
-config_A26_03_01G={ # follow: config_A26_03_01B
+config_A26_03_02G={ # follow: config_A26_03_01G
             "decouple":{ # 解耦
-                "tag":"A26-03-01G",
+                "tag":"A26-03-02G",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":0.5,#0.35,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -19,7 +22,7 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
-                "use_dynamicFeatureMask":True,#False,#True,
+                "use_dynamicFeatureMask":False,#True,#False,#True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -163,10 +166,10 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01G", #提高模型的拟合能力
+            "name": "A26-03-02G", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01G.rigid",
-            "input_mode": "A26-03-01G.rigid.non1",
+            "noise_label":"A26-03-02G.rigid",
+            "input_mode": "A26-03-02G.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

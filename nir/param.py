@@ -29,6 +29,7 @@ from nir.paramPy.config_A26_03_01G import config_A26_03_01G
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
 from nir.paramPy.config_A26_03_02B import config_A26_03_02B
 from nir.paramPy.config_A26_03_02F import config_A26_03_02F
+from nir.paramPy.config_A26_03_02G import config_A26_03_02G
 
 
 # 目前最重要的是确认论文中使用的量化结果是如何获取到的
@@ -100,8 +101,8 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01G
-    print("执行参数:config_A26_03_01G")
+    c0 = config_A26_03_02G
+    print("config-name:",c0["name"])
     
     # 定义多个配置
     configs = [#在短视频数据上的测试结果

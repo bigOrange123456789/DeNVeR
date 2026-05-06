@@ -131,7 +131,7 @@ class Decouple_rigid(nn.Module):
                 configSofts={},
                 configFluids={},
                 adaptiveFrameNumMode=0,
-                use_dynamicFeatureMask=False,
+                use_dynamicFeatureMask=False, # 使用自适应特征向量遮挡后,不要同时在一个图层使用整体运动和局部运动
                 dynamicVesselMask=False,
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                 reconFlow=False
@@ -344,6 +344,7 @@ class Decouple_rigid(nn.Module):
         # print("exit", 1, 2, 34, 5)
         # print("")
         # exit(0)
+        printLog=[]
         def get_mixing_alpha_old(current_step=None, warmup_steps=None, i=None, total_layers=None):
             """
             基于线性渐进策略计算第i层的混合权重alpha_i。
@@ -483,6 +484,7 @@ class Decouple_rigid(nn.Module):
                 k_t = l_t * self.f_rigid_list[i].kFeatureMask_texture()
                 loss_conciseR = loss_conciseR + (k_m**2) + (k_t**2)
                 loss_conciseR_full =loss_conciseR_full + l_m**2 + l_t**2
+                printLog.append(["R:","m",k_m.item(),"/",l_m,";","t",k_t.item(),"/",l_t])# print("rigid*","k_m",k_m.item(),"/lm",l_m,";","k_t",k_t.item(),"/lt",l_t,";")
         if self.NUM_rigid>0: #将UV扩充为UVT，用于后面的软体运动叠加操作
             h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
 
@@ -509,6 +511,7 @@ class Decouple_rigid(nn.Module):
                 k_t = l_t * self.f_soft_list[i].kFeatureMask_texture()
                 loss_conciseS = loss_conciseS + (k_m**2) + (k_t**2)
                 loss_conciseS_full = loss_conciseS_full + l_m**2 + l_t**2 
+                printLog.append(["S:","m",k_m.item(),"/",l_m,";","t",k_t.item(),"/",l_t])# # print("soft*","k_m",k_m.item(),"/lm",l_m,";","k_t",k_t.item(),"/lt",l_t,";")
 
         # 3.流体
         # o_fluid = 1 #
@@ -545,6 +548,7 @@ class Decouple_rigid(nn.Module):
                 k_t = l_t * self.f_fluid_list[i].kFeatureMask_texture()
                 loss_conciseF = loss_conciseF + k_t**2
                 loss_conciseF_full = loss_conciseF_full + l_t**2 
+                printLog.append(["F:","t",k_t.item(),"/",l_t])# # print("fluid*","k_t",k_t.item(),"/lt",l_t,";")
 
         # if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"] and not vesselMask is None:
         if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
@@ -578,6 +582,8 @@ class Decouple_rigid(nn.Module):
         # print("o",o.shape)
         # o = o_rigid_all * o_soft_all # o = o_rigid_all * o_soft_all * (1.0 - o_fluid)
         # print("reconFlow:",self.v.reconFlow)
+        # print("loss_conciseR , loss_conciseS , loss_conciseF:", loss_conciseR , loss_conciseS , loss_conciseF)
+        # print("loss_conciseR_full , loss_conciseS_full , loss_conciseF_full:",loss_conciseR_full , loss_conciseS_full , loss_conciseF_full)
         # exit(0)
         return o , {
             "r": o_rigid_list,
@@ -593,9 +599,10 @@ class Decouple_rigid(nn.Module):
             "o_fluid_all":o_fluid_all,
             "loss_smooth":loss_smooth,
             "loss_concise" :(loss_conciseR + loss_conciseS + loss_conciseF)/(loss_conciseR_full + loss_conciseS_full + loss_conciseF_full + 10**-5),
-            "loss_conciseR":loss_conciseR,
-            "loss_conciseS":loss_conciseS,
-            "loss_conciseF":loss_conciseF,
+            "loss_conciseR":loss_conciseR/(loss_conciseR_full + 10**-5),
+            "loss_conciseS":loss_conciseS/(loss_conciseS_full + 10**-5),
+            "loss_conciseF":loss_conciseF/(loss_conciseF_full + 10**-5),
+            "printLog":printLog,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
         }#输出三样东西：重构结果、分层结果、相关参数
 
@@ -762,7 +769,7 @@ class Decouple_rigid(nn.Module):
         F_clone = F.detach().clone() if self.NUM_fluid>0 else 1
 
         # 零、辅助数据重构损失
-        loss_recon_flow = torch.tensor(0.0)
+        loss_recon_flow = torch.tensor(0.0) #让每一层都接近目标数据？
         if self.v.reconFlow:
             layers_list=[]
             for l in layers["r"]:
@@ -924,8 +931,14 @@ class Decouple_rigid(nn.Module):
                     #     step, loss, loss_recon_mask, loss_recon_all))
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_vess=%0.8f, recon_al=%0.8f, bMaskA=%0.8f, conciseR=%0.8f, conciseS=%0.8f" % (
                     #                     step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
-                    print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f, loss_recon_flow=%0.8f" % (
-                           step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"], loss_recon_flow))
+                    # print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f, loss_conciseF=%0.8f loss_recon_flow=%0.8f" % (
+                    #        step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], loss_recon_flow))
+                    print("Step[%04d]: l=%0.6f, recon_b=%0.6f, recon_vess=%0.6f, recon_all=%0.6f, comp=%0.6f, c=%0.6f, cR=%0.6f, cS=%0.6f, cF=%0.6f rflow=%0.6f" % (
+                           step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, 
+                           loss_concise * self.weight_concise, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], 
+                           loss_recon_flow))
+                    # print("printLog:\n",p["printLog"])
+                    print('\n'.join(' '.join(map(str, row)) for row in p["printLog"]))
                 # else:
                 #     print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, recon_all0=%0.8f" % (
                 #         step, loss, loss_recon_mask, loss_recon_all,loss_recon_all0))

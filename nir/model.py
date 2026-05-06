@@ -268,6 +268,7 @@ class Siren(nn.Module):
             # print("featureMask:",featureMask.shape)
             x = x*featureMask.unsqueeze(0)
             # print("x out",x.shape)
+            # print("/root/autodl-tmp/DeNVeR.26-3_new/nir/model.py","class Siren","forward","{if not featureMask is None}")
             # exit(0)
         
         # 通过隐含层（从索引1开始）
