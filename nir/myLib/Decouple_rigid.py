@@ -132,6 +132,7 @@ class Decouple_rigid(nn.Module):
                 configFluids={},
                 adaptiveFrameNumMode=0,
                 use_dynamicFeatureMask=False, # 使用自适应特征向量遮挡后,不要同时在一个图层使用整体运动和局部运动
+                init_dynamicFeatureMask=None,
                 dynamicVesselMask=False,
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                 reconFlow=False
@@ -142,6 +143,7 @@ class Decouple_rigid(nn.Module):
         self.dynamicVesselMask = dynamicVesselMask
         self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
+        self.init_dynamicFeatureMask = init_dynamicFeatureMask
         self.maskPath = maskPath
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
@@ -212,6 +214,7 @@ class Decouple_rigid(nn.Module):
                 # hidden_features=512,
                 config=configSofts["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
+                init_dynamicFeatureMask=init_dynamicFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 out_features = pixels.shape[1],
                 ))
@@ -251,6 +254,7 @@ class Decouple_rigid(nn.Module):
                 # config=configRigids["layer"],
                 config=configRigids["layer"][i] if (type(configRigids["layer"]) is list) else configRigids["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
+                init_dynamicFeatureMask=init_dynamicFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 # useMatrix=True,
                 useSmooth=self.useSmooth,
@@ -279,6 +283,7 @@ class Decouple_rigid(nn.Module):
                     # useLocal=False,
                     config=configFluids["layer"],#configFluids,
                     use_dynamicFeatureMask=use_dynamicFeatureMask,#False,
+                    init_dynamicFeatureMask=init_dynamicFeatureMask,
                     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                     out_features = pixels.shape[1],
                 )
@@ -483,6 +488,7 @@ class Decouple_rigid(nn.Module):
                 k_m = l_m * self.f_rigid_list[i].kFeatureMask_motion()
                 k_t = l_t * self.f_rigid_list[i].kFeatureMask_texture()
                 loss_conciseR = loss_conciseR + (k_m**2) + (k_t**2)
+                # torch.sigmoid(logit)
                 loss_conciseR_full =loss_conciseR_full + l_m**2 + l_t**2
                 printLog.append(["R:","m",k_m.item(),"/",l_m,";","t",k_t.item(),"/",l_t])# print("rigid*","k_m",k_m.item(),"/lm",l_m,";","k_t",k_t.item(),"/lt",l_t,";")
         if self.NUM_rigid>0: #将UV扩充为UVT，用于后面的软体运动叠加操作

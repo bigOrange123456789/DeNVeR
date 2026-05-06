@@ -1,12 +1,13 @@
 '''
     测试自适应特征向量遮挡算法
         希望能够作为新的baseline、希望指标较高
-    实验设备: AutoDL_J、DeNVeR.26-3_new
+        遮挡向量的的初始值为1,如果成功,将更有资格作为baseline
+    实验设备: AutoDL_H、DeNVeR.26-3_new
     Running time: ?? hours
 '''
-config_A26_03_01G={ # follow: config_A26_03_01B
+config_A26_03_01H={ # follow: config_A26_03_01B
             "decouple":{ # 解耦
-                "tag":"A26-03-01G",
+                "tag":"A26-03-01H",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -20,6 +21,7 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
+                "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -132,7 +134,7 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
-                "weight_concise":1,#0.01,#0.00001,
+                "weight_concise":20,#1,#0.01,#0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
@@ -163,10 +165,10 @@ config_A26_03_01G={ # follow: config_A26_03_01B
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01G", #提高模型的拟合能力
+            "name": "A26-03-01H", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01G.rigid",
-            "input_mode": "A26-03-01G.rigid.non1",
+            "noise_label":"A26-03-01H.rigid",
+            "input_mode": "A26-03-01H.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

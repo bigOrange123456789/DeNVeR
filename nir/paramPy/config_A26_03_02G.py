@@ -13,7 +13,7 @@ config_A26_03_02G={ # follow: config_A26_03_01G
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.5,#0.35,#1/8,
+                "batch_size_scale":0.45,#0.5,#0.35,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,

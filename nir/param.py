@@ -25,6 +25,7 @@ from nir.paramPy.config_A26_03_01D import config_A26_03_01D #没软体和流体 
 from nir.paramPy.config_A26_03_01E import config_A26_03_01E #只有宽度减半的刚体    #显著下降
 from nir.paramPy.config_A26_03_01F import config_A26_03_01F #用渐进式破坏软体干扰
 from nir.paramPy.config_A26_03_01G import config_A26_03_01G
+from nir.paramPy.config_A26_03_01H import config_A26_03_01H
 
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
 from nir.paramPy.config_A26_03_02B import config_A26_03_02B
@@ -101,7 +102,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_02G
+    c0 = config_A26_03_01H
     print("config-name:",c0["name"])
     
     # 定义多个配置
