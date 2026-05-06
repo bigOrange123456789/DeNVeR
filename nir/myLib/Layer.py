@@ -19,6 +19,10 @@ class LearnableVariable(nn.Module):
         self.v = nn.Parameter(torch.tensor(value, dtype=torch.float32).cuda())
     def forward(self):
         return self.v
+    def set(self,value):
+        self.v.data.fill_(value)
+    def get(self):
+        return self.v.item()
     
 class Tex2D(nn.Module):
     def __init__(self,size):
@@ -216,6 +220,49 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
         featureLen_texture = self.config["hidden_features_map"]
         return featureLen_motion, 0.1 * featureLen_texture
     
+    def kFeatureMaskUpdate(self):
+        # self.kFeatureMask_motion
+        # self.kFeatureMask_texture 
+        '''
+        self.kFeatureMask_log={ # 初始化定义
+                "motion":{
+                    "min":0,
+                    "max":1,
+                    "pre":None,
+                },
+                "texture":{
+                    "min":0,
+                    "max":1,
+                    "pre":None
+                }
+            }
+        '''
+        def getNewParam(now, config):
+            now = now.get()
+            pre = config["pre"]
+            if not pre is None:
+                if now > pre:#应该变大
+                    config["min"] = pre
+                    if config["max"]<pre: config["max"]=pre
+                else: #应该变小
+                    config["max"] = pre
+                    if config["min"]>pre: config["min"]=pre
+            config["pre"] = ( config["min"] + config["max"] )/2
+            return config["pre"]
+        self.kFeatureMask_motion.set(
+            getNewParam(
+                self.kFeatureMask_motion, 
+                self.kFeatureMask_log["motion"]
+            )
+        ) 
+        self.kFeatureMask_texture.set(
+            getNewParam(
+                self.kFeatureMask_texture, 
+                self.kFeatureMask_log["texture"]
+            )
+        )  
+        return self.kFeatureMask_log["motion"]#self.kFeatureMask_motion.get(), self.kFeatureMask_texture.get()
+
     def __init__(self, # useGlobal=True, useLocal=True,  useMatrix=True, #废弃
                 useDeformation=False,
                 deformationSize=8, #useDeformation用于让局部形变不太大
@@ -322,6 +369,18 @@ class Layer2(nn.Module): #用于表示软体层和流体层、能够实现PE和�
             self.parameters.append(self.g_local.parameters())
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
         if use_dynamicFeatureMask:
+            self.kFeatureMask_log={
+                "motion":{
+                    "min":0,
+                    "max":1,
+                    "pre":None,
+                },
+                "texture":{
+                    "min":0,
+                    "max":1,
+                    "pre":None
+                }
+            }
             # self.kFeatureMask = LearnableVariable(1) #nn.Parameter(torch.tensor(1, dtype=torch.float32).cuda())
             # self.parameters.append(self.kFeatureMask.parameters())
             self.kFeatureMask_motion = LearnableVariable(

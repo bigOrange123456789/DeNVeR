@@ -60,8 +60,7 @@ class Decouple_rigid(nn.Module):
         x_new = torch.round((x+1) / eps) * eps - 1
         y_new = torch.round((y+1) / eps) * eps - 1
         return torch.stack([x_new, y_new, t], dim=1)
-    #-..-#
-    
+   
     def log(self,x): #x中的全部元素均不能为负数
         import math
         e = math.e # 获取自然数 e 的值
@@ -133,6 +132,7 @@ class Decouple_rigid(nn.Module):
                 adaptiveFrameNumMode=0,
                 use_dynamicFeatureMask=False, # 使用自适应特征向量遮挡后,不要同时在一个图层使用整体运动和局部运动
                 init_dynamicFeatureMask=None,
+                quickUpdate_dynamicFeatureMask=False,
                 dynamicVesselMask=False,
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                 reconFlow=False
@@ -144,6 +144,7 @@ class Decouple_rigid(nn.Module):
         self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
         self.init_dynamicFeatureMask = init_dynamicFeatureMask
+        self.quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask
         self.maskPath = maskPath
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
@@ -1014,6 +1015,14 @@ class Decouple_rigid(nn.Module):
             optim.zero_grad()
             loss.backward()
             optim.step()
+            if self.quickUpdate_dynamicFeatureMask and step<50 and step>0 and not step % 5:
+                for l in self.f_soft_list:
+                    l.kFeatureMaskUpdate()
+                for l in self.f_rigid_list:
+                    print("step:",step,"; R:",l.kFeatureMaskUpdate())
+                for l in self.f_fluid_list:
+                    l.kFeatureMaskUpdate()
+
             if not step % 100 and step>0 and self.NUM_fluid==1:
                 gradientMonitor.analyze(step)
 

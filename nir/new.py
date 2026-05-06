@@ -134,6 +134,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
     init_dynamicFeatureMask = None
+    quickUpdate_dynamicFeatureMask = False
     dynamicVesselMask=False
     singleTrainVessel=False
     reconFlow=False
@@ -207,7 +208,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             use_dynamicFeatureMask = config["use_dynamicFeatureMask"]
         if "init_dynamicFeatureMask" in config:
             init_dynamicFeatureMask = config["init_dynamicFeatureMask"]
-        # if 
+        if "quickUpdate_dynamicFeatureMask" in config:
+            quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
@@ -269,6 +271,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               adaptiveFrameNumMode=adaptiveFrameNumMode,
                               use_dynamicFeatureMask=use_dynamicFeatureMask,
                               init_dynamicFeatureMask=init_dynamicFeatureMask,
+                              quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask,
                               dynamicVesselMask=dynamicVesselMask,
                               updateMaskConfig={#更新所需信息 #dynamicVesselMask不为False的时候才启用
                                   "mainFreeCOS_sim":mainFreeCOS_sim,
