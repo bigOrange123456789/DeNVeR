@@ -278,7 +278,7 @@ class Decouple_rigid(nn.Module):
                     # useGlobal=False, 
                     # useLocal=False,
                     config=configFluids["layer"],#configFluids,
-                    use_dynamicFeatureMask=False,
+                    use_dynamicFeatureMask=use_dynamicFeatureMask,#False,
                     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                     out_features = pixels.shape[1],
                 )
@@ -466,6 +466,7 @@ class Decouple_rigid(nn.Module):
         h_global = torch.tensor(0.0)
         loss_smooth = torch.tensor(0.0)
         loss_conciseR = torch.tensor(0.0)
+        loss_conciseR_full = torch.tensor(0.0)
         for i in range(self.NUM_rigid):
             # step = 2/(self.v.video.size()[0] - 1)
             # o_rigid0, p_rigid0 = self.f_rigid_list[i](xyt,openLocalDeform=stage)#因为这的stage为0，所以并没有真正使用软体形变
@@ -477,8 +478,11 @@ class Decouple_rigid(nn.Module):
             h_global = p_rigid0["h_global"]
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
             if self.use_dynamicFeatureMask:
-                k = self.f_rigid_list[i].kFeatureMask()
-                loss_conciseR = loss_conciseR + (k**2)
+                l_m, l_t = self.f_rigid_list[i].getFeatureLen()
+                k_m = l_m * self.f_rigid_list[i].kFeatureMask_motion()
+                k_t = l_t * self.f_rigid_list[i].kFeatureMask_texture()
+                loss_conciseR = loss_conciseR + (k_m**2) + (k_t**2)
+                loss_conciseR_full =loss_conciseR_full + l_m**2 + l_t**2
         if self.NUM_rigid>0: #将UV扩充为UVT，用于后面的软体运动叠加操作
             h_global = torch.cat([h_global, torch.zeros(h_global.shape[0], 1).cuda()], dim=1)
 
@@ -487,6 +491,7 @@ class Decouple_rigid(nn.Module):
         o_soft_list = []
         o_soft_mask_list = []
         loss_conciseS = torch.tensor(0.0)
+        loss_conciseS_full = torch.tensor(0.0)
         for i in range(self.NUM_soft):
             o_soft0, _ = self.f_soft_list[i](
                 xyt if self.softHasSelfGlobal else xyt+h_global, #xyt+h_global, #使用自己的运动还是刚体的运动
@@ -499,13 +504,18 @@ class Decouple_rigid(nn.Module):
             o_soft_all = o_soft_all * o_soft0_gray # o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
             if self.use_dynamicFeatureMask:
-                k = self.f_soft_list[i].kFeatureMask()
-                loss_conciseS = loss_conciseS + (k**2)
+                l_m, l_t = self.f_soft_list[i].getFeatureLen()
+                k_m = l_m * self.f_soft_list[i].kFeatureMask_motion()
+                k_t = l_t * self.f_soft_list[i].kFeatureMask_texture()
+                loss_conciseS = loss_conciseS + (k_m**2) + (k_t**2)
+                loss_conciseS_full = loss_conciseS_full + l_m**2 + l_t**2 
 
         # 3.流体
         # o_fluid = 1 #
         o_fluid_all = 1
         o_fluid_list = []
+        loss_conciseF = torch.tensor(0.0)
+        loss_conciseF_full = torch.tensor(0.0)
         for i in range(self.NUM_fluid):
             o_fluid0,_ = self.f_fluid_list[i](xyt,epochs0)#(xyt, step)
             o_fluid0_gray = o_fluid0[:, 0:1]
@@ -530,6 +540,12 @@ class Decouple_rigid(nn.Module):
             # if True:#使用流体层遮挡
             #     self.mask[start:end] + self.lossFunType["rv_eps"]
             o_fluid_list.append(o_fluid0)
+            if self.use_dynamicFeatureMask:
+                _, l_t = self.f_fluid_list[i].getFeatureLen() #self.f_fluid_list
+                k_t = l_t * self.f_fluid_list[i].kFeatureMask_texture()
+                loss_conciseF = loss_conciseF + k_t**2
+                loss_conciseF_full = loss_conciseF_full + l_t**2 
+
         # if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"] and not vesselMask is None:
         if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
             # if vesselMask is None:
@@ -576,9 +592,10 @@ class Decouple_rigid(nn.Module):
             "o_soft_all":o_soft_all,
             "o_fluid_all":o_fluid_all,
             "loss_smooth":loss_smooth,
-            "loss_concise" :loss_conciseR + loss_conciseS,
+            "loss_concise" :(loss_conciseR + loss_conciseS + loss_conciseF)/(loss_conciseR_full + loss_conciseS_full + loss_conciseF_full + 10**-5),
             "loss_conciseR":loss_conciseR,
             "loss_conciseS":loss_conciseS,
+            "loss_conciseF":loss_conciseF,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
         }#输出三样东西：重构结果、分层结果、相关参数
 

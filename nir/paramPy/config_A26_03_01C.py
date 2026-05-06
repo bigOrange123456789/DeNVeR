@@ -1,6 +1,6 @@
 '''
     实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 10.846516541838646 hours
     实验内容：
         测试没有软体的效果【后面要测试没有流体、刚体参数减少的效果】
     预期目标：

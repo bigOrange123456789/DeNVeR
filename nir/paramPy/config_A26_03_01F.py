@@ -2,7 +2,7 @@
     这是"渐进式ECLU"的对照实验，我希望它的结果很好
         用渐进式破坏软体干扰,我希望它能够作为新的baseline
     实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: ??? hours
+    Running time: 4.620017763707373 hours
 '''
 config_A26_03_01F={ #follow 25: 测试动态血管遮挡
             "decouple":{ # 解耦
