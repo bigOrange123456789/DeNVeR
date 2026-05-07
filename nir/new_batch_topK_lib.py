@@ -790,8 +790,11 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                     
                 # 处理成功，更新进度
                 CountI += 1
-                if True:
-                    processed_videos.add(video_key)
+                if True: # processed_videos.append(video_key) #processed_videos.add(video_key)
+                    if isinstance(processed_videos, list):
+                        processed_videos.append(video_key)
+                    elif isinstance(processed_videos, set):
+                        processed_videos.add(video_key)
                     
                 # 更新进度文件
                 progress_data = {"processed_videos": list(processed_videos)}

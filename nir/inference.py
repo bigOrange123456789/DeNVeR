@@ -600,3 +600,8 @@ if __name__ == "__main__":
     writeln('Running time: %s hours' % h)
     # print("测试不同损失函数对纹理拟合的影响")
     # "要发现难点在哪里"
+
+    # 训练完成后执行关机
+    if True: 
+        os.system("ls") 
+        os.system("/usr/bin/shutdown") # 推荐使用完整路径，确保脚本可靠执行
