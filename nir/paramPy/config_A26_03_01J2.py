@@ -1,20 +1,22 @@
 '''
-    测试自适应特征向量遮挡算法
-        自适应遮挡的初值为1,如果成功,将更有资格作为baseline
-    目标:
-        希望能够作为新的baseline、希望指标较高
-    结果:
-        没有达到目标、指标过低
-    实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: 10.401319835980733 hours
+    自适应、无快查
+    内容：
+        follow config_A26_03_01J
+            测试不同batch的效果
+    目标：
+    预测：
+    结果：
+    分析：
+    实验设备: AutoDL_D、DeNVeR.26-3_new
+    Running time: ?? hours
 '''
-config_A26_03_01H={ # follow: config_A26_03_01B
+config_A26_03_01J2={ # follow: config_A26_03_**
             "decouple":{ # 解耦
-                "tag":"A26-03-01H",
+                "tag":"A26-03-01J2",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -24,7 +26,12 @@ config_A26_03_01H={ # follow: config_A26_03_01B
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
-                "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
+                "init_dynamicFeatureMask":{
+                    "R":[0,1],#[运动，纹理]
+                    "S":[1,1],
+                    "F":[1,1],
+                },#1, #遮挡向量的的初始值为1
+                "quickUpdate_dynamicFeatureMask":False,#True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -83,7 +90,7 @@ config_A26_03_01H={ # follow: config_A26_03_01B
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":True, #渐进式遮挡向量
+                        "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -137,7 +144,7 @@ config_A26_03_01H={ # follow: config_A26_03_01B
                 # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
-                "weight_concise":20,#1,#0.01,#0.00001,
+                "weight_concise":0.25,#1,#5,#20,#1,#0.01,#0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
@@ -168,10 +175,10 @@ config_A26_03_01H={ # follow: config_A26_03_01B
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01H", #提高模型的拟合能力
+            "name": "A26-03-01J2", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01H.rigid",
-            "input_mode": "A26-03-01H.rigid.non1",
+            "noise_label":"A26-03-01J2.rigid",
+            "input_mode": "A26-03-01J2.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

@@ -100,6 +100,9 @@ def startDecouple1(videoId,paramPath,pathIn,outpath,config=None): #单独的刚�
         mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
         if False:check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
 
+import numbers
+def is_number(obj): # 使用 numbers.Number，并显式排除 bool
+    return isinstance(obj, numbers.Number) and not isinstance(obj, bool)
 
 def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custom=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
     #设置参数
@@ -206,8 +209,22 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             adaptiveFrameNumMode = config["adaptiveFrameNumMode"]
         if "use_dynamicFeatureMask" in config:
             use_dynamicFeatureMask = config["use_dynamicFeatureMask"]
+        
         if "init_dynamicFeatureMask" in config:
             init_dynamicFeatureMask = config["init_dynamicFeatureMask"]
+        if init_dynamicFeatureMask is None:
+            init_dynamicFeatureMask={
+                "R":[0,1],#[运动，纹理]
+                "S":[0,1],
+                "F":[1,1],
+            }
+        elif is_number(init_dynamicFeatureMask):
+            init_dynamicFeatureMask={
+                "R":[init_dynamicFeatureMask,1],#[运动，纹理]
+                "S":[init_dynamicFeatureMask,1],
+                "F":[1,1],
+            }
+        
         if "quickUpdate_dynamicFeatureMask" in config:
             quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
     # print("168-configFluids",configFluids)

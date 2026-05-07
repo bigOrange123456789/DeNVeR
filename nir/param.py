@@ -25,10 +25,13 @@ from nir.paramPy.config_A26_03_01C import config_A26_03_01C #没软体          
 from nir.paramPy.config_A26_03_01D import config_A26_03_01D #没软体和流体       #显著下降(流体很重要?)
 from nir.paramPy.config_A26_03_01E import config_A26_03_01E #只有宽度减半的刚体    #显著下降
 from nir.paramPy.config_A26_03_01F import config_A26_03_01F #用渐进式破坏软体干扰
-from nir.paramPy.config_A26_03_01F2 import config_A26_03_01F2
-from nir.paramPy.config_A26_03_01G import config_A26_03_01G
-from nir.paramPy.config_A26_03_01H import config_A26_03_01H
-from nir.paramPy.config_A26_03_01I import config_A26_03_01I
+from nir.paramPy.config_A26_03_01F2 import config_A26_03_01F2 #关闭软体运动
+from nir.paramPy.config_A26_03_01G import config_A26_03_01G #自适应遮挡（指标不够高、但对照组有明显下降）
+from nir.paramPy.config_A26_03_01H import config_A26_03_01H #自适应遮挡的初值为1
+from nir.paramPy.config_A26_03_01I import config_A26_03_01I #自适应遮挡的初值为1+快收敛
+from nir.paramPy.config_A26_03_01J import config_A26_03_01J
+from nir.paramPy.config_A26_03_01J2 import config_A26_03_01J2
+from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3
 
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
 from nir.paramPy.config_A26_03_02B import config_A26_03_02B
@@ -105,7 +108,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01F2
+    c0 = config_A26_03_01J3
     print("config-name:",c0["name"])
     
     # 定义多个配置
