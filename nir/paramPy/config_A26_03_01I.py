@@ -2,8 +2,12 @@
     测试自适应特征向量遮挡算法
         希望能够作为新的baseline、希望指标较高
         遮挡向量的的初始值为1,如果成功,将更有资格作为baseline
+    目标：
+        能超过实验G就成功了、但我不确定是否能实现
+    结果：
+        基本和G持平了、并且代码方案更加合理
     实验设备: AutoDL_L、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 7.99 = 6.335704752604166*111/88 hours
 '''
 config_A26_03_01I={ # follow: config_A26_03_**
             "decouple":{ # 解耦

@@ -8,7 +8,7 @@
     实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours
 '''
-config_A26_03_01K={ # follow: config_A26_03_**
+config_A26_03_01K={ # follow: config_A26_03_01J3
             "decouple":{ # 解耦
                 "tag":"A26-03-01K",
                 "de-rigid":"1_sim",#去噪框架

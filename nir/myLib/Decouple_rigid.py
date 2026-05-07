@@ -103,7 +103,6 @@ class Decouple_rigid(nn.Module):
                 Segment_model=self.updateMaskConfig["Segment_model"]
             )
             print("完成了分割测试")
-            # exit(0)
             
             # 使用原来的mask路径重新加载
             self.v.reload_mask()  
@@ -183,7 +182,6 @@ class Decouple_rigid(nn.Module):
             ground_truth = self.log(ground_truth)
             print("gt_dis_max", torch.max(ground_truth))
             print("gt_dis_min", torch.min(ground_truth))
-        # exit(0)
         self.model_input=model_input
         self.ground_truth=ground_truth
         self.mask=mask
@@ -218,7 +216,6 @@ class Decouple_rigid(nn.Module):
             # self.f_soft_list.append(Layer(useGlobal=False,hidden_features=hidden_features))
             # print("pixels", pixels.shape, pixels.shape[1])
             # print("pixels.shape",pixels.shape,pixels.shape[1])
-            # exit(0)
             self.f_soft_list.append(Layer2(#第二版软体层代码添加了流体层的PE和渐进式featureMask功能
                 # useGlobal=False, 
                 # useLocal=configSofts["useLocal"],
@@ -355,11 +352,9 @@ class Decouple_rigid(nn.Module):
         # t = xyt[:,2]
         # x_new = torch.trunc(x * eps) / eps
         # print(((x-x_new)**2).sum())
-        # exit(0)
         # print("shape:", x.shape, y.shape, t.shape)
         # print("exit", 1, 2, 34, 5)
         # print("")
-        # exit(0)
         printLog=[]
         def get_mixing_alpha_old(current_step=None, warmup_steps=None, i=None, total_layers=None):
             """
@@ -496,7 +491,7 @@ class Decouple_rigid(nn.Module):
             h_global = p_rigid0["h_global"]
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
             if self.use_UncertainLearning:
-                mean_std.append([o_rigid0, p_rigid0["std"]])
+                mean_std.append([o_rigid0, p_rigid0["std"],"R"])
             if self.use_dynamicFeatureMask:
                 l_m, l_t = self.f_rigid_list[i].getFeatureLen()
                 k_m = l_m * self.f_rigid_list[i].kFeatureMask_motion()
@@ -526,7 +521,7 @@ class Decouple_rigid(nn.Module):
             o_soft_all = o_soft_all * o_soft0_gray # o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
             if self.use_UncertainLearning:
-                mean_std.append([o_soft0, p_soft0["std"]])
+                mean_std.append([o_soft0, p_soft0["std"],"S"])
             if self.use_dynamicFeatureMask:
                 l_m, l_t = self.f_soft_list[i].getFeatureLen()
                 k_m = l_m * self.f_soft_list[i].kFeatureMask_motion()
@@ -546,7 +541,6 @@ class Decouple_rigid(nn.Module):
             o_fluid0_gray = o_fluid0[:, 0:1]
             # print("o_fluid0",o_fluid0.shape)
             # print("self.gradualImageLayers",self.gradualImageLayers)
-            # exit(0)
             if self.gradualImageLayers:
                 # alpha = self.get_mixing_alpha(i, step)
                 # alpha = get_mixing_alpha_old(
@@ -566,7 +560,7 @@ class Decouple_rigid(nn.Module):
             #     self.mask[start:end] + self.lossFunType["rv_eps"]
             o_fluid_list.append(o_fluid0)
             if self.use_UncertainLearning:
-                mean_std.append([o_fluid0, p_fluid0["std"]])
+                mean_std.append([o_fluid0, p_fluid0["std"],"F"])
             if self.use_dynamicFeatureMask:
                 _, l_t = self.f_fluid_list[i].getFeatureLen() #self.f_fluid_list
                 k_t = l_t * self.f_fluid_list[i].kFeatureMask_texture()
@@ -578,7 +572,6 @@ class Decouple_rigid(nn.Module):
         if "vesselMaskInference" in self.configFluids and self.configFluids["vesselMaskInference"]:
             # if vesselMask is None:
             #     print("ERROR: vesselMask is None")
-            #     exit(0)
             if not(vesselMask is None):
                 # vesselMask_clamp = torch.clamp(vesselMask,min=0.1,max=1)
                 vesselMask_clamp = torch.clamp(vesselMask,min=self.lossFunType["vesselMask_eps"],max=1)
@@ -608,26 +601,7 @@ class Decouple_rigid(nn.Module):
         # print("reconFlow:",self.v.reconFlow)
         # print("loss_conciseR , loss_conciseS , loss_conciseF:", loss_conciseR , loss_conciseS , loss_conciseF)
         # print("loss_conciseR_full , loss_conciseS_full , loss_conciseF_full:",loss_conciseR_full , loss_conciseS_full , loss_conciseF_full)
-        # exit(0)
-        def product_variance(mean_std):
-            """
-                计算相互独立随机变量乘积的方差。
-                参数:mean_std: iterable of [mean_tensor, var_tensor]
-                返回:var_product: 乘积变量的方差 (torch.Tensor, 标量)
-            """
-            prod_mean_sq_plus_var = torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
-            prod_mean = torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
-            for mean, var in mean_std:
-                mean = mean.to(dtype=torch.float64)
-                var = var.to(dtype=torch.float64)
-                prod_mean_sq_plus_var *= (mean ** 2 + var)
-                prod_mean *= mean
-            var_product = prod_mean_sq_plus_var - prod_mean ** 2 # σ^2 = ∏(μ_i^2 + σ_i^2) - ∏(μ_i^2)
-            return var_product
-        if self.use_UncertainLearning:
-            std = product_variance(mean_std)
-        else:
-            std = None
+        
         return o , {
             "r": o_rigid_list,
             "s": o_soft_list,
@@ -646,10 +620,30 @@ class Decouple_rigid(nn.Module):
             "loss_conciseS":loss_conciseS/(loss_conciseS_full + 10**-5),
             "loss_conciseF":loss_conciseF/(loss_conciseF_full + 10**-5),
             "printLog":printLog,
-            "std":std,
+            # "std":self.product_variance(mean_std,None),
+            "mean_std":mean_std,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
         }#输出三样东西：重构结果、分层结果、相关参数
-
+    
+    def _product_variance(self, mean_std, s0):#用于不确定学习
+        """
+            计算相互独立随机变量乘积的方差。
+            参数:mean_std: iterable of [mean_tensor, var_tensor]
+            返回:var_product: 乘积变量的方差 (torch.Tensor, 标量)
+        """
+        if not self.use_UncertainLearning:
+            return None
+        prod_mean_sq_plus_var = torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
+        prod_mean = torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
+        for mean, var, layerId in mean_std:
+            if s0 is None or len(s0.split(layerId)):
+                mean = mean.to(dtype=torch.float64)
+                var = var.to(dtype=torch.float64)
+                prod_mean_sq_plus_var *= (mean ** 2 + var)
+                prod_mean *= mean
+        var_product = prod_mean_sq_plus_var - prod_mean ** 2 # σ^2 = ∏(μ_i^2 + σ_i^2) - ∏(μ_i^2)
+        return var_product
+    
     def loss(self, xyt, step,epochs0, start, end,openLocalDeform,
              lossParam=None,
              lossParam_vessel=None,
@@ -687,7 +681,6 @@ class Decouple_rigid(nn.Module):
             (self.ground_truth[start:end].abs()+eps)/(o.abs()+eps)
         ).abs()
         # print("useMask",self.v.useMask)
-        # exit(0)
         if self.v.useMask:#if False: #self.v.useMask:
             loss_recon = loss_recon*self.mask[start:end]
             loss_recon = loss_recon.sum()/(self.mask[start:end].sum()+1e-8)
@@ -737,7 +730,6 @@ class Decouple_rigid(nn.Module):
         #     print(step,"Step [%04d]: loss=%0.8f, recon=%0.8f, loss_rigid=%0.4f, loss_smooth=%0.4f" % (
         #             step, loss, loss_recon, loss_rigid, loss_smooth))
         #     print("loss_smooth此时不为0") #平滑损失 #速度为0
-        #     exit(0)
         if not step % 10: # :100:#500:#200:
             # print("Step [%04d]: loss=%0.8f, recon=%0.8f, loss_soft=%0.8f, loss_fluid=%0.8f, loss_rigid=%0.4f" % (
             #     step, loss, loss_recon, loss_soft , loss_fluid , loss_rigid))
@@ -753,7 +745,6 @@ class Decouple_rigid(nn.Module):
             # print("i_s",i_s.item(), "\tws", ws.item())
             # print("i_f",i_f.item(), "\twf", wf.item()) #wr、ws为无穷大
             # print(self.log(torch.tensor([0.0])))
-            # exit(0)
         return loss
 
     def loss2_old(self, xyt, step,epochs0, start, end,openLocalDeform):
@@ -799,11 +790,9 @@ class Decouple_rigid(nn.Module):
 
     def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,ground_truth):
         # print("ground_truth",ground_truth.shape)
-        # exit(0)
         # vesselMask = self.mask[start:end]
         # ground_truth=self.ground_truth
         o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
-        std = p["std"]#用于不确定学习
 
         eps=10**-10
         R=p["o_rigid_all"]
@@ -837,7 +826,13 @@ class Decouple_rigid(nn.Module):
             R2=R if len(s0.split("R")) else R_clone
             S2=S if len(s0.split("S")) else S_clone
             F2=F if len(s0.split("F")) else F_clone
-            return R2*S2*F2
+            return R2*S2*F2, self._product_variance(p['mean_std'],s0)
+        def getLossMSE(pred_mean, pred_var):
+            y = ground_truth[start:end]
+            l0 = (y - pred_mean)**2
+            if self.use_UncertainLearning:
+                return l0 / (pred_var * 2) + torch.log(pred_var) / 2
+            return l0
             
         # 一、有遮挡重构损失 loss=M*(S*R-O)
         # 1.1 背景重构损失
@@ -849,9 +844,10 @@ class Decouple_rigid(nn.Module):
             # ).abs() # ground_truth是目标图像，mask是分割图
             # loss_recon_mask = loss_recon_mask*self.mask[start:end]#只重构血管？
             # loss_recon_mask = loss_recon_mask.sum()/(self.mask[start:end].sum()+1e-8)
-            rm_in=getData(lossParam["rm"])
+            rm_in, rm_in_std=getData(lossParam["rm"])
             if self.lossFunType["rm"]=="MSE":
-                loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
+                # loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
+                loss_recon_mask = getLossMSE(rm_in, rm_in_std)
             else:#myLog
                 loss_recon_mask = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
@@ -865,9 +861,10 @@ class Decouple_rigid(nn.Module):
         #     ground_truth[start:end] )
         loss_recon_vessel = torch.tensor(0.0) #血管重构损失
         if not lossParam["rv"] is None:
-            rv_in=getData(lossParam["rv"])
+            rv_in, rv_in_std=getData(lossParam["rv"])
             if self.lossFunType["rv"]=="MSE":
-                loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
+                # loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
+                loss_recon_vessel = getLossMSE(rv_in, rv_in_std)
             else:#myLog
                 loss_recon_vessel = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
@@ -878,18 +875,18 @@ class Decouple_rigid(nn.Module):
         # 二、无遮挡重构损失 loss=(R-O)
         loss_recon_all = torch.tensor(0.0) # 整体重构损失
         if not lossParam["ra"] is None:
-            ra_in=getData(lossParam["ra"])
+            ra_in, ra_in_std=getData(lossParam["ra"])
             if True:#用于输出拟合程度
-             loss_recon_all_type = self.lossFunType["ra"]#self.loss_recon_all_type
-             if not loss_recon_all_type=="MSE" and not step % 100:
-                loss_recon_all0 = ( ground_truth[start:end] - ra_in )**2
-                loss_recon_all0 = loss_recon_all0.mean()#这个对象在训练后期变为了None
-                # print("loss_recon_all0",loss_recon_all0)
+                loss_recon_all_type = self.lossFunType["ra"]#self.loss_recon_all_type
+            #  if not loss_recon_all_type=="MSE" and not step % 100:
+            #     loss_recon_all0 = ( ground_truth[start:end] - ra_in )**2
+            #     loss_recon_all0 = loss_recon_all0.mean()#这个对象在训练后期变为了None
             if torch.isnan(ra_in.mean()):
                 print("ra_in is nan.",ra_in.mean()) #ra_in is None. tensor(nan, device='cuda:0', grad_fn=<MeanBackward0>)
                 exit(0)
             if loss_recon_all_type=="MSE":
-                loss_recon_all = ( ground_truth[start:end] - ra_in )**2
+                # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
+                loss_recon_all = getLossMSE(ra_in, ra_in_std)
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
             elif loss_recon_all_type=="atten_d":#类似最大值的思想
                 temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度
@@ -1005,7 +1002,6 @@ class Decouple_rigid(nn.Module):
         # print("1;self.parameters",self.parameters)
         optim = torch.optim.Adam(lr=1e-4, params = itertools.chain.from_iterable(self.parameters))
         # print("2;self.parameters",self.parameters)
-        # exit(0)
         # optim = torch.optim.Adam(lr=1e-4, params=chain(self.parameters))
 
         # batch_size =  (self.v.H * self.v.W) // 8  # 32768 #每张图片分为8个batch
@@ -1023,7 +1019,6 @@ class Decouple_rigid(nn.Module):
             total_steps = int((epochs * len(model_input)) / batch_size)
         print("训练一遍所有数据需要的次数:", len(model_input) // batch_size)
         print("总共训练了多少遍数据:", total_steps*batch_size / len(model_input) )
-        # exit(0)
         for step in range(total_steps): #生成纹理、整体运动
             start = (step * batch_size) % len(model_input) # len(model_input) 是像素点的总数
             end = min(start + batch_size, len(model_input))
@@ -1184,10 +1179,8 @@ class Decouple_rigid(nn.Module):
                     epochs0=1
                     frame_output, layers, p = self.forward(coords, stage, epochs0,None, vesselMask=vesselMask) #frame_output, layers, p = self.forward(coords,stage,None)
                     # print("frame_output",frame_output.shape)
-                    # exit(0)
                     # print("layers:",layers)
                     # print("p",p)
-                    # exit(0)
 
                     # 调整形状为图像格式 (C, H, W)
                     frame_image = frame_output.view(H, W, 1)  # .permute(2, 0, 1)
@@ -1210,10 +1203,8 @@ class Decouple_rigid(nn.Module):
                     for i in range(len(l)):
                         for j in range(len(l[i])):
                             # print("l[i][j]:",l[i][j].shape)
-                            # exit(0)
                             l[i][j] = l[i][j][:,0:1].view(H, W, 1) #torch.Size([16384, 1])=>torch.Size([128, 128, 1])
                             # print(type(l[i][j]),l[i][j].shape)
-                            # exit(0)
                         l[i] = torch.stack(l[i], dim=0)
                     return l
 
@@ -1230,7 +1221,6 @@ class Decouple_rigid(nn.Module):
                     # layers["f"]=torch.stack(layers_frames["f"], dim=0)
                     # print(layers_frames["f"].shape)
                     # print(type(layers_frames["f"]))
-                    # exit(0)
                     layers["f"]=p01(layers_frames["f"]) # layers["f"]=p01(layers_frames["f"][:,0:1])
                     p["o_fluid_all"]=torch.stack(p_frames["o_fluid_all"], dim=0)
                 else:
@@ -1356,12 +1346,10 @@ class Decouple_rigid(nn.Module):
                         # 根据不同的层类型处理输出
                         # print("layers[id]",len(layers[id]))
                         # print("layers[id][0]", layers[id][0].shape)
-                        # exit(0)
                         for imgLayerId in range(len(layers[id])):
                             # print(layers[id][imgLayerId].shape)
                             layers[id][imgLayerId]=layers[id][imgLayerId].view(1,1,1, W, 1) # [1,1,1,128,1]<=[128, 1]
                             # print(layers[id][imgLayerId].shape)
-                            # exit(0)
                         layers[id] = torch.cat(layers[id], dim=0) # 层数、帧数、高、宽、通道
 
                         # print(layers[id],layers[id].shape)
@@ -1408,7 +1396,6 @@ class Decouple_rigid(nn.Module):
             # print('layers_frames["f"]',type(layers_frames["f"]),len(layers_frames["f"]))
             # print(type(layers_frames["f"][0]))
             # print(layers_frames["f"][0].shape)
-            # exit(0)
             layers["f"] = p01(layers_frames["f"])
             '''
                 layers["f"] 1
@@ -1473,7 +1460,6 @@ class Decouple_rigid(nn.Module):
     #                 for j in range(len(l[i])):
     #                     l[i][j] = l[i][j].view(H, W, 1)
     #                     # print(type(l[i][j]),l[i][j].shape)
-    #                     # exit(0)
     #                 l[i] = torch.stack(l[i], dim=0)
     #             return l
     #         layers = {

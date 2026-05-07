@@ -5,9 +5,9 @@
     目标:
         希望作为一个负面的消融案例、预计指标会下降
     结果:
-        达到目标,指标下降显著
+        失败，和‘实验01G’基本持平，甚至还更高一些
     实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 5.884069477187262 hours
 '''
 config_A26_03_03G={ # follow: config_A26_03_01G
             "decouple":{ # 解耦
