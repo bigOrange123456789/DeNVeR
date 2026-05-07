@@ -1,9 +1,13 @@
 '''
-    是否是软体的局部运动造成了性能的下降
+    目标：
+        是否是软体的局部运动造成了性能的下降
     预测：
         希望关闭软体的局部运动后指标能大幅提高
+    结果:
+        与预测相反
+        关闭软体运动后指标大幅下降
     实验设备: AutoDL_K、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: *** hours(未记录时间)
 '''
 config_A26_03_01F2={ #follow 25: config_A26_03_01F
             "decouple":{ # 解耦

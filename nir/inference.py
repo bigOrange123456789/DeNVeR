@@ -535,7 +535,7 @@ def main():
             denoising(c["decouple"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
-                      repeating=False, #True
+                      repeating=True,#False, #True
                       )
     print("视频解耦完成!")
     # exit(0)

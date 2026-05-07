@@ -36,8 +36,7 @@ def memoryOpt():
 
     # 如果还在报错，强制同步并查看实际占用
     torch.cuda.synchronize()
-    print(f"当前已分配: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
-    print(f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
+    # print(f"当前已分配: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB",f"缓存占用: {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
 #########################################################################
 
 from nir.myLib.VideoFitting import VideoFitting
@@ -87,6 +86,11 @@ class Decouple_rigid(nn.Module):
             orig = self.v.video.clone()
             orig = orig.permute(0, 2, 3, 1).detach()
             video_pre, layers, p = self.getVideo(1)#使用局部形变
+            self.result={
+                "video_pre":video_pre, 
+                "layers":layers, 
+                "p":p
+            }
             rigid_non1 = orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10)
             # 将去噪结果存入 tag+rigid.non1
             save1(rigid_non1, self.updateMaskConfig["tag"]) 
@@ -138,6 +142,7 @@ class Decouple_rigid(nn.Module):
                 reconFlow=False
                  ):
         super().__init__()
+        self.result = None
         self.softHasSelfGlobal = configSofts["layer"]["useGlobal"]
         print("softHasSelfGlobal:",self.softHasSelfGlobal,"用于判断软体层是否有自己的运动")
         self.dynamicVesselMask = dynamicVesselMask
@@ -1031,7 +1036,8 @@ class Decouple_rigid(nn.Module):
                     print("step",step,";loss",loss)
                     break
             if True:
-                self._updateMask(step*batch_size/len(model_input))
+                if not step==total_steps-1: #最后一次迭代就不用更新MASK了，训练都要结束了、更新也用不上了
+                    self._updateMask(step*batch_size/len(model_input))
             else: # 旧版
                 if not step==total_steps-1: #最后一次迭代就不用更新MASK了，训练都要结束了、更新也用不上了
                     self._updateMask(step) #在训练过程中更新MASK

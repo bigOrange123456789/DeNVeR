@@ -2,10 +2,12 @@
     测试内容:
         关闭自适应的效果
         与config_A26_03_01G的区别只有use_dynamicFeatureMask
-    结果预测：
+    目标:
         希望作为一个负面的消融案例、预计指标会下降
+    结果:
+        达到目标,指标下降显著
     实验设备: AutoDL_I、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 9.45405387348599 hours
 '''
 config_A26_03_02G={ # follow: config_A26_03_01G
             "decouple":{ # 解耦

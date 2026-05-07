@@ -743,7 +743,8 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                 video_key = f"{patientID}/{videoId}"
                 
                 # 如果已经处理过，则跳过
-                if video_key in processed_videos:
+                # print("video_key",video_key,video_key in processed_videos)
+                if video_key in processed_videos or videoId in processed_videos:
                     continue
                 
                 import time
@@ -789,7 +790,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                     
                 # 处理成功，更新进度
                 CountI += 1
-                if False:
+                if True:
                     processed_videos.add(video_key)
                     
                 # 更新进度文件

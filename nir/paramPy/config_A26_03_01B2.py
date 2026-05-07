@@ -2,9 +2,11 @@
     实验设备: AutoDL_J、DeNVeR.26-3_new
     目的:
         测试batch_size对效果的影响
-    预计:
+    期望:
         期望指标不变、batch_size不影响结果
-    Running time: ?? hours
+    结果：
+        batch:0.125=>0.3, 指标下降了0.4个点
+    Running time: 5.601979445881314 hours
 '''
 config_A26_03_01B2={ #follow config_A26_03_01B: 测试batch_size对效果的影响
             "decouple":{ # 解耦
