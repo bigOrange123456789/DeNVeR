@@ -32,6 +32,7 @@ from nir.paramPy.config_A26_03_01I import config_A26_03_01I #自适应遮挡的�
 from nir.paramPy.config_A26_03_01J import config_A26_03_01J #自适应中加强软体运动
 from nir.paramPy.config_A26_03_01J2 import config_A26_03_01J2 #高迭代数
 from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3 #高迭代数+大batch
+from nir.paramPy.config_A26_03_01K import config_A26_03_01K #测试不确定学习
 
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
 from nir.paramPy.config_A26_03_02B import config_A26_03_02B
@@ -110,7 +111,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_03G
+    c0 = config_A26_03_01K
     print("config-name:",c0["name"])
     
     # 定义多个配置

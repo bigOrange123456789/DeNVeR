@@ -1,18 +1,16 @@
 '''
-    自适应、无快查
     内容：
-        follow config_A26_03_01J
-            测试不同batch的效果
+        测试不确定学习
     目标：
     预测：
     结果：
     分析：
-    实验设备: AutoDL_?、DeNVeR.26-3_new
+    实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours
 '''
-config_A26_03_01J3={ # follow: config_A26_03_**
+config_A26_03_01K={ # follow: config_A26_03_**
             "decouple":{ # 解耦
-                "tag":"A26-03-01J3",
+                "tag":"A26-03-01K",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625*(0.3/0.125),#
@@ -172,13 +170,16 @@ config_A26_03_01J3={ # follow: config_A26_03_**
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
+                "UncertainLearning":{
+                    "use":True,#False,#True,
+                },
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01J3", #提高模型的拟合能力
+            "name": "A26-03-01K", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01J3.rigid",#"A26-03-01J.rigid3",#这里写错了,推理程序应该会出错，不过影响不大
-            "input_mode": "A26-03-01J3.rigid.non1",#"A26-03-01J.rigid.non13",#这里写错了,推理程序应该会出错
+            "noise_label":"A26-03-01k.rigid",
+            "input_mode": "A26-03-01k.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

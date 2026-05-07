@@ -141,6 +141,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     dynamicVesselMask=False
     singleTrainVessel=False
     reconFlow=False
+    UncertainLearning={"use":False}
     # useMatrix = True
     if not config is None:
         if "reconFlow" in config:
@@ -227,6 +228,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         
         if "quickUpdate_dynamicFeatureMask" in config:
             quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
+        if "UncertainLearning" in config:
+            UncertainLearning = config["UncertainLearning"]
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
@@ -262,7 +265,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
         myMain=Decouple_rigid(
-            pathIn, inpath_custom = inpath_custom, videoId = videoId,
+                              pathIn, inpath_custom = inpath_custom, videoId = videoId,
                               hidden_features=256,
                               useSmooth=useSmooth,
                               openLocalDeform=openLocalDeform,
@@ -300,6 +303,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                                   "tag": tag+".rigid.non1",
                               },
                               reconFlow=reconFlow,
+                              UncertainLearning=UncertainLearning,
                         )
         myMain.train(
             epochs,total_steps,
