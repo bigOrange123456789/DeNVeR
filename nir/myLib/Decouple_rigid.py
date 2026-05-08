@@ -633,8 +633,8 @@ class Decouple_rigid(nn.Module):
         """
         if not self.use_UncertainLearning:
             return None
-        prod_mean_sq_plus_var = torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
-        prod_mean = torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
+        prod_mean_sq_plus_var = 1# torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
+        prod_mean = 1# torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
         for mean, var, layerId in mean_std:
             if s0 is None or len(s0.split(layerId)):
                 mean = mean.to(dtype=torch.float64)
@@ -953,7 +953,7 @@ class Decouple_rigid(nn.Module):
 
 
         self.layers = layers
-        if (step % 50 == 0) or (step ==1999) :
+        if (step % 100 == 0):# or (step ==1999) :
             # print("loss_concise",loss_concise)
             # if self.NUM_fluid>0:
             #     total_norm = torch.nn.utils.clip_grad_norm_(self.f2.parameters(), float('inf'))# 计算全局梯度范数（不裁剪）

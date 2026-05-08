@@ -1,20 +1,20 @@
 '''
-    测试内容:
-        与config_A26_03_01G的区别是: "lossParam"{ ra:"R,S,F", rm:None, rv:None } 
-    目标:
-        希望作为一个负面的消融案例、预计指标会下降
-    结果:
-        失败，和‘实验01G’基本持平，甚至还更高一些
-    实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: 5.884069477187262 hours
+    内容：
+        在mybest的基础上添加不确定学习
+    目标：
+        指标显著上涨
+    结果：
+    实验设备: 
+        AutoDL_P(之前是设备M)、DeNVeR.26-3_new
+    Running time: ?? hours (预计11h、今晚1点完成)
 '''
-config_A26_03_03G={ # follow: config_A26_03_01G
+config_A26_03_01I4={ # follow: config_A26_03_01I
             "decouple":{ # 解耦
-                "tag":"A26-03-03G",
+                "tag":"A26-03-01I4",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -24,6 +24,8 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
+                "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -136,19 +138,19 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
-                "weight_concise":1,#0.01,#0.00001,
+                "weight_concise":0.25,#1,#5,#20,#1,#0.01,#0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
                 # "lossParam":{ 
-                #     "ra":"R", #整体 
-                #     "rm":"S", #背景
-                #     "rv":"F", #血管
+                #     "ra":"R", 
+                #     "rm":"S", #背景 #很奇怪、软体层为啥能看到血管
+                #     "rv":"F", #前景
                 #     }, 
                 "lossParam":{ 
-                    "ra":"R,S,F", #整体 
-                    "rm":None, #背景
-                    "rv":None, #血管
+                    "ra":"R", 
+                    "rm":"S", 
+                    "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
                     "ra":"F", 
@@ -162,15 +164,18 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                     "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
+                "UncertainLearning":{
+                    "use":True,#False,#True,
+                },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-03G", #提高模型的拟合能力
+            "name": "A26-03-01I4", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-03G.rigid",
-            "input_mode": "A26-03-03G.rigid.non1",
+            "noise_label":"A26-03-01I4.rigid",
+            "input_mode": "A26-03-01I4.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

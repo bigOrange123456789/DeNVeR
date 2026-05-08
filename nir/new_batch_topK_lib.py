@@ -666,6 +666,15 @@ class ResultSaver:
         print("  4. 方法比较 - 简明的比较结果")
         print("  5. 图像路径 - 所有输入图像和ground truth的路径")
 
+import os
+import json
+import yaml
+import threading
+import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import torch
+
+
 def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
     if arguments==None:
         arguments={
@@ -722,30 +731,61 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
         patient_names = [name for name in os.listdir(datasetPath0_gt)
                     if os.path.isdir(os.path.join(datasetPath0_gt, name))]
         CountSum = 0
+        all_videos = [] # 收集所有待处理的视频（patientID/videoId）
         for patientID in patient_names:
             patient_path = os.path.join(datasetPath0_gt, patientID, "images")
             video_names = [name for name in os.listdir(patient_path)
                         if os.path.isdir(os.path.join(patient_path, name))]
             CountSum = CountSum + len(video_names)
+            for videoId in video_names:
+                if usedVideoId is None or videoId in usedVideoId:
+                    video_key = f"{patientID}/{videoId}"
+                    if video_key not in processed_videos and videoId not in processed_videos:
+                        all_videos.append((patientID, videoId))
         if not usedVideoId is None:
             CountSum = len(usedVideoId)
         CountI = len(processed_videos)  # 从已处理的数量开始计数
         
         print(f"总视频数: {CountSum}, 已处理: {CountI}, 待处理: {CountSum - CountI}")
+
+        ####################多线程#######################
+        # 检测可用 GPU 数量
+        gpu_count = torch.cuda.device_count()
+        if gpu_count == 0:
+            print("警告: 未检测到 GPU，将使用 CPU 顺序执行（可能极慢）")
+            max_workers = 1
+        else:
+            max_workers = gpu_count
+            print(f"检测到 {gpu_count} 个 GPU，将使用 {max_workers} 个线程并行处理")
+        # 线程锁，用于保护进度文件的写入
+        progress_lock = threading.Lock()
+        # GPU 队列：存放可用的 GPU ID
+        gpu_queue = queue.Queue()
+        for i in range(gpu_count):
+            gpu_queue.put(i)
+        ###########################################
         
-        for patientID in patient_names:
-            patient_path = os.path.join(datasetPath0_gt, patientID, "images")
-            video_names = [name for name in os.listdir(patient_path)
-                        if os.path.isdir(os.path.join(patient_path, name))]
-            for videoId in video_names:
-             if usedVideoId is None or videoId in usedVideoId:
-                # 生成唯一标识符
-                video_key = f"{patientID}/{videoId}"
+        def process_video(patientID, videoId):
+            nonlocal CountI
+            # 从队列中获取一个可用的 GPU
+            gpu_id = gpu_queue.get()
+            try:
+                # 设置当前线程使用的 GPU
+                torch.cuda.set_device(gpu_id)
+                print(f"[GPU {gpu_id}] 开始处理 {patientID}/{videoId}")
+        # for patientID in patient_names:
+        #     patient_path = os.path.join(datasetPath0_gt, patientID, "images")
+        #     video_names = [name for name in os.listdir(patient_path)
+        #                 if os.path.isdir(os.path.join(patient_path, name))]
+        #     for videoId in video_names:
+        #      if usedVideoId is None or videoId in usedVideoId:
+        #         # 生成唯一标识符
+        #         video_key = f"{patientID}/{videoId}"
                 
-                # 如果已经处理过，则跳过
-                # print("video_key",video_key,video_key in processed_videos)
-                if video_key in processed_videos or videoId in processed_videos:
-                    continue
+        #         # 如果已经处理过，则跳过
+        #         # print("video_key",video_key,video_key in processed_videos)
+        #         if video_key in processed_videos or videoId in processed_videos:
+        #             continue
                 
                 import time
                 time0 = time.time()
@@ -773,9 +813,9 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                         )
                     startDecouple2_sim(videoId, paramPath, inpath, outpath,config=arguments,origVideoPath=origVideoPath)  # 去除刚体层
                 # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
-                print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+                # print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
 
-                time0 = time.time()
+                # time0 = time.time()
                 inpath = os.path.join(
                     config["my"]["datasetPath_soft.in"],#datasetPath0,
                     patientID, "images", videoId)
@@ -786,20 +826,45 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                 os.makedirs(outpath, exist_ok=True)
                 if arguments["de-soft"]=="3":
                     startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
-                print(f"软体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+                # print(f"软体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
                     
                 # 处理成功，更新进度
-                CountI += 1
-                if True: # processed_videos.append(video_key) #processed_videos.add(video_key)
+                with progress_lock:
+                    CountI += 1
+                    video_key = f"{patientID}/{videoId}"
                     if isinstance(processed_videos, list):
                         processed_videos.append(video_key)
                     elif isinstance(processed_videos, set):
                         processed_videos.add(video_key)
-                    
-                # 更新进度文件
-                progress_data = {"processed_videos": list(processed_videos)}
-                with open(progress_file, 'w', encoding='utf-8') as f:
-                    json.dump(progress_data, f, ensure_ascii=False, indent=2)    
-                print(f"{CountI}/{CountSum} {videoId} - 已完成")
+                    # 更新进度文件
+                    progress_data = {"processed_videos": list(processed_videos)}
+                    with open(progress_file, 'w', encoding='utf-8') as f:
+                        json.dump(progress_data, f, ensure_ascii=False, indent=2)   
+
+                # print(f"{CountI}/{CountSum} {videoId} - 已完成")
+                print(f"[GPU {gpu_id}] {CountI}/{CountSum} {videoId} 完成，耗时 {((time.time()-time0)/60):.2f} 分钟")
+
+                return True
+            except Exception as e:
+                print(f"[GPU {gpu_id}] 处理 {patientID}/{videoId} 时出错: {e}")
+                return False
+            finally:
+                # 将 GPU 放回队列，供后续任务使用
+                gpu_queue.put(gpu_id)
+        
+        # 使用线程池执行所有任务
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for patientID, videoId in all_videos:
+                future = executor.submit(process_video, patientID, videoId)
+                futures.append(future)
+
+            # 可选：等待所有任务完成并检查异常
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"任务执行异常: {e}")
+                # 定义每个视频的处理函数（在线程中执行）
 
 # from nir.new_batch_topK_lib import Config, ImageLoader, NormalizationCalculator, ModelManager, Evaluator, StatisticalAnalyzer, ResultVisualizer, ResultSaver, denoising

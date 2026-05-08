@@ -1,20 +1,20 @@
 '''
-    测试内容:
-        与config_A26_03_01G的区别是: "lossParam"{ ra:"R,S,F", rm:None, rv:None } 
-    目标:
-        希望作为一个负面的消融案例、预计指标会下降
-    结果:
-        失败，和‘实验01G’基本持平，甚至还更高一些
-    实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: 5.884069477187262 hours
+    内容：
+        follow config_A26_03_01J2
+            rv: myLog => MSE
+    预测：
+    结果：
+    分析：
+    实验设备: AutoDL_L、DeNVeR.26-3_new
+    Running time: ??? hours (预计 14 h)
 '''
-config_A26_03_03G={ # follow: config_A26_03_01G
+config_A26_03_01L={ # follow: config_A26_03_01J2
             "decouple":{ # 解耦
-                "tag":"A26-03-03G",
+                "tag":"A26-03-01L",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -24,6 +24,12 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
+                "init_dynamicFeatureMask":{
+                    "R":[0,1],#[运动，纹理]
+                    "S":[1,1],
+                    "F":[1,1],
+                },#1, #遮挡向量的的初始值为1
+                "quickUpdate_dynamicFeatureMask":False,#True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -82,7 +88,7 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":True, #渐进式遮挡向量
+                        "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -136,19 +142,14 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 # 2.损失函数
                 "useSmooth":False, #不进行平滑约束
                 "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
-                "weight_concise":1,#0.01,#0.00001,
+                "weight_concise":0.25,#1,#5,#20,#1,#0.01,#0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
-                # "lossParam":{ 
-                #     "ra":"R", #整体 
-                #     "rm":"S", #背景
-                #     "rv":"F", #血管
-                #     }, 
                 "lossParam":{ 
-                    "ra":"R,S,F", #整体 
-                    "rm":None, #背景
-                    "rv":None, #血管
+                    "ra":"R", 
+                    "rm":"S", 
+                    "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
                     "ra":"F", 
@@ -158,8 +159,8 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
-                    "rv":"myLog",#"MSE", #更模糊一些
-                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "rv_eps":0.5,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
@@ -167,11 +168,10 @@ config_A26_03_03G={ # follow: config_A26_03_01G
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-03G", #提高模型的拟合能力
+            "name": "A26-03-01L", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-03G.rigid",
-            "input_mode": "A26-03-03G.rigid.non1",
-            # "norm_method": norm_calculator.calculate_mean_variance,
+            "noise_label":"A26-03-01L.rigid",
+            "input_mode": "A26-03-01L.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
