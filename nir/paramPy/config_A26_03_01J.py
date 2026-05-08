@@ -11,9 +11,10 @@
     预测：
         希望指标能够尽量好(能够超过config_A26_03_01G)
     结果：
+        只比1J实验上涨了0.1个点（微乎其微）
     分析：
     实验设备: AutoDL_K、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 10.229689002368186 hours
 '''
 config_A26_03_01J={ # follow: config_A26_03_**
             "decouple":{ # 解耦

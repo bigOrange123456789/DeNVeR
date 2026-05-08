@@ -1,21 +1,16 @@
 '''
-    自适应、无快查
     内容：
-        follow config_A26_03_01J
-            测试小batch的效果
-    预测：
-        希望指标高于config_A26_03_01J
+        减少batchSize (0.3=>0.128)
+    目标：
+        指标显著上涨
     结果：
-        显著涨点、并且达到了历史最高值
-    分析：
-        效果好得超出预期
-        这说明之前的迭代次数不够
-    实验设备: AutoDL_D、DeNVeR.26-3_new
-    Running time: 14.638766467306349 hours
+    实验设备: 
+        AutoDL_D、DeNVeR.26-3_new
+    Running time: ?? hours (预计时间12h)
 '''
-config_A26_03_01J2={ # follow: config_A26_03_**
+config_A26_03_01I2={ # follow: config_A26_03_01I
             "decouple":{ # 解耦
-                "tag":"A26-03-01J2",
+                "tag":"A26-03-01I2",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -29,12 +24,8 @@ config_A26_03_01J2={ # follow: config_A26_03_**
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
-                "init_dynamicFeatureMask":{
-                    "R":[0,1],#[运动，纹理]
-                    "S":[1,1],
-                    "F":[1,1],
-                },#1, #遮挡向量的的初始值为1
-                "quickUpdate_dynamicFeatureMask":False,#True,
+                "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -93,7 +84,7 @@ config_A26_03_01J2={ # follow: config_A26_03_**
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":False,#True, #渐进式遮挡向量
+                        "use_featureMask":True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -178,10 +169,10 @@ config_A26_03_01J2={ # follow: config_A26_03_**
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01J2", #提高模型的拟合能力
+            "name": "A26-03-01I2", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01J2.rigid",
-            "input_mode": "A26-03-01J2.rigid.non1",
+            "noise_label":"A26-03-01I2.rigid",
+            "input_mode": "A26-03-01I2.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

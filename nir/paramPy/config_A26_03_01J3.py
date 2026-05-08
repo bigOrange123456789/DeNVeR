@@ -4,11 +4,13 @@
         follow config_A26_03_01J
             测试不同batch的效果
     目标：
-    预测：
     结果：
+        指标几乎不变(提升幅度小于0.1)
     分析：
-    实验设备: AutoDL_?、DeNVeR.26-3_new
-    Running time: ?? hours
+        对指标影响较大的是迭代次数、而不是使用了多少数据
+        结论: 小batchSize才是王道
+    实验设备: AutoDL_O、DeNVeR.26-3_new
+    Running time: 约 19 hours
 '''
 config_A26_03_01J3={ # follow: config_A26_03_**
             "decouple":{ # 解耦
