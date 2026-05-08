@@ -144,10 +144,11 @@ class Decouple_rigid(nn.Module):
         super().__init__()
         self.result = None
         self.softHasSelfGlobal = configSofts["layer"]["useGlobal"]
-        print("softHasSelfGlobal:",self.softHasSelfGlobal,"用于判断软体层是否有自己的运动")
+        # print("softHasSelfGlobal:",self.softHasSelfGlobal,"用于判断软体层是否有自己的运动")
         self.dynamicVesselMask = dynamicVesselMask
         self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
+        self.UncertainLearning=UncertainLearning
         self.use_UncertainLearning=UncertainLearning["use"]
 
         self.init_dynamicFeatureMask = init_dynamicFeatureMask
@@ -827,11 +828,14 @@ class Decouple_rigid(nn.Module):
             S2=S if len(s0.split("S")) else S_clone
             F2=F if len(s0.split("F")) else F_clone
             return R2*S2*F2, self._product_variance(p['mean_std'],s0)
-        def getLossMSE(pred_mean, pred_var):
+        def getLossMSE(pred_mean, pred_var, tag):
             y = ground_truth[start:end]
             l0 = (y - pred_mean)**2
             if self.use_UncertainLearning:
-                return l0 / (pred_var * 2) + torch.log(pred_var) / 2
+                pred_var += self.UncertainLearning["var_dias"]
+                w_reg = self.UncertainLearning["weight_regular"][tag]
+                l0 = l0 / (pred_var * 2) +  w_reg * torch.log(pred_var) / 2
+                l0 *= self.UncertainLearning["weitht_all"]
             return l0
             
         # 一、有遮挡重构损失 loss=M*(S*R-O)
@@ -847,7 +851,7 @@ class Decouple_rigid(nn.Module):
             rm_in, rm_in_std=getData(lossParam["rm"])
             if self.lossFunType["rm"]=="MSE":
                 # loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
-                loss_recon_mask = getLossMSE(rm_in, rm_in_std)
+                loss_recon_mask = getLossMSE(rm_in, rm_in_std,"rm")
             else:#myLog
                 loss_recon_mask = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
@@ -864,7 +868,7 @@ class Decouple_rigid(nn.Module):
             rv_in, rv_in_std=getData(lossParam["rv"])
             if self.lossFunType["rv"]=="MSE":
                 # loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
-                loss_recon_vessel = getLossMSE(rv_in, rv_in_std)
+                loss_recon_vessel = getLossMSE(rv_in, rv_in_std,"rv")
             else:#myLog
                 loss_recon_vessel = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
@@ -886,7 +890,7 @@ class Decouple_rigid(nn.Module):
                 exit(0)
             if loss_recon_all_type=="MSE":
                 # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
-                loss_recon_all = getLossMSE(ra_in, ra_in_std)
+                loss_recon_all = getLossMSE(ra_in, ra_in_std,"ra")
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
             elif loss_recon_all_type=="atten_d":#类似最大值的思想
                 temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度
@@ -980,6 +984,10 @@ class Decouple_rigid(nn.Module):
                            loss_concise * self.weight_concise, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], 
                            loss_recon_flow))
                     # print("printLog:\n",p["printLog"])
+                    if True:
+                        print()
+                        for mean0000, var0, layerId in p['mean_std']:
+                            print(layerId,":", var0.mean())
                     if False:
                         print('\n'.join(' '.join(map(str, row)) for row in p["printLog"]))
                 # else:

@@ -1,24 +1,20 @@
 '''
     内容：
-        测试不确定学习
-    目标：
-        希望能好于config_A26_03_01J2，这样就能够证明不确定学习的有效性
+        follow config_A26_03_01J2
+            rv: myLog => MSE
+    预测：
     结果：
-        指标大幅下降、去噪的有效性退化到了0.3%
     分析：
-        这里的不确定学习是完全无效的、甚至起到了负面作用
-        后续计划：
-            刚体的不确定性最小、软体、流体的不确定性更高?
-    实验设备: AutoDL_I、DeNVeR.26-3_new
-    Running time: 16=8.7*111/60 hours (估算)
+    实验设备: AutoDL_L、DeNVeR.26-3_new
+    Running time: ??? hours (预计 14 h)
 '''
-config_A26_03_01K={ # follow: config_A26_03_01J3
+config_A26_03_01M={ # follow: config_A26_03_01J2
             "decouple":{ # 解耦
-                "tag":"A26-03-01K",
+                "tag":"A26-03-01M",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
-                "epochs":0.625*(0.3/0.125),#
-                "batch_size_scale":0.3,#1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                "epochs":0.625,#
+                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -150,11 +146,6 @@ config_A26_03_01K={ # follow: config_A26_03_01J3
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
-                # "lossParam":{ 
-                #     "ra":"R", 
-                #     "rm":"S", #背景 #很奇怪、软体层为啥能看到血管
-                #     "rv":"F", #前景
-                #     }, 
                 "lossParam":{ 
                     "ra":"R", 
                     "rm":"S", 
@@ -168,23 +159,29 @@ config_A26_03_01K={ # follow: config_A26_03_01J3
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
-                    "rv":"myLog",#"MSE", #更模糊一些
-                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "rv_eps":0.5,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
-                "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
-                "useMask":True, #只有lossType==1的时候才有效
                 "UncertainLearning":{
                     "use":True,#False,#True,
+                    "var_dias":1,#默认为0
+                    "weitht_all":2,#默认为1
+                    "weight_regular":{
+                        "ra":1000, #默认为1
+                        "rm":10, #默认为1
+                        "rv":1, #默认为1
+                    },
                 },
+                "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
+                "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01K", #提高模型的拟合能力
+            "name": "A26-03-01M", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01K.rigid",#K的大小写写错了
-            "input_mode": "A26-03-01K.rigid.non1",#K的大小写写错了
-            # "norm_method": norm_calculator.calculate_mean_variance,
+            "noise_label":"A26-03-01M.rigid",
+            "input_mode": "A26-03-01M.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

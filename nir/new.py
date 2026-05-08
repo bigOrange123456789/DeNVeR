@@ -142,6 +142,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     singleTrainVessel=False
     reconFlow=False
     UncertainLearning={"use":False}
+    saveTempImg = False
     # useMatrix = True
     if not config is None:
         if "reconFlow" in config:
@@ -230,6 +231,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
         if "UncertainLearning" in config:
             UncertainLearning = config["UncertainLearning"]
+            if not "var_dias" in UncertainLearning:UncertainLearning["var_dias"]=0
+            if not "weitht_all" in UncertainLearning:UncertainLearning["weitht_all"]=1
+            if not "weight_regular" in UncertainLearning:UncertainLearning["weight_regular"]={"ra":1, "rm":1, "rv":1}
+        if "saveTempImg" in config:
+            saveTempImg = config["saveTempImg"]
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
@@ -327,7 +333,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
         # if True: #这里是输入的视频不是用于分割的视频
-        if not os.path.exists(os.path.join(outpath, 'orig')):#如果原始数据还没有复制过来
+        if not os.path.exists(os.path.join(outpath, 'orig')) and saveTempImg:#如果原始数据还没有复制过来
             save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
         orig = myMain.v.video.clone()
@@ -338,7 +344,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
 
         # soft结果 
         # save1(p["o_soft_all"], tag+".soft")#看一下刚体层的效果
-        if NUM_soft>0:#输出全部的软体层
+        if NUM_soft>0 and saveTempImg:#输出全部的软体层
          if "s" in layers:
             for i in range(len(layers["s"])):
                 save1(layers["s"][i], tag+".soft" + str(i))
@@ -350,19 +356,20 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
 
         # rigid结果 
         if NUM_rigid>0: 
-            save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
+            if saveTempImg:
+                save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
             if not p["o_rigid_all"]==None and len(p["o_rigid_all"])>0: 
-                save1(
+                save1(#真正影响下一个阶段的输出
                     orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                     tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
-            if NUM_rigid>1:
+            if NUM_rigid>1 and saveTempImg:
                 for i in range(len(layers["r"])):
                     save1(layers["r"][i], tag+".rigid" + str(i))
         if False:
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 
         # fluid结果
-        if NUM_fluid>0:#"f" in layers:
+        if NUM_fluid>0 and saveTempImg:#"f" in layers:
             save1(p["o_fluid_all"], tag+".fluid")
             if NUM_fluid>1:
                 for i in range(len(layers["f"])):
@@ -389,9 +396,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             mainFreeCOS(paramPath, os.path.join(outpath, tag+".rigid.main_non2"), os.path.join(outpath, tag+".mask.main_nr2"))
             check(os.path.join(outpath, tag+".mask.main_nr2"), videoId, tag+".mask.main_nr2")
         
-        save1(video_pre, tag+".recon")
-        save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
-        save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
+        
+        if saveTempImg:
+            save1(video_pre, tag+".recon")
+            save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
+            save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
 
 
 
