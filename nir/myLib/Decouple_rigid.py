@@ -985,9 +985,10 @@ class Decouple_rigid(nn.Module):
                            loss_recon_flow))
                     # print("printLog:\n",p["printLog"])
                     if True:
-                        print()
+                        # print()
                         for mean0000, var0, layerId in p['mean_std']:
-                            print(layerId,":", var0.mean())
+                            print(layerId,":", var0.mean().item(),";",end="")
+                        print()
                     if False:
                         print('\n'.join(' '.join(map(str, row)) for row in p["printLog"]))
                 # else:

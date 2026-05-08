@@ -1,16 +1,29 @@
 '''
+    这个方案现在还没有设计好，现在输出为空白
     内容：
-        follow config_A26_03_01J2
-            rv: myLog => MSE
+        follow config_A26_03_01M
+        rv_eps: 0.5=>0.1
+        "lossParam":{ 
+            "ra":"R",
+            "rm":"S,F", 
+            "rv":"F", 
+        }, 
+        "weight_regular":{
+            "ra":1000, 
+            "rm":10, 
+            "rv":200, 
+        }
+    预测：
+        刚体和流体比较确定、软体不确定
     结果：
-        指标几乎不不变(下降了0.2个点)
+        依然是只有刚体比较确定
     分析：
-    实验设备: AutoDL_L、DeNVeR.26-3_new
-    Running time: 2*7.2 hours 
+    实验设备: AutoDL_?、DeNVeR.26-3_new
+    Running time: ??? hours 
 '''
-config_A26_03_01L={ # follow: config_A26_03_01J2
+config_A26_03_01N={ # follow: config_A26_03_01M
             "decouple":{ # 解耦
-                "tag":"A26-03-01L",
+                "tag":"A26-03-01N",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -147,8 +160,8 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
                 "lossParam":{ 
-                    "ra":"R", 
-                    "rm":"S", 
+                    "ra":"R",#"R", 
+                    "rm":"S,F", 
                     "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
@@ -160,18 +173,28 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
-                    "rv_eps":0.5,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
+                "UncertainLearning":{
+                    "use":True,#False,#True,
+                    "var_dias":1,#默认为0
+                    "weitht_all":2,#默认为1
+                    "weight_regular":{
+                        "ra":1000, #默认为1
+                        "rm":10, #默认为1
+                        "rv":200, #默认为1
+                    },
+                },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01L", #提高模型的拟合能力
+            "name": "A26-03-01N", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01L.rigid",
-            "input_mode": "A26-03-01L.rigid.non1",
+            "noise_label":"A26-03-01N.rigid",
+            "input_mode": "A26-03-01N.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

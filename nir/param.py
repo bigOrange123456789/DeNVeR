@@ -37,7 +37,8 @@ from nir.paramPy.config_A26_03_01J2 import config_A26_03_01J2 #高迭代数     
 from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3 #高迭代数+大batch
 from nir.paramPy.config_A26_03_01K import config_A26_03_01K #不确定学习
 from nir.paramPy.config_A26_03_01L import config_A26_03_01L #rv:Log=>MSE
-from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定学习方差趋于1
+from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定{S、F}
+from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定{S}
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -118,7 +119,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01M
+    c0 = config_A26_03_01N
     print("config-name:",c0["name"])
     
     # 定义多个配置

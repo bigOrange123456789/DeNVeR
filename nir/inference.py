@@ -171,7 +171,8 @@ class Main:
         s(img)#保存到inputs文件夹中
         if "noise_label" in config:
             img_noise = self.image_loader.load_image(config["noise_label"], patient_id, video_id, frame_id)
-            s2(img_noise)
+            if not img_noise is None:
+                s2(img_noise)
         return img
     
     def _normalize_image(self, config, img, mean, std):
@@ -455,7 +456,9 @@ def getUsedVideoId(folder_path = "xca_dataset"):
                 if len(videoId.split("CATH"))==1:
                     usedVideoId.append(videoId)#print(videoId)
     return usedVideoId
-                
+
+
+from nir.param import configs 
 def main(): 
     """主函数"""
     # 初始化配置和各个管理器
@@ -470,7 +473,6 @@ def main():
     block_cath = True
     
     # 定义多个配置
-    from nir.param import configs 
     #可以相信的东西：静态刚体的纹理、无局部刚体的运动
     #刚体的局部运动
     #软体使用刚体的全局运动
@@ -603,5 +605,8 @@ if __name__ == "__main__":
 
     # 训练完成后执行关机
     if True: 
+        print("GPU 个数为:",torch.cuda.device_count())
+        for c in configs: 
+            if "decouple" in c: print("name:",c["name"])
         os.system("ls") 
         os.system("/usr/bin/shutdown") # 推荐使用完整路径，确保脚本可靠执行

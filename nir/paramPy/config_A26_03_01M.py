@@ -4,9 +4,12 @@
             rv: myLog => MSE
     预测：
     结果：
+        刚体的方差0.001, 软体和流体的方差0.1 (只有刚体比较确定)
+        指标为0,啥都分割不出来
+        去刚图为全白,哪里出BUG了吗
     分析：
-    实验设备: AutoDL_L、DeNVeR.26-3_new
-    Running time: ??? hours (预计 14 h)
+    实验设备: AutoDL_J、DeNVeR.26-3_new
+    Running time: 10=2.5*4 hours (预计 14 h)
 '''
 config_A26_03_01M={ # follow: config_A26_03_01J2
             "decouple":{ # 解耦

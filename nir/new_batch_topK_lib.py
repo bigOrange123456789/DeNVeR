@@ -81,6 +81,7 @@ class ImageLoader:
                 video_id=video_id,
                 frame_id=frame_id
             )
+            if not os.path.exists(img_path): return None
             return self._load_single_image(img_path)
             #raise ValueError(f"未知的标签类型: {tag}")
     
