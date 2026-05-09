@@ -1,22 +1,22 @@
 '''
     内容：
-        只有R对应的不确定方差项的权重较高
+        "rv_eps":0=>0.5
+        "ra":"R,F"=>"R",
+    预测：
+        估计结果与config_A26_03_01N类似
+        希望能够与baseline的结果类似, 从而便于开展后续的分析型测试
     结果：
-        刚体的方差0.001, 软体和流体的方差0.1 (只有刚体比较确定)
-        指标为0,啥都分割不出来
-        去刚图为全白
     分析：
-        猜测---方差较小倒逼MLP输出非常小、然后刚体层输出全黑
-    实验设备: AutoDL_J、DeNVeR.26-3_new
-    Running time: 10=2.5*4 hours (预计 14 h)
+    实验设备: AutoDL_I、DeNVeR.26-3_new
+    Running time: ??? hours 
 '''
-config_A26_03_01M={ # follow: config_A26_03_01J2
+config_A26_03_01O={ # follow: config_A26_03_01N
             "decouple":{ # 解耦
-                "tag":"A26-03-01M",
+                "tag":"A26-03-01O",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":0.125,#1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -148,8 +148,11 @@ config_A26_03_01M={ # follow: config_A26_03_01J2
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
-                "lossParam":{ 
-                    "ra":"R", 
+                "lossParam":{ #这里有九种基础的组合, 全部算上有2^9种组合 
+                    # "ra":"R,F", 
+                    # "rm":"S", 
+                    # "rv":None, 
+                    "ra":"R", #"R,F", 
                     "rm":"S", 
                     "rv":"F", 
                     }, 
@@ -162,28 +165,32 @@ config_A26_03_01M={ # follow: config_A26_03_01J2
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
-                    "rv_eps":0.5,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "UncertainLearning":{
                     "use":True,#False,#True,
-                    "var_dias":1,#默认为0
-                    "weitht_all":2,#默认为1
+                    "activationFunction":"sigmoid",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
+                    "activationFunctionRadius":1, #只有当激活函数类型为sigmoid的时候才生效
+                    "var_dias":0,#1,#默认为0
+                    "weitht_all":2,#2,#默认为1
                     "weight_regular":{
-                        "ra":1000, #默认为1
-                        "rm":10, #默认为1
+                        "ra":1, #默认为1
+                        "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
+                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"}
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
+                "saveTempImg":False,#True,
             },
-            "name": "A26-03-01M", #提高模型的拟合能力
+            "name": "A26-03-01O", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01M.rigid",
-            "input_mode": "A26-03-01M.rigid.non1",
+            "noise_label":"A26-03-01O.rigid",
+            "input_mode": "A26-03-01O.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
