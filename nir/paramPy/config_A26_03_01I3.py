@@ -1,12 +1,14 @@
 '''
     内容：
-        减少batchSize (0.3=>0.128*0.5)
+        自适应快开始 + ‘超高’迭代数
     目标：
-        指标显著上涨
+        期望能显著高于《自适应快开始 + 高迭代数 A26_03_01I2》
     结果：
+        一个我乐于看到的失败：
+            超高迭代数不能提升指标（指标没有任何上涨）
     实验设备: 
-        AutoDL_?、DeNVeR.26-3_new
-    Running time: ?? hours (预计时间15h)
+        AutoDL_O、DeNVeR.26-3_new
+    Running time: 16.44673534479406 hours (预计时间15h)
 '''
 config_A26_03_01I3={ # follow: config_A26_03_01I
             "decouple":{ # 解耦
