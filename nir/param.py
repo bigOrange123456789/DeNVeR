@@ -38,7 +38,7 @@ from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3 #高迭代数+大b
 from nir.paramPy.config_A26_03_01K import config_A26_03_01K #不确定学习
 from nir.paramPy.config_A26_03_01L import config_A26_03_01L #rv:Log=>MSE
 from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定{S、F}
-from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定{S}
+from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定学习使用sigmoid激活
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -46,9 +46,11 @@ from nir.paramPy.config_A26_03_02B import config_A26_03_02B
 from nir.paramPy.config_A26_03_02F import config_A26_03_02F
 from nir.paramPy.config_A26_03_02G import config_A26_03_02G
 
-# “联合重构约束”模块的消融测试
+# “联合重构约束”模块的消融测试(这里是否有效不重要)
 from nir.paramPy.config_A26_03_03G import config_A26_03_03G
 
+# “不确定学习”模块的消融测试
+from nir.paramPy.config_A26_03_04N import config_A26_03_04N
 
 # 目前最重要的是获取论文所需的量化结果
 if True:
@@ -119,7 +121,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01N
+    c0 = config_A26_03_04N
     print("config-name:",c0["name"])
     
     # 定义多个配置

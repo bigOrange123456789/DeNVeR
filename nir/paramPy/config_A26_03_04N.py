@@ -1,19 +1,16 @@
 '''
-    使用了不确定学习
     内容：
-        直接就期望不确定学习能够生效是一个美丽的童话
+        关闭不确定学习
     预测：
-        希望指标能够与baseline要高
+        期望结果与baseline持平
     结果：
     分析：
-        不确定性学习能够给刚体层的运动区域打码
-        不确定性学习
-    实验设备: AutoDL_O、DeNVeR.26-3_new
-    Running time: ??? hours 
+    实验设备: AutoDL_?、DeNVeR.26-3_new
+    Running time: ??? hours (预计10个小时、明早6点执行完成)
 '''
-config_A26_03_01N={ # follow: config_A26_03_01M
+config_A26_03_04N={ # follow: config_A26_03_01M
             "decouple":{ # 解耦
-                "tag":"A26-03-01N",
+                "tag":"A26-03-04N",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -157,7 +154,7 @@ config_A26_03_01N={ # follow: config_A26_03_01M
                     "rm":"S", 
                     "rv":"F", 
                     }, 
-                "lossParam_vessel":{ 
+                "lossParam_vessel":{ #没有被使用
                     "ra":"F", 
                     "rm":None, 
                     "rv":None, 
@@ -170,7 +167,7 @@ config_A26_03_01N={ # follow: config_A26_03_01M
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "UncertainLearning":{
-                    "use":True,#False,#True,
+                    "use":False,#False,#True,
                     "activationFunction":"sigmoid",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
                     "activationFunctionRadius":1, #只有当激活函数类型为sigmoid的时候才生效
                     "var_dias":0,#1,#默认为0
@@ -188,10 +185,10 @@ config_A26_03_01N={ # follow: config_A26_03_01M
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26-03-01N", #提高模型的拟合能力
+            "name": "A26-03-04N", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01N.rigid",
-            "input_mode": "A26-03-01N.rigid.non1",
+            "noise_label":"A26-03-04N.rigid",
+            "input_mode": "A26-03-04N.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

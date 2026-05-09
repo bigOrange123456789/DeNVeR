@@ -231,9 +231,16 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
         if "UncertainLearning" in config:
             UncertainLearning = config["UncertainLearning"]
-            if not "var_dias" in UncertainLearning:UncertainLearning["var_dias"]=0
-            if not "weitht_all" in UncertainLearning:UncertainLearning["weitht_all"]=1
-            if not "weight_regular" in UncertainLearning:UncertainLearning["weight_regular"]={"ra":1, "rm":1, "rv":1}
+            if not "var_dias" in UncertainLearning:
+                UncertainLearning["var_dias"]=0
+            if not "weitht_all" in UncertainLearning:
+                UncertainLearning["weitht_all"]=1
+            if not "weight_regular" in UncertainLearning:
+                UncertainLearning["weight_regular"]={"ra":1, "rm":1, "rv":1}
+            if not "activationFunction" in UncertainLearning:
+                UncertainLearning["activationFunction"]="softplus"
+            if not "product_variance_type" in UncertainLearning:
+                UncertainLearning["product_variance_type"]="mul_err"
         if "saveTempImg" in config:
             saveTempImg = config["saveTempImg"]
     # print("168-configFluids",configFluids)

@@ -753,11 +753,11 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
         # 检测可用 GPU 数量
         gpu_count = torch.cuda.device_count()
         if gpu_count == 0:
-            print("警告: 未检测到 GPU，将使用 CPU 顺序执行（可能极慢）")
+            print("警告: 未检测到 GPU, 将使用 CPU 顺序执行（可能极慢）")
             max_workers = 1
         else:
             max_workers = gpu_count
-            print(f"检测到 {gpu_count} 个 GPU，将使用 {max_workers} 个线程并行处理")
+            print(f"检测到 {gpu_count} 个 GPU, 将使用 {max_workers} 个线程并行处理")
         # 线程锁，用于保护进度文件的写入
         progress_lock = threading.Lock()
         # GPU 队列：存放可用的 GPU ID

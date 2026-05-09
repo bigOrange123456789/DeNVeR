@@ -226,6 +226,7 @@ class Decouple_rigid(nn.Module):
                 init_dynamicFeatureMask=init_dynamicFeatureMask["S"],
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 out_features = out_features,# pixels.shape[1],
+                UncertainLearning=UncertainLearning
                 ))
             if self.useSoftMask:
                 self.f_soft_mask_list.append(
@@ -271,6 +272,7 @@ class Decouple_rigid(nn.Module):
                 v=self.v,
                 interval=interval,
                 out_features = out_features,# pixels.shape[1],
+                UncertainLearning=UncertainLearning
             ))
         if self.NUM_rigid>0:
             self.f_rigid_list[0].stillness = stillnessFristLayer
@@ -295,6 +297,7 @@ class Decouple_rigid(nn.Module):
                     init_dynamicFeatureMask=init_dynamicFeatureMask["F"],
                     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                     out_features = out_features,# pixels.shape[1],
+                    UncertainLearning=UncertainLearning
                 )
             )
         if NUM_fluid>0:
@@ -471,7 +474,7 @@ class Decouple_rigid(nn.Module):
                 # else: # 情况3：该层训练已完成
                 #     return 0.005, 0.995 # o_fluid0 , detach()
         
-        mean_std = [] #self.use_UncertainLearning
+        mean_var = [] #self.use_UncertainLearning
         # 1.刚体
         o_rigid_all = 1
         o_rigid_list = []
@@ -492,7 +495,7 @@ class Decouple_rigid(nn.Module):
             h_global = p_rigid0["h_global"]
             loss_smooth = loss_smooth + p_rigid0["loss_smooth"]
             if self.use_UncertainLearning:
-                mean_std.append([o_rigid0, p_rigid0["std"],"R"])
+                mean_var.append([o_rigid0, p_rigid0["var"],"R"])
             if self.use_dynamicFeatureMask:
                 l_m, l_t = self.f_rigid_list[i].getFeatureLen()
                 k_m = l_m * self.f_rigid_list[i].kFeatureMask_motion()
@@ -522,7 +525,7 @@ class Decouple_rigid(nn.Module):
             o_soft_all = o_soft_all * o_soft0_gray # o_soft_all = o_soft_all * o_soft0
             o_soft_list.append(o_soft0)
             if self.use_UncertainLearning:
-                mean_std.append([o_soft0, p_soft0["std"],"S"])
+                mean_var.append([o_soft0, p_soft0["var"],"S"])
             if self.use_dynamicFeatureMask:
                 l_m, l_t = self.f_soft_list[i].getFeatureLen()
                 k_m = l_m * self.f_soft_list[i].kFeatureMask_motion()
@@ -561,7 +564,7 @@ class Decouple_rigid(nn.Module):
             #     self.mask[start:end] + self.lossFunType["rv_eps"]
             o_fluid_list.append(o_fluid0)
             if self.use_UncertainLearning:
-                mean_std.append([o_fluid0, p_fluid0["std"],"F"])
+                mean_var.append([o_fluid0, p_fluid0["var"],"F"])
             if self.use_dynamicFeatureMask:
                 _, l_t = self.f_fluid_list[i].getFeatureLen() #self.f_fluid_list
                 k_t = l_t * self.f_fluid_list[i].kFeatureMask_texture()
@@ -621,12 +624,22 @@ class Decouple_rigid(nn.Module):
             "loss_conciseS":loss_conciseS/(loss_conciseS_full + 10**-5),
             "loss_conciseF":loss_conciseF/(loss_conciseF_full + 10**-5),
             "printLog":printLog,
-            # "std":self.product_variance(mean_std,None),
-            "mean_std":mean_std,
+            # "var":self.product_variance(mean_var,None),
+            "mean_var":mean_var,
             # "o_soft_mask_list":o_soft_mask_list, #在第二参数中用于训练的loss2, 在第三参数中用于推理的getVideo
         }#输出三样东西：重构结果、分层结果、相关参数
     
-    def _product_variance(self, mean_std, s0):#用于不确定学习
+    def _product_variance_add(self, mean_var, s0):#用于不确定学习
+        if not self.use_UncertainLearning:
+            return None
+        sum0 = 0
+        for mean, var, layerId in mean_var:
+            # if s0 is None or len(s0.split(layerId)):
+                var = var.to(dtype=torch.float64)
+                sum0 += var 
+        return sum0 
+    
+    def _product_variance_mul_err(self, mean_var, s0):#用于不确定学习
         """
             计算相互独立随机变量乘积的方差。
             参数:mean_std: iterable of [mean_tensor, var_tensor]
@@ -636,7 +649,7 @@ class Decouple_rigid(nn.Module):
             return None
         prod_mean_sq_plus_var = 1# torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
         prod_mean = 1# torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
-        for mean, var, layerId in mean_std:
+        for mean, var, layerId in mean_var:
             if s0 is None or len(s0.split(layerId)):
                 mean = mean.to(dtype=torch.float64)
                 var = var.to(dtype=torch.float64)
@@ -645,6 +658,41 @@ class Decouple_rigid(nn.Module):
         var_product = prod_mean_sq_plus_var - prod_mean ** 2 # σ^2 = ∏(μ_i^2 + σ_i^2) - ∏(μ_i^2)
         return var_product
     
+    def _product_variance_mul(self, mean_var, s0):#用于不确定学习
+        """
+            计算相互独立随机变量乘积的方差。
+            参数:mean_std: iterable of [mean_tensor, var_tensor]
+            返回:var_product: 乘积变量的方差 (torch.Tensor, 标量)
+            X=R*S*F = w * A * B
+            D(X) = w^2 * [E(AB)^2 -E(A)^2*E(B)^2]
+        """
+        if not self.use_UncertainLearning:
+            return None
+        prod_mean_sq_plus_var = 1 # torch.tensor(1.0, dtype=torch.float64)  # 累乘 (μ^2+σ^2)
+        prod_mean = 1 # torch.tensor(1.0, dtype=torch.float64)              # 累乘 μ
+        k = 1
+        for mean, var, layerId in mean_var:
+            if s0 is None or len(s0.split(layerId)): #该层作为随机变量
+                mean = mean.to(dtype=torch.float64)
+                var = var.to(dtype=torch.float64)
+                prod_mean_sq_plus_var *= (mean ** 2 + var)
+                prod_mean *= mean
+            else: #该层作为常数项
+                k *= mean
+        var_product = prod_mean_sq_plus_var - prod_mean ** 2 # σ^2 = ∏(μ_i^2 + σ_i^2) - ∏(μ_i^2)
+        var_product *= ( k**2 )
+        return var_product
+
+    def _product_variance(self, mean_var, s0):#用于不确定学习
+        type0 = self.UncertainLearning["product_variance_type"]#{"mul_err":最开始错误的版本，"mul","add"}
+        if type0 =="mul":
+            return self._product_variance_mul(mean_var, s0)
+        elif type0 =="add":
+            return self._product_variance_add(mean_var, s0)
+        else: #"mul_err"
+            return self._product_variance_mul_err(mean_var, s0)
+
+
     def loss(self, xyt, step,epochs0, start, end,openLocalDeform,
              lossParam=None,
              lossParam_vessel=None,
@@ -827,7 +875,7 @@ class Decouple_rigid(nn.Module):
             R2=R if len(s0.split("R")) else R_clone
             S2=S if len(s0.split("S")) else S_clone
             F2=F if len(s0.split("F")) else F_clone
-            return R2*S2*F2, self._product_variance(p['mean_std'],s0)
+            return R2*S2*F2, self._product_variance(p['mean_var'],s0)
         def getLossMSE(pred_mean, pred_var, tag):
             y = ground_truth[start:end]
             l0 = (y - pred_mean)**2
@@ -848,10 +896,10 @@ class Decouple_rigid(nn.Module):
             # ).abs() # ground_truth是目标图像，mask是分割图
             # loss_recon_mask = loss_recon_mask*self.mask[start:end]#只重构血管？
             # loss_recon_mask = loss_recon_mask.sum()/(self.mask[start:end].sum()+1e-8)
-            rm_in, rm_in_std=getData(lossParam["rm"])
+            rm_in, rm_in_var=getData(lossParam["rm"])
             if self.lossFunType["rm"]=="MSE":
                 # loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
-                loss_recon_mask = getLossMSE(rm_in, rm_in_std,"rm")
+                loss_recon_mask = getLossMSE(rm_in, rm_in_var,"rm")
             else:#myLog
                 loss_recon_mask = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
@@ -865,10 +913,10 @@ class Decouple_rigid(nn.Module):
         #     ground_truth[start:end] )
         loss_recon_vessel = torch.tensor(0.0) #血管重构损失
         if not lossParam["rv"] is None:
-            rv_in, rv_in_std=getData(lossParam["rv"])
+            rv_in, rv_in_var=getData(lossParam["rv"])
             if self.lossFunType["rv"]=="MSE":
                 # loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
-                loss_recon_vessel = getLossMSE(rv_in, rv_in_std,"rv")
+                loss_recon_vessel = getLossMSE(rv_in, rv_in_var,"rv")
             else:#myLog
                 loss_recon_vessel = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
@@ -879,7 +927,7 @@ class Decouple_rigid(nn.Module):
         # 二、无遮挡重构损失 loss=(R-O)
         loss_recon_all = torch.tensor(0.0) # 整体重构损失
         if not lossParam["ra"] is None:
-            ra_in, ra_in_std=getData(lossParam["ra"])
+            ra_in, ra_in_var=getData(lossParam["ra"])
             if True:#用于输出拟合程度
                 loss_recon_all_type = self.lossFunType["ra"]#self.loss_recon_all_type
             #  if not loss_recon_all_type=="MSE" and not step % 100:
@@ -890,7 +938,7 @@ class Decouple_rigid(nn.Module):
                 exit(0)
             if loss_recon_all_type=="MSE":
                 # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
-                loss_recon_all = getLossMSE(ra_in, ra_in_std,"ra")
+                loss_recon_all = getLossMSE(ra_in, ra_in_var,"ra")
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
             elif loss_recon_all_type=="atten_d":#类似最大值的思想
                 temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度
@@ -984,9 +1032,8 @@ class Decouple_rigid(nn.Module):
                            loss_concise * self.weight_concise, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], 
                            loss_recon_flow))
                     # print("printLog:\n",p["printLog"])
-                    if True:
-                        # print()
-                        for mean0000, var0, layerId in p['mean_std']:
+                    if self.use_UncertainLearning:
+                        for mean0000, var0, layerId in p['mean_var']:
                             print(layerId,":", var0.mean().item(),";",end="")
                         print()
                     if False:
@@ -1062,7 +1109,7 @@ class Decouple_rigid(nn.Module):
                 for l in self.f_soft_list:
                     l.kFeatureMaskUpdate()
                 for l in self.f_rigid_list:
-                    print("step:",step,"; R:",l.kFeatureMaskUpdate())
+                    print("step:",step,"; R_motion:",l.kFeatureMaskUpdate()["pre"])
                 for l in self.f_fluid_list:
                     l.kFeatureMaskUpdate()
 
