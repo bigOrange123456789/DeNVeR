@@ -6,9 +6,11 @@
         估计结果与config_A26_03_01N类似
         希望能够与baseline的结果类似, 从而便于开展后续的分析型测试
     结果：
-    分析：
+        可视化结果非常不正常:
+            刚体过黑、去刚后变白板
+        没有必要进行量化分析了
     实验设备: AutoDL_I、DeNVeR.26-3_new
-    Running time: ??? hours 
+    Running time: --- hours (失败实验、不用完全执行结束了)
 '''
 config_A26_03_01O={ # follow: config_A26_03_01N
             "decouple":{ # 解耦

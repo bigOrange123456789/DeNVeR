@@ -5,11 +5,13 @@
     预测：
         希望指标能够与baseline要高
     结果：
+        结果非常不正常:刚体过黑、去刚后变白板
+        完全失败
     分析：
         不确定性学习能够给刚体层的运动区域打码
         不确定性学习
     实验设备: AutoDL_O、DeNVeR.26-3_new
-    Running time: ??? hours 
+    Running time: 3*4.87679109301832 hours
 '''
 config_A26_03_01N={ # follow: config_A26_03_01M
             "decouple":{ # 解耦

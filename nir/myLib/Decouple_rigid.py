@@ -634,9 +634,8 @@ class Decouple_rigid(nn.Module):
             return None
         sum0 = 0
         for mean, var, layerId in mean_var:
-            # if s0 is None or len(s0.split(layerId)):
-                var = var.to(dtype=torch.float64)
-                sum0 += var 
+            if s0 is None or len(s0.split(layerId)):
+                sum0 += var.to(dtype=torch.float64)
         return sum0 
     
     def _product_variance_mul_err(self, mean_var, s0):#用于不确定学习

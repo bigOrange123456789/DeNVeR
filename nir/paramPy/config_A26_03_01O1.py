@@ -5,6 +5,7 @@
         "rv":"myLog
     预测：
     结果：
+        去噪结果看起来比较正常
     分析：
     实验设备: AutoDL_E、DeNVeR.26-3_new
     Running time: ??? hours 

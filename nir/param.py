@@ -38,9 +38,12 @@ from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3 #高迭代数+大b
 from nir.paramPy.config_A26_03_01K import config_A26_03_01K #不确定学习
 from nir.paramPy.config_A26_03_01L import config_A26_03_01L #rv:Log=>MSE
 from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定学习{S、F}
-from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定学习&sigmoid激活
-from nir.paramPy.config_A26_03_01O import config_A26_03_01O #不确定学习(便于后续消融分析的版本)
+from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定学习&sigmoid激活 [失败]
+from nir.paramPy.config_A26_03_01O import config_A26_03_01O #不确定学习(便于后续消融分析的版本) [失败]
 from nir.paramPy.config_A26_03_01O1 import config_A26_03_01O1 #不确定学习(只作用于刚体)
+from nir.paramPy.config_A26_03_01O2 import config_A26_03_01O2 #不确定学习(只作用于软体)
+from nir.paramPy.config_A26_03_01O3 import config_A26_03_01O3 #不确定学习(只作用于流体)
+from nir.paramPy.config_A26_03_01O4 import config_A26_03_01O4 #不确定学习(add混合法)
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -123,7 +126,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01O
+    c0 = config_A26_03_01O4
     print("config-name:",c0["name"])
     
     # 定义多个配置

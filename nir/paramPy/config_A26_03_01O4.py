@@ -1,16 +1,15 @@
 '''
     内容：
-        关闭不确定学习
+        add简化版不确定学习
     预测：
-        期望结果与baseline持平
     结果：
     分析：
-    实验设备: AutoDL_D、DeNVeR.26-3_new
-    Running time: ??? hours (预计10个小时、明早6点执行完成)
+    实验设备: AutoDL_K、DeNVeR.26-3_new
+    Running time: ??? hours 
 '''
-config_A26_03_04N={ # follow: config_A26_03_01M
+config_A26_03_01O4={ # follow: config_A26_03_01O
             "decouple":{ # 解耦
-                "tag":"A26-03-04N",
+                "tag":"A26-03-01O4",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -150,11 +149,11 @@ config_A26_03_04N={ # follow: config_A26_03_01M
                     # "ra":"R,F", 
                     # "rm":"S", 
                     # "rv":None, 
-                    "ra":"R,F", 
+                    "ra":"R", #"R,F", 
                     "rm":"S", 
                     "rv":"F", 
                     }, 
-                "lossParam_vessel":{ #没有被使用
+                "lossParam_vessel":{ 
                     "ra":"F", 
                     "rm":None, 
                     "rv":None, 
@@ -163,11 +162,11 @@ config_A26_03_04N={ # follow: config_A26_03_01M
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
-                    "rv_eps":0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "UncertainLearning":{
-                    "use":False,#False,#True,
+                    "use":True,#False,#True,
                     "activationFunction":"sigmoid",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
                     "activationFunctionRadius":1, #只有当激活函数类型为sigmoid的时候才生效
                     "var_dias":0,#1,#默认为0
@@ -177,7 +176,7 @@ config_A26_03_04N={ # follow: config_A26_03_01M
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"}
+                    "product_variance_type":"add",#"mul",#{"mul_err":最开始错误的版本，"mul","add"}
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -185,10 +184,10 @@ config_A26_03_04N={ # follow: config_A26_03_01M
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26-03-04N", #提高模型的拟合能力
+            "name": "A26-03-01O4", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-04N.rigid",
-            "input_mode": "A26-03-04N.rigid.non1",
+            "noise_label":"A26-03-01O4.rigid",
+            "input_mode": "A26-03-01O4.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
