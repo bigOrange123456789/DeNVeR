@@ -875,10 +875,10 @@ class Decouple_rigid(nn.Module):
             S2=S if len(s0.split("S")) else S_clone
             F2=F if len(s0.split("F")) else F_clone
             return R2*S2*F2, self._product_variance(p['mean_var'],s0)
-        def getLossMSE(pred_mean, pred_var, tag):
+        def getLossMSE(pred_mean, pred_var=None, tag=None):
             y = ground_truth[start:end]
             l0 = (y - pred_mean)**2
-            if self.use_UncertainLearning:
+            if self.use_UncertainLearning and (not pred_var is None):
                 pred_var += self.UncertainLearning["var_dias"]
                 w_reg = self.UncertainLearning["weight_regular"][tag]
                 l0 = l0 / (pred_var * 2) +  w_reg * torch.log(pred_var) / 2
@@ -899,6 +899,8 @@ class Decouple_rigid(nn.Module):
             if self.lossFunType["rm"]=="MSE":
                 # loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
                 loss_recon_mask = getLossMSE(rm_in, rm_in_var,"rm")
+            elif self.lossFunType["rm"]=="MSE_noUL":
+                loss_recon_mask = getLossMSE(rm_in)
             else:#myLog
                 loss_recon_mask = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rm_in).abs()+eps)
@@ -916,6 +918,8 @@ class Decouple_rigid(nn.Module):
             if self.lossFunType["rv"]=="MSE":
                 # loss_recon_vessel = ( ground_truth[start:end] - rv_in ) ** 2
                 loss_recon_vessel = getLossMSE(rv_in, rv_in_var,"rv")
+            elif self.lossFunType["rv"]=="MSE_noUL":
+                loss_recon_vessel = getLossMSE(rv_in)
             else:#myLog
                 loss_recon_vessel = torch.log(
                     (ground_truth[start:end].abs()+eps)/((rv_in).abs()+eps)
@@ -938,6 +942,9 @@ class Decouple_rigid(nn.Module):
             if loss_recon_all_type=="MSE":
                 # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
                 loss_recon_all = getLossMSE(ra_in, ra_in_var,"ra")
+                loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
+            elif loss_recon_all_type=="MSEnoUL":
+                loss_recon_all = getLossMSE(ra_in)
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
             elif loss_recon_all_type=="atten_d":#类似最大值的思想
                 temperature = 0.1**2 #1.0 # 温度参数调节注意力集中程度

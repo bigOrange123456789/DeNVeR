@@ -4,9 +4,11 @@
     预测：
         期望结果与baseline持平
     结果：
+        比myLastMethod(A26_03_01J2)低了一个点
     分析：
+        不应该掉点啊，至少不应该下降这么多啊
     实验设备: AutoDL_D、DeNVeR.26-3_new
-    Running time: ??? hours (预计10个小时、明早6点执行完成)
+    Running time: 估计11 hours (预计10个小时、明早6点执行完成)
 '''
 config_A26_03_04N={ # follow: config_A26_03_01M
             "decouple":{ # 解耦

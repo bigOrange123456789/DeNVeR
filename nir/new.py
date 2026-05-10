@@ -241,6 +241,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 UncertainLearning["activationFunction"]="softplus"
             if not "product_variance_type" in UncertainLearning:
                 UncertainLearning["product_variance_type"]="mul_err"
+            if not "activationFunctionRadius" in UncertainLearning:
+                UncertainLearning["activationFunctionRadius"] = 1
         if "saveTempImg" in config:
             saveTempImg = config["saveTempImg"]
     # print("168-configFluids",configFluids)

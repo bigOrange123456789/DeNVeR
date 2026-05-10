@@ -125,10 +125,19 @@ class NormalizationCalculator:
     def __init__(self, dataset_path, image_loader):
         self.dataset_path = dataset_path
         self.image_loader = image_loader
+
+        """加载YAML配置文件"""
+        script_path = os.path.abspath(__file__)
+        ROOT = os.path.dirname(script_path)
+        config_path = os.path.join(ROOT, "../", 'confs/newConfig.yaml')
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+            self.dataset_path_gt = config["my"]["datasetPath_gt"]  # 真值标签路径
     
     def calculate_mean_variance(self, tag, transform, patient_id, video_id, use_quantile=False):
         """计算指定标签图像的均值和方差"""
-        orig_path = os.path.join(self.dataset_path, patient_id, "decouple", video_id, "orig")
+        # orig_path = os.path.join(self.dataset_path, patient_id, "decouple", video_id, "orig")
+        orig_path = os.path.join(self.dataset_path_gt, patient_id, "images", video_id)
         frame_ids = os.listdir(orig_path)
         
         images = []

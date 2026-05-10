@@ -6,7 +6,7 @@
         去噪结果看起来正常了许多
     分析：
     实验设备: AutoDL_O、DeNVeR.26-3_new
-    Running time: ??? hours 
+    Running time: 4*3.983398214115037 hours
 '''
 config_A26_03_01O2={ # follow: config_A26_03_01O
             "decouple":{ # 解耦

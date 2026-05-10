@@ -342,7 +342,7 @@ class Main:
                         normalization_params = {}
                         for config in configs:
                             if not config.get("precomputed", False):
-                                mean, std = self._get_normalization_params(config, patient_id, video_id)
+                                mean, std = self._get_normalization_params(config, patient_id, video_id) #我发现他在使用原视频的均值和方差，而不是去噪视频的均值和方差
                                 normalization_params[config["name"]] = (mean, std)
 
                         video_names = [name for name in os.listdir(patient_gt_path) 
@@ -537,7 +537,7 @@ def main():
             denoising(c["decouple"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
-                      repeating=True,#False, #True
+                      repeating=False,#True,#False, #True
                       )
     print("视频解耦完成!")
     # exit(0)
@@ -593,18 +593,17 @@ if __name__ == "__main__":
         f.write(msg + "\n")
 
     # memoryOpt()
-    import time
-    start = time.time()
-    main()#测试在训练过程中f1、recall、precise的变化
-    end = time.time()
-    h = (end - start)/(60*60)
-    print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
-    writeln('Running time: %s hours' % h)
-    # print("测试不同损失函数对纹理拟合的影响")
-    # "要发现难点在哪里"
-
-    # 训练完成后执行关机
-    if True: 
+    try:
+        import time
+        start = time.time()
+        main()#测试在训练过程中f1、recall、precise的变化
+        end = time.time()
+        h = (end - start)/(60*60)
+        print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
+        writeln('Running time: %s hours' % h)
+    except Exception as e:
+        print(f"执行过程中发生错误: {e}")
+    finally:
         print("GPU 个数为:",torch.cuda.device_count())
         for c in configs: 
             if "decouple" in c: print("name:",c["name"])

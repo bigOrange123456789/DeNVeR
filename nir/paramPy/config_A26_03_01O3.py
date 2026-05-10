@@ -6,7 +6,7 @@
         看起来也还比较正常
     分析：
     实验设备: AutoDL_I、DeNVeR.26-3_new
-    Running time: ??? hours 
+    Running time: 2*7.173163912693659 hours
 '''
 config_A26_03_01O3={ # follow: config_A26_03_01O
             "decouple":{ # 解耦

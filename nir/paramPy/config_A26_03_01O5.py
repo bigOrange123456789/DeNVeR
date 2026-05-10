@@ -1,19 +1,15 @@
 '''
     内容：
-        add简化版不确定学习
+        只对流体进行不确定学习
     预测：
     结果：
-        效果极差
-        比只有一个mul不确定图层的效果差、但不三mul不确定图层的效果好
     分析：
-        add最差也有可能不是因为add,而是因为三层都用不确定造成的
-        结论是不确定越多效果越差
-    实验设备: AutoDL_K、DeNVeR.26-3_new
-    Running time: 3*4.892819876141019 hours
+    实验设备: AutoDL_E、DeNVeR.26-3_new
+    Running time: ?? hours
 '''
-config_A26_03_01O4={ # follow: config_A26_03_01O
+config_A26_03_01O5={ # follow: A26-03-01O3
             "decouple":{ # 解耦
-                "tag":"A26-03-01O4",
+                "tag":"A26-03-01O5",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -163,8 +159,8 @@ config_A26_03_01O4={ # follow: config_A26_03_01O
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"MSE",
-                    "rm":"MSE", #背景更清晰一些
+                    "ra":"MSE_noUL",
+                    "rm":"MSE_noUL", #背景更清晰一些
                     "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
@@ -180,7 +176,7 @@ config_A26_03_01O4={ # follow: config_A26_03_01O
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"add",#"mul",#{"mul_err":最开始错误的版本，"mul","add"}
+                    "product_variance_type":"mul",#"mul",#{"mul_err":最开始错误的版本，"mul","add"}
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -188,10 +184,10 @@ config_A26_03_01O4={ # follow: config_A26_03_01O
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26-03-01O4", #提高模型的拟合能力
+            "name": "A26-03-01O5", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01O4.rigid",
-            "input_mode": "A26-03-01O4.rigid.non1",
+            "noise_label":"A26-03-01O5.rigid",
+            "input_mode": "A26-03-01O5.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
