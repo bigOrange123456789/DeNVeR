@@ -130,7 +130,7 @@ if True:
     # config_soft00
 
     # ***--四、最佳效果--***
-    c0 = config_A26_03_01P1
+    c0 = config_A26_03_01P
     print("config-name:",c0["name"])
     
     # 定义多个配置

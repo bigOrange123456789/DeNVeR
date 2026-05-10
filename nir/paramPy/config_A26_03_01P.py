@@ -3,7 +3,7 @@
         复现config_A26_03_01J2,应该达到myLastMethod
     结果：
     分析：
-    实验设备: AutoDL_Q、DeNVeR.26-3_new
+    实验设备: AutoDL_O、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
 config_A26_03_01P={ # follow: config_A26_03_01J2
