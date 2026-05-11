@@ -1,24 +1,17 @@
 '''
     内容：
-        全部使用myLog
-        期望达到myLastMethod
+        探索一下训练过程能否更高效(关闭软体层的位置编码)
     结果：
-        竟然没有达到最佳、这个最佳的涨点稳定吗 (下降了0.18%)
-            Our-1P-CATH:
-                Dice:      0.7982
-                Recall:    0.8091
-                Precision: 0.7957
-            Our-1P6-CATH:
-                Dice:      0.7964
-                Recall:    0.8098
-                Precision: 0.7921
+        我猜是设备E出现了故障:
+            显存溢出、离谱:
+                关闭PE后显存竟然会爆掉
     分析：
     实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: 4*3.677296518815888 hours
+    Running time: ??? hours
 '''
-config_A26_03_01P6={ # follow: config_A26_03_01J2
+config_A26_03_01P8={ # follow: config_A26_03_01P
             "decouple":{ # 解耦
-                "tag":"A26_03_01P6",
+                "tag":"A26_03_01P8",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -91,6 +84,7 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
                         'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
+                        # "posEnc":False,
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -161,15 +155,15 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                     "ra":"R", 
                     "rm":"S", 
                     "rv":"F", 
-                }, 
+                    }, 
                 "lossParam_vessel":{ #没有被使用
                     "ra":"F", 
                     "rm":None, 
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"myLog",
-                    "rm":"myLog", #背景更清晰一些
+                    "ra":"MSE_noUL",
+                    "rm":"MSE_noUL", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
@@ -185,7 +179,7 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"}
+                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"} #方差混合方法
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -193,10 +187,10 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26_03_01P6", #提高模型的拟合能力
+            "name": "A26_03_01P8", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26_03_01P6.rigid",
-            "input_mode": "A26_03_01P6.rigid.non1",
+            "noise_label":"A26_03_01P8.rigid",
+            "input_mode": "A26_03_01P8.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

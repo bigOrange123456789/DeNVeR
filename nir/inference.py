@@ -1,4 +1,5 @@
-import os
+# import os
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import numpy as np
 from PIL import Image
 from tqdm import tqdm

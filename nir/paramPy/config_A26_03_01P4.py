@@ -3,15 +3,24 @@
         纠正错误后的微弱不确定学习
         效果应该与P相同
     结果：
+        指标下降：(下降了0.5%)
+            Our-1P:
+                Dice:      0.7982
+                Recall:    0.8091
+                Precision: 0.7957
+            Our-1P4:
+                Dice:      0.7939
+                Recall:    0.8145
+                Precision: 0.7821
     分析：
     后续:
         关于不确定学习我有两个想法
             1是)对总损失函数进行处理，因为不确定比较的像素之间、而不是子损失函数之间
             2是)基于myLog而不是MSE的不确定性分析,只对流体不确定？
     实验设备: AutoDL_I、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 4 * 3.7302027630805967 hours
 '''
-config_A26_03_01P4={ # follow: config_A26_03_01P3
+config_A26_03_01P4={ # follow: config_A26_03_01P
             "decouple":{ # 解耦
                 "tag":"A26_03_01P4",
                 "de-rigid":"1_sim",#去噪框架

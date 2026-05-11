@@ -2,11 +2,21 @@
     内容：
         探索一下训练过程能否更高效(在不改变迭代次数的情况减少batch大小)
     结果：
+        指标轻微下降：(下降了0.23%)
+        Our-1P4-CATH:
+            Dice:      0.7939
+            Recall:    0.8145
+            Precision: 0.7821
+        Our-1P5-CATH:
+            Dice:      0.7956
+            Recall:    0.8060
+            Precision: 0.7945
     分析：
+        失败、我希望能够无损进行
     实验设备: AutoDL_E、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 5*2.483758266038365 hours
 '''
-config_A26_03_01P5={ # follow: config_A26_03_01J2
+config_A26_03_01P5={ # follow: config_A26_03_01P
             "decouple":{ # 解耦
                 "tag":"A26_03_01P5",
                 "de-rigid":"1_sim",#去噪框架

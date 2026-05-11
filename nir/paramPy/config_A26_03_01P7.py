@@ -1,24 +1,15 @@
 '''
     内容：
-        全部使用myLog
-        期望达到myLastMethod
+        myLog_UL刚体
     结果：
-        竟然没有达到最佳、这个最佳的涨点稳定吗 (下降了0.18%)
-            Our-1P-CATH:
-                Dice:      0.7982
-                Recall:    0.8091
-                Precision: 0.7957
-            Our-1P6-CATH:
-                Dice:      0.7964
-                Recall:    0.8098
-                Precision: 0.7921
     分析：
+    后续:
     实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: 4*3.677296518815888 hours
+    Running time: ?? hours 
 '''
-config_A26_03_01P6={ # follow: config_A26_03_01J2
+config_A26_03_01P7={ # follow: config_A26_03_01P6
             "decouple":{ # 解耦
-                "tag":"A26_03_01P6",
+                "tag":"A26_03_01P7",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -91,11 +82,12 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
                         'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
-                        "posEnc":{ # 有显著作用
-                            "num_freqs_pos":10, #3
-                            "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
-                            "APE":False, #没有启用渐进式位置编码、启用不是改为True
-                        }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
+                        "posEnc":False,
+                        # "posEnc":{ # 有显著作用
+                        #     "num_freqs_pos":10, #3
+                        #     "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                        #     "APE":False, #没有启用渐进式位置编码、启用不是改为True
+                        # }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
                         "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
@@ -168,9 +160,9 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"myLog",
-                    "rm":"myLog", #背景更清晰一些
-                    "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "ra":"myLog_UL",
+                    "rm":"myLog_noUL", #背景更清晰一些
+                    "rv":"myLog_noUL",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
@@ -193,10 +185,10 @@ config_A26_03_01P6={ # follow: config_A26_03_01J2
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26_03_01P6", #提高模型的拟合能力
+            "name": "A26_03_01P7", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26_03_01P6.rigid",
-            "input_mode": "A26_03_01P6.rigid.non1",
+            "noise_label":"A26_03_01P7.rigid",
+            "input_mode": "A26_03_01P7.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
