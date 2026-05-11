@@ -1,16 +1,19 @@
 '''
     内容：
-        我猜测config_A26_03_04N掉一个点是因为"rv_eps"=0的缘故(不完全是)
-            本次实验: rv_eps: 0 => 0.5
+        纠正错误后的微弱不确定学习
+        效果应该与P相同
     结果：
-            提升了0.5个点
     分析：
-    实验设备: AutoDL_E、DeNVeR.26-3_new
-    Running time: 3 * 4.953595203028785 hours 
+    后续:
+        关于不确定学习我有两个想法
+            1是)对总损失函数进行处理，因为不确定比较的像素之间、而不是子损失函数之间
+            2是)基于myLog而不是MSE的不确定性分析,只对流体不确定？
+    实验设备: AutoDL_I、DeNVeR.26-3_new
+    Running time: ?? hours 
 '''
-config_A26_03_04N1={ # follow: config_A26_03_04N
+config_A26_03_01P4={ # follow: config_A26_03_01P3
             "decouple":{ # 解耦
-                "tag":"A26-03-04N1",
+                "tag":"A26_03_01P4",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -150,7 +153,7 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                     # "ra":"R,F", 
                     # "rm":"S", 
                     # "rv":None, 
-                    "ra":"R,F", 
+                    "ra":"R", 
                     "rm":"S", 
                     "rv":"F", 
                     }, 
@@ -161,15 +164,15 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE",
-                    "rm":"MSE", #背景更清晰一些
-                    "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "rm":"MSE_noUL", #背景更清晰一些
+                    "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "UncertainLearning":{
-                    "use":False,#False,#True,
-                    "activationFunction":"sigmoid",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
-                    "activationFunctionRadius":1, #只有当激活函数类型为sigmoid的时候才生效
+                    "use":True,#False,#False,#True,
+                    "activationFunction":"sigmoid2",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
+                    "activationFunctionRadius":0.05,#10**-7,#1, #只有当激活函数类型为sigmoid的时候才生效
                     "var_dias":0,#1,#默认为0
                     "weitht_all":2,#2,#默认为1
                     "weight_regular":{
@@ -185,11 +188,12 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26-03-04N1", #提高模型的拟合能力
+            "name": "A26_03_01P4", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-04N1.rigid",
-            "input_mode": "A26-03-04N1.rigid.non1",
+            "noise_label":"A26_03_01P4.rigid",
+            "input_mode": "A26_03_01P4.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
+            "normalization":"denoise"#"orig"#
         }

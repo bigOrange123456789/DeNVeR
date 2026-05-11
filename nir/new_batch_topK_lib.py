@@ -122,9 +122,10 @@ class ImageLoader:
 class NormalizationCalculator:
     """归一化参数计算器"""
     
-    def __init__(self, dataset_path, image_loader):
+    def __init__(self, dataset_path, image_loader,input_mode):
         self.dataset_path = dataset_path
         self.image_loader = image_loader
+        self.input_mode = input_mode
 
         """加载YAML配置文件"""
         script_path = os.path.abspath(__file__)
@@ -136,8 +137,11 @@ class NormalizationCalculator:
     
     def calculate_mean_variance(self, tag, transform, patient_id, video_id, use_quantile=False):
         """计算指定标签图像的均值和方差"""
-        # orig_path = os.path.join(self.dataset_path, patient_id, "decouple", video_id, "orig")
-        orig_path = os.path.join(self.dataset_path_gt, patient_id, "images", video_id)
+        if self.input_mode is None:
+            # orig_path = os.path.join(self.dataset_path, patient_id, "decouple", video_id, "orig")
+            orig_path = os.path.join(self.dataset_path_gt, patient_id, "images", video_id)
+        else:#"denoise"
+            orig_path = os.path.join(self.dataset_path, patient_id, "decouple", video_id, self.input_mode)
         frame_ids = os.listdir(orig_path)
         
         images = []

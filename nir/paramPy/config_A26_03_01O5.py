@@ -3,9 +3,20 @@
         只对流体进行不确定学习
     预测：
     结果：
+        指标下降了0.3%
+        O3:
+            Dice:      0.7913
+            Recall:    0.8249
+            Precision: 0.7675
+
+        O5:
+            Dice:      0.7887
+            Recall:    0.8143
+            Precision: 0.7724
     分析：
+        MSE比mylog更差
     实验设备: AutoDL_E、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 3 * 5.1258184636301465 hours
 '''
 config_A26_03_01O5={ # follow: A26-03-01O3
             "decouple":{ # 解耦

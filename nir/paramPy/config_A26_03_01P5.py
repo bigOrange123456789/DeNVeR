@@ -1,20 +1,18 @@
 '''
     内容：
-        我猜测config_A26_03_04N掉一个点是因为"rv_eps"=0的缘故(不完全是)
-            本次实验: rv_eps: 0 => 0.5
+        探索一下训练过程能否更高效(在不改变迭代次数的情况减少batch大小)
     结果：
-            提升了0.5个点
     分析：
     实验设备: AutoDL_E、DeNVeR.26-3_new
-    Running time: 3 * 4.953595203028785 hours 
+    Running time: ?? hours
 '''
-config_A26_03_04N1={ # follow: config_A26_03_04N
+config_A26_03_01P5={ # follow: config_A26_03_01J2
             "decouple":{ # 解耦
-                "tag":"A26-03-04N1",
+                "tag":"A26_03_01P5",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
-                "epochs":0.625,#
-                "batch_size_scale":0.125,#1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                "epochs":0.625*0.8,#
+                "batch_size_scale":0.125*0.8,#1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -150,7 +148,7 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                     # "ra":"R,F", 
                     # "rm":"S", 
                     # "rv":None, 
-                    "ra":"R,F", 
+                    "ra":"R", 
                     "rm":"S", 
                     "rv":"F", 
                     }, 
@@ -160,14 +158,14 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"MSE",
-                    "rm":"MSE", #背景更清晰一些
-                    "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "ra":"MSE_noUL",
+                    "rm":"MSE_noUL", #背景更清晰一些
+                    "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "UncertainLearning":{
-                    "use":False,#False,#True,
+                    "use":True,#False,#False,#True,
                     "activationFunction":"sigmoid",#{None :不使用激活函数, "softplus": 软Relu ,"square" :平方, "sigmoid"}
                     "activationFunctionRadius":1, #只有当激活函数类型为sigmoid的时候才生效
                     "var_dias":0,#1,#默认为0
@@ -177,7 +175,7 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"}
+                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"} #方差混合方法
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -185,10 +183,10 @@ config_A26_03_04N1={ # follow: config_A26_03_04N
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26-03-04N1", #提高模型的拟合能力
+            "name": "A26_03_01P5", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-04N1.rigid",
-            "input_mode": "A26-03-04N1.rigid.non1",
+            "noise_label":"A26_03_01P5.rigid",
+            "input_mode": "A26_03_01P5.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

@@ -257,11 +257,13 @@ class Main:
         
         return pred_tag1, pred_tag2
     
-    def __init__(self, config, model_manager, image_loader, norm_calculator,usedVideoId):
+    def __init__(self, config, model_manager, image_loader, 
+                #  norm_calculator,
+                 usedVideoId):
         self.config = config
         self.model_manager = model_manager
         self.image_loader = image_loader
-        self.norm_calculator = norm_calculator
+        # self.norm_calculator = norm_calculator
         self.usedVideoId = usedVideoId
         self.statistical_analyzer = StatisticalAnalyzer()
         self.visualizer = ResultVisualizer()
@@ -465,7 +467,7 @@ def main():
     config = Config()
     model_manager = ModelManager()
     image_loader = ImageLoader(config.dataset_path, model_manager.transform)
-    norm_calculator = NormalizationCalculator(config.dataset_path, image_loader)
+    # norm_calculator = NormalizationCalculator(config.dataset_path, image_loader)
     #os.makedirs(save_masks_dir, exist_ok=True)
     
     # 设置参数
@@ -552,7 +554,15 @@ def main():
         else:
             configs2.append(c)
 
-    main = Main(config, model_manager, image_loader, norm_calculator,usedVideoId)
+    # c = configs[0]
+    # norm_calculator = NormalizationCalculator(
+    #         config.dataset_path, 
+    #         image_loader,
+    #         None if c["normalization"] == "orig" else c["input_mode"] # 使用原始数据还是输入数据来计算归一化的均值和方差
+    #         )
+    main = Main(config, model_manager, image_loader, 
+                # norm_calculator,
+                usedVideoId)
     main.inference0(
         configs1, config.root_path + "/", block_cath, threshold,onlyInferGT=True
     )#推理全部图像
@@ -593,6 +603,7 @@ if __name__ == "__main__":
         f.write(msg + "\n")
 
     # memoryOpt()
+    # if True:
     try:
         import time
         start = time.time()

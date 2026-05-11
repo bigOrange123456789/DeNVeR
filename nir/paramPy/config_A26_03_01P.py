@@ -4,7 +4,7 @@
     结果：
     分析：
     实验设备: AutoDL_O、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 4*3.730216446916262 hours
 '''
 config_A26_03_01P={ # follow: config_A26_03_01J2
             "decouple":{ # 解耦
