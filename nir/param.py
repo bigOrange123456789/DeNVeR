@@ -50,10 +50,12 @@ from nir.paramPy.config_A26_03_01P1 import config_A26_03_01P1 # 刚体:微弱的
 # from nir.paramPy.config_A26_03_01P2 import config_A26_03_01P2 # follow P (使用输入数据本身进行归一化)
 # from nir.paramPy.config_A26_03_01P3 import config_A26_03_01P3 # follow P1(使用输入数据本身进行归一化)
 from nir.paramPy.config_A26_03_01P4 import config_A26_03_01P4 # 刚体:微弱的不确定性(就正后)
-from nir.paramPy.config_A26_03_01P5 import config_A26_03_01P5 # 高效训练
+from nir.paramPy.config_A26_03_01P5 import config_A26_03_01P5 # 减少训练数据
 from nir.paramPy.config_A26_03_01P6 import config_A26_03_01P6 # 全部使用myLog
 from nir.paramPy.config_A26_03_01P7 import config_A26_03_01P7 # myLog_UL刚体
 from nir.paramPy.config_A26_03_01P8 import config_A26_03_01P8 # 关闭软体PE
+from nir.paramPy.config_A26_03_01P9 import config_A26_03_01P9 # MSE_UL刚体(sigmoid2)
+from nir.paramPy.config_A26_03_01P10 import config_A26_03_01P10 # MSE_UL刚体(square)
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -68,7 +70,7 @@ from nir.paramPy.config_A26_03_03G import config_A26_03_03G
 from nir.paramPy.config_A26_03_04N import config_A26_03_04N # rv_eps=0
 from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
-c0 = config_A26_03_01P8
+c0 = config_A26_03_01P10
 
 # 目前最重要的是获取论文所需的量化结果
 if True:

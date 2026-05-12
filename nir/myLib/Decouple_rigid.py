@@ -704,9 +704,7 @@ class Decouple_rigid(nn.Module):
         type0 = self.UncertainLearning["product_variance_type"]#{"mul_err":最开始错误的版本，"mul","add"}
         if type0 =="mul":
             return self._product_variance_mul(mean_var, s0)
-        elif type0 =="add_err" or type0 =="add":
-            return self._product_variance_add(mean_var, s0)
-        elif type0 =="add_correct":
+        elif type0 =="add":
             return self._product_variance_add(mean_var, s0)
         elif type0=="mul_err":
             return self._product_variance_mul_err(mean_var, s0)
@@ -909,12 +907,23 @@ class Decouple_rigid(nn.Module):
         #     return l0
         def getMyLoss(baseType, pred_mean, pred_var=None, tag=None):
             y = ground_truth[start:end]
+            baseType = baseType.split("_")[0] # "MSE_UL" => "MSE"
             if baseType=="MSE":
                 l0 = (y - pred_mean)**2
-            else:#"myLog"
+            elif baseType=="myLog":#else:#"myLog"
                 l0=torch.log(
                     (y.abs()+eps)/((pred_mean).abs()+eps)
                 ).abs()
+            elif baseType=="myLogSquare":#else:#"myLog"
+                y_ = torch.log(y.abs()+eps)
+                pred_mean_ = torch.log(pred_mean_.abs()+eps)
+                l0=(y_ - pred_mean_)**2
+            else:
+                print("myErr: Decouple_rigid.py . def getMyLoss . baseType=",baseType)
+                exit(0)
+            if len(baseType.split("_"))>0:
+                tagUL = baseType.split("_")[1]
+                if tagUL=="noUL": pred_var=None
             if self.use_UncertainLearning and (not pred_var is None):
                 pred_var += self.UncertainLearning["var_dias"]
                 w_reg = self.UncertainLearning["weight_regular"][tag]
@@ -934,7 +943,7 @@ class Decouple_rigid(nn.Module):
             # loss_recon_mask = loss_recon_mask*self.mask[start:end]#只重构血管？
             # loss_recon_mask = loss_recon_mask.sum()/(self.mask[start:end].sum()+1e-8)
             rm_in, rm_in_var=getData(lossParam["rm"])
-            if self.lossFunType["rm"]=="MSE":
+            if self.lossFunType["rm"]=="MSE" or self.lossFunType["rm"]=="MSE_UL":
                 # loss_recon_mask = ( ground_truth[start:end] - rm_in ) ** 2 # ground_truth是目标图像，mask是背景分割图
                 loss_recon_mask = getMyLoss("MSE", rm_in, rm_in_var,"rm")#loss_recon_mask = getLossMSE(rm_in, rm_in_var,"rm")
             elif self.lossFunType["rm"]=="MSE_noUL":
@@ -993,7 +1002,7 @@ class Decouple_rigid(nn.Module):
             if torch.isnan(ra_in.mean()):
                 print("ra_in is nan.",ra_in.mean()) #ra_in is None. tensor(nan, device='cuda:0', grad_fn=<MeanBackward0>)
                 exit(0)
-            if loss_recon_all_type=="MSE":
+            if loss_recon_all_type=="MSE" or loss_recon_all_type=="MSE_UL": #MSE_UL
                 # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
                 loss_recon_all = getMyLoss("MSE",ra_in, ra_in_var,"ra")#getLossMSE(ra_in, ra_in_var,"ra")
                 loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None

@@ -2,10 +2,22 @@
     内容：
         myLog_UL刚体
     结果：
+        Our-1P-CATH:(best)
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P6-CATH:(全部使用myLog)
+                Dice:      0.7964
+                Recall:    0.8098
+                Precision: 0.7921
+        Our-1P7-CATH:
+            Dice:      0.7965
+            Recall:    0.8096
+            Precision: 0.7924
     分析：
     后续:
-    实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: ?? hours 
+    实验设备: AutoDL_I、DeNVeR.26-3_new
+    Running time: 4*3.8130582869052887 hours
 '''
 config_A26_03_01P7={ # follow: config_A26_03_01P6
             "decouple":{ # 解耦
