@@ -2,6 +2,15 @@
     内容：
         测试myLogSquare的效果
     结果：
+        指标大幅下降
+        Our-1P-CATH:
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P11-CATH:
+            Dice:      0.7874
+            Recall:    0.8297
+            Precision: 0.7562
     分析：
     实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours
