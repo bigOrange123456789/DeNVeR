@@ -1,27 +1,14 @@
 '''
     内容：
-        探索一下训练过程能否更高效(关闭软体层的位置编码)
+        测试myLogSquare的效果
     结果：
-        设备E出现了故障:
-            显存溢出、离谱:
-        设备H:
-            Our-1P-CATH:
-                Dice:      0.7982
-                Recall:    0.8091
-                Precision: 0.7957
-
-            Our-1P8-CATH:
-                Dice:      0.7972
-                Recall:    0.8104
-                Precision: 0.7930
     分析：
-        不可行, 指标下降了0.1%, 我的目标是指标不下降
-    实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: 约10 hours
+    实验设备: AutoDL_I、DeNVeR.26-3_new
+    Running time: ?? hours
 '''
-config_A26_03_01P8={ # follow: config_A26_03_01P
+config_A26_03_01P11={ # follow: config_A26_03_01P
             "decouple":{ # 解耦
-                "tag":"A26_03_01P8",
+                "tag":"A26_03_01P11",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -94,12 +81,11 @@ config_A26_03_01P8={ # follow: config_A26_03_01P
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
                         'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
-                        "posEnc":False,
-                        # "posEnc":{ # 有显著作用
-                        #     "num_freqs_pos":10, #3
-                        #     "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
-                        #     "APE":False, #没有启用渐进式位置编码、启用不是改为True
-                        # }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
+                        "posEnc":{ # 有显著作用
+                            "num_freqs_pos":10, #3
+                            "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                            "APE":False, #没有启用渐进式位置编码、启用不是改为True
+                        }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
                         "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
@@ -159,9 +145,6 @@ config_A26_03_01P8={ # follow: config_A26_03_01P
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
                 "lossParam":{ #这里有九种基础的组合, 全部算上有2^9种组合 
-                    # "ra":"R,F", 
-                    # "rm":"S", 
-                    # "rv":None, 
                     "ra":"R", 
                     "rm":"S", 
                     "rv":"F", 
@@ -174,7 +157,7 @@ config_A26_03_01P8={ # follow: config_A26_03_01P
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE_noUL",
                     "rm":"MSE_noUL", #背景更清晰一些
-                    "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
+                    "rv":"myLogSquare_noUL",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
@@ -189,7 +172,7 @@ config_A26_03_01P8={ # follow: config_A26_03_01P
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"} #方差混合方法
+                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"}
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -197,10 +180,10 @@ config_A26_03_01P8={ # follow: config_A26_03_01P
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26_03_01P8", #提高模型的拟合能力
+            "name": "A26_03_01P11", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26_03_01P8.rigid",
-            "input_mode": "A26_03_01P8.rigid.non1",
+            "noise_label":"A26_03_01P11.rigid",
+            "input_mode": "A26_03_01P11.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

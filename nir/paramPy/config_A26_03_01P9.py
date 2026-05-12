@@ -3,7 +3,16 @@
         MSE_UL刚体
         将刚体改为不确定学习(sigmoid2)
     结果：
+        Our-1P-CATH:
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P9-CATH:
+            Dice:      0.7838
+            Recall:    0.8254
+            Precision: 0.7533
     分析：
+        指标出现了显著下降
     实验设备: AutoDL_O、DeNVeR.26-3_new
     Running time: ?? hours
 '''

@@ -2,6 +2,15 @@
     内容：
         将刚体改为不确定学习(square)
     结果：
+        指标出现了大幅下降
+        Our-1P-CATH:
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P10-CATH:
+            Dice:      0.7395
+            Recall:    0.7685
+            Precision: 0.7296
     分析：
     实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours

@@ -866,8 +866,79 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                 # 将 GPU 放回队列，供后续任务使用
                 gpu_queue.put(gpu_id)
         
-        # 使用线程池执行所有任务
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        def process_videoOld(patientID, videoId):
+                nonlocal CountI
+                # 从队列中获取一个可用的 GPU
+                gpu_id = gpu_queue.get()
+
+                # 设置当前线程使用的 GPU
+                torch.cuda.set_device(gpu_id)
+                print(f"[GPU {gpu_id}] 开始处理 {patientID}/{videoId}")
+                
+                import time
+                time0 = time.time()
+                inpath = os.path.join(
+                    config["my"]["datasetPath_rigid.in"],#datasetPath0,
+                    patientID, "images", videoId)
+                inpath_custom = config["my"]["datasetPath_rigid.in_custom"]
+                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
+                outpath = os.path.join(
+                    config["my"]["datasetPath_rigid.out"], #"log_15/xca_dataset_sub1", 
+                    patientID, "decouple", videoId)#本地路径
+                os.makedirs(outpath, exist_ok=True)
+                if arguments["de-rigid"]=="1_sim":#目标是将5分钟的解耦时间减少到1分钟
+                    startDecouple1_sim(
+                        videoId, #CVAI-1253LAO0_CAU29                         
+                        paramPath, #../DeNVeR_in/models_config/freecos_Seg.pt 
+                        inpath, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29 
+                        outpath, # log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29
+                        inpath_custom=inpath_custom,
+                        config=arguments)  # 去除刚体层
+                elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
+                    origVideoPath=os.path.join(
+                        dataset_path_gt,
+                        patientID, "images", videoId
+                        )
+                    startDecouple2_sim(videoId, paramPath, inpath, outpath,config=arguments,origVideoPath=origVideoPath)  # 去除刚体层
+                # startDecouple1(videoId, paramPath, inpath, outpath)  # 去除刚体层
+                # print(f"刚体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+
+                # time0 = time.time()
+                inpath = os.path.join(
+                    config["my"]["datasetPath_soft.in"],#datasetPath0,
+                    patientID, "images", videoId)
+                # outpath = os.path.join(datasetPath0, patientID, "decouple", videoId)#数据集路径
+                outpath = os.path.join(
+                    config["my"]["datasetPath_soft.out"], #"log_15/xca_dataset_sub1", 
+                    patientID, "decouple", videoId)#本地路径
+                os.makedirs(outpath, exist_ok=True)
+                if arguments["de-soft"]=="3":
+                    startDecouple3(videoId, paramPath, inpath, outpath)  # 获取流体层
+                # print(f"软体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
+                    
+                # 处理成功，更新进度
+                with progress_lock:
+                    CountI += 1
+                    video_key = f"{patientID}/{videoId}"
+                    if isinstance(processed_videos, list):
+                        processed_videos.append(video_key)
+                    elif isinstance(processed_videos, set):
+                        processed_videos.add(video_key)
+                    # 更新进度文件
+                    progress_data = {"processed_videos": list(processed_videos)}
+                    with open(progress_file, 'w', encoding='utf-8') as f:
+                        json.dump(progress_data, f, ensure_ascii=False, indent=2)   
+
+                # print(f"{CountI}/{CountSum} {videoId} - 已完成")
+                print(f"[GPU {gpu_id}] {CountI}/{CountSum} {videoId} 完成，耗时 {((time.time()-time0)/60):.2f} 分钟")
+
+
+        
+        if gpu_count==1:
+            for patientID, videoId in all_videos:
+                process_videoOld(patientID, videoId)
+        else: # 使用线程池执行所有任务
+         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
             for patientID, videoId in all_videos:
                 future = executor.submit(process_video, patientID, videoId)
