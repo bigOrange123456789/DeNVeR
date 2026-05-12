@@ -27,13 +27,23 @@ class VideoFitting(Dataset):
             self.transform = transform
 
         self.video = self.get_video_tensor(path)
+        if True:
+            video_pre = torch.cat([
+                self.video[0:1], # torch.zeros_like(self.video[0:1]),  # 第0帧全0，保持维度 [1, C, H, W]
+                self.video[:-1]  # 原第0到N-2帧变成第1到N-1帧
+            ], dim=0)
+            self.video_dif = ( self.video - video_pre ).abs()
+        else:
+            self.video_dif = None
         self.num_frames, _, self.H, self.W = self.video.size()
 
         self.pixels = self.video.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
+        self.pixels_dif = self.video_dif.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
         self.coords = get_mgrid([self.H, self.W, self.num_frames])
 
         self.shuffle = torch.randperm(len(self.pixels)) #打乱顺序
         self.pixels = self.pixels[self.shuffle]
+        self.pixels_dif = self.pixels_dif[self.shuffle]
         self.coords = self.coords[self.shuffle]
 
         if self.useMask:
@@ -103,7 +113,7 @@ class VideoFitting(Dataset):
 
     def __getitem__(self, idx):
         if idx > 0: raise IndexError
-        return self.coords, self.pixels, self.mask, self.coords_vessel, self.pixels_vessel, self.mask_vessel #坐标、图片灰度、背景分割图
+        return self.coords, self.pixels, self.pixels_dif, self.mask, self.coords_vessel, self.pixels_vessel, self.mask_vessel #坐标、图片灰度、背景分割图
         # return self.coords, self.pixels, self.mask #坐标、图片灰度、背景分割图
     
     def reload_mask(self):

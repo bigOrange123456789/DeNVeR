@@ -109,7 +109,7 @@ class Decouple_rigid(nn.Module):
             
             # 重新获取DataLoader中的数据
             videoloader = DataLoader(self.v, batch_size=1, pin_memory=True, num_workers=0)
-            _,_, mask, _,_,_ = next(iter(videoloader))#_,_, mask = next(iter(videoloader))
+            _,_,_, mask, _,_,_ = next(iter(videoloader))#_,_, mask = next(iter(videoloader))
             mask = mask[0].cuda() #model_input, ground_truth, mask = model_input[0].cuda(), ground_truth[0].cuda(), mask[0].cuda()
             # ground_truth = ground_truth[:, 0:1]  # 将RGB图像转换为灰度图
 
@@ -171,11 +171,12 @@ class Decouple_rigid(nn.Module):
             configSofts["layer"]["hidden_features_local"]
 
         videoloader = DataLoader(self.v, batch_size=1, pin_memory=True, num_workers=0)
-        model_input, pixels, mask, model_input_vessel, ground_truth_vessel, mask_vessel = next(iter(videoloader)) # 坐标、灰度、分割结果 coords, pixels, self.mask
-        model_input, pixels, mask = model_input[0].cuda(), pixels[0].cuda(), mask[0].cuda()
+        model_input, pixels, pixels_dif, mask, model_input_vessel, ground_truth_vessel, mask_vessel = next(iter(videoloader)) # 坐标、灰度、分割结果 coords, pixels, self.mask
+        model_input, pixels, pixels_dif, mask = model_input[0].cuda(), pixels[0].cuda(), pixels_dif[0].cuda(), mask[0].cuda()
         model_input_vessel, ground_truth_vessel, mask_vessel = model_input_vessel[0].cuda(), ground_truth_vessel[0].cuda(), mask_vessel[0].cuda()
         ground_truth = pixels #pixels[:, 0:1]  # 将RGB图像转换为灰度图
         self.pixels = pixels
+        self.pixels_dif = pixels_dif
         ground_truth_vessel = ground_truth_vessel[:, 0:1]
         if False:
             print("gt_illu_max",torch.max(ground_truth))
@@ -343,7 +344,7 @@ class Decouple_rigid(nn.Module):
     
     def forward(self,xyt,
                 stage, #原本用于刚体的openLocalDeform参数，现已经废弃 
-                step, epochs0, vesselMask=None): # soft, rigid, fluid
+                step, epochs0, vesselMask=None, myVar=None): # soft, rigid, fluid
         if False: #降低坐标的分辨率，会让拟合结果产生锯齿
             xyt = self.undateXY(xyt, blurriness=8)
         # xyt = xyt_raw
@@ -605,7 +606,10 @@ class Decouple_rigid(nn.Module):
         # print("reconFlow:",self.v.reconFlow)
         # print("loss_conciseR , loss_conciseS , loss_conciseF:", loss_conciseR , loss_conciseS , loss_conciseF)
         # print("loss_conciseR_full , loss_conciseS_full , loss_conciseF_full:",loss_conciseR_full , loss_conciseS_full , loss_conciseF_full)
-        
+        if self.UncertainLearning["var=dif"]:
+            # for mean, var, layerId in mean_var:
+            for i in range(len(mean_var)):
+                mean_var[i][1] = myVar
         return o , {
             "r": o_rigid_list,
             "s": o_soft_list,
@@ -858,10 +862,20 @@ class Decouple_rigid(nn.Module):
         return loss
 
     def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,ground_truth):
-        # print("ground_truth",ground_truth.shape)
-        # vesselMask = self.mask[start:end]
-        # ground_truth=self.ground_truth
-        o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask)#纹理学习
+        if self.UncertainLearning["var=dif"]:
+            # myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
+            myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
+            # print("myVar1",myVar.min(),myVar.mean(),myVar.max())
+            # print("myVar2",myVar.min(),myVar.mean(),myVar.max())
+            # # w=0.5
+            # # myVar = w*myVar+(1-w)*1
+            # print("myVar3",myVar.min(),myVar.mean(),myVar.max())
+            # print("self.pixels_dif.mean()",self.pixels_dif.shape, "mean:", self.pixels_dif.mean(),"max:",self.pixels_dif.max(),"min:",self.pixels_dif.min())
+            # print("self.pixels",self.pixels.shape,self.pixels.max(),self.pixels.min())
+            # exit(0)
+        else : 
+            myVar = None
+        o, layers, p = self.forward(xyt,openLocalDeform, step ,epochs0,vesselMask = vesselMask, myVar=myVar)#纹理学习
 
         eps=10**-10
         R=p["o_rigid_all"]
