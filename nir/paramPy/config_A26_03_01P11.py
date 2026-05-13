@@ -1,6 +1,6 @@
 '''
     内容：
-        测试myLogSquare的效果
+        测试对流体使用myLogSquare的效果
     结果：
         指标大幅下降
         Our-1P-CATH:
@@ -12,6 +12,8 @@
             Recall:    0.8297
             Precision: 0.7562
     分析：
+        流体的损失函数数值远高于其他两部分，这或许破坏了平衡
+        Step[0000]: l=1.339681, recon_b=0.062929, recon_vess=1.081195, recon_all=0.061285, comp=0.000008, c=0.134263, cR=0.137931, cS=1.000000, cF=1.000000 rflow=0.000000
     实验设备: AutoDL_I、DeNVeR.26-3_new
     Running time: ?? hours
 '''

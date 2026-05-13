@@ -2,9 +2,21 @@
     内容：
         测试"var=dif":True的效果
     结果：
+        Our-1P-CATH:
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P12-CATH:
+            Dice:      0.7971
+            Recall:    0.8087
+            Precision: 0.7941
+        Our-1P13-CATH:
+            Dice:      0.7957
+            Recall:    0.8073
+            Precision: 0.7929
     分析：
-    实验设备: AutoDL_?、DeNVeR.26-3_new
-    Running time: ?? hours
+    实验设备: AutoDL_H、DeNVeR.26-3_new
+    Running time: 7*2.3004750627279282 hours
 '''
 config_A26_03_01P13={ # follow: onfig_A26_03_01P
             "decouple":{ # 解耦

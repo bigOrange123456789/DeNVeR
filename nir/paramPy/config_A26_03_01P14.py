@@ -1,28 +1,15 @@
 '''
     内容：
-        (测试"var=dif":True的效果)
-        实际上应该只是完全复现了A26_03_01P
+        测试"var=dif"进行归一化后的效果
+        与P13相比，不确定性的效果会更剧烈
     结果：
-        指标有0.11%的浮动
-        Our-1J2-CATH:
-            Dice:      0.7968
-            Recall:    0.8073
-            Precision: 0.7950
-        Our-1P-CATH:
-            Dice:      0.7982
-            Recall:    0.8091
-            Precision: 0.7957
-        Our-1P12-CATH:
-            Dice:      0.7971
-            Recall:    0.8087
-            Precision: 0.7941
     分析：
     实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: 6*2.6378799514638054 hours
+    Running time: ?? hours
 '''
-config_A26_03_01P12={ # follow: onfig_A26_03_01P
+config_A26_03_01P14={ # follow: onfig_A26_03_01P13
             "decouple":{ # 解耦
-                "tag":"A26_03_01P12",
+                "tag":"A26_03_01P14",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -172,7 +159,7 @@ config_A26_03_01P12={ # follow: onfig_A26_03_01P
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"MSE_noUL",
+                    "ra":"MSE_UL",
                     "rm":"MSE_noUL", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
@@ -189,8 +176,9 @@ config_A26_03_01P12={ # follow: onfig_A26_03_01P
                         "rm":1, #默认为1
                         "rv":1, #默认为1
                     },
-                    "product_variance_type":"mul",#{"mul_err":最开始错误的版本，"mul","add"} #这里有点问题、感觉用add版本进行测试可能更好
+                    "product_variance_type":"add",#"mul",#{"mul_err":最开始错误的版本，"mul","add"} #这里有点问题、感觉用add版本进行测试可能更好
                     "var=dif":True,#用于测试
+                    "var=dif(norm)":True,#是否除以标准差
                 },
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -198,10 +186,10 @@ config_A26_03_01P12={ # follow: onfig_A26_03_01P
                 "de-soft":None,
                 "saveTempImg":False,#True,
             },
-            "name": "A26_03_01P12", #提高模型的拟合能力
+            "name": "A26_03_01P14", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26_03_01P12.rigid",
-            "input_mode": "A26_03_01P12.rigid.non1",
+            "noise_label":"A26_03_01P14.rigid",
+            "input_mode": "A26_03_01P14.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

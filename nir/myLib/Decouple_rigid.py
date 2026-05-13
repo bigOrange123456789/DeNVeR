@@ -863,15 +863,27 @@ class Decouple_rigid(nn.Module):
 
     def loss2(self, xyt, step,epochs0, start, end,openLocalDeform,lossParam,vesselMask,ground_truth):
         if self.UncertainLearning["var=dif"]:
-            # myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
-            myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
+            if self.UncertainLearning["var=dif(norm)"]:
+                myVar = (self.pixels_dif[start:end] - self.pixels_dif.mean())/self.pixels_dif.std() + 1
+            else:
+                myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
+            myVar[myVar<(10**-9)]=10**-9 #避免为负数
+            # # myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
+            # myVar = self.pixels_dif
+            # print("myVar0",myVar.min(),myVar.mean(),myVar.max())
+            # myVar = self.pixels_dif - self.pixels_dif.mean() + 1
             # print("myVar1",myVar.min(),myVar.mean(),myVar.max())
-            # print("myVar2",myVar.min(),myVar.mean(),myVar.max())
-            # # w=0.5
-            # # myVar = w*myVar+(1-w)*1
+            # myVar = (self.pixels_dif - self.pixels_dif.mean())*2 + 1
+            # # print("myVar2",myVar.min(),myVar.mean(),myVar.max())
+            # # print("std",self.pixels_dif.std(),1/self.pixels_dif.std())
+            # myVar = (self.pixels_dif - self.pixels_dif.mean())/self.pixels_dif.std() + 1
+            # myVar[myVar<(10**-9)]=10**-9
             # print("myVar3",myVar.min(),myVar.mean(),myVar.max())
-            # print("self.pixels_dif.mean()",self.pixels_dif.shape, "mean:", self.pixels_dif.mean(),"max:",self.pixels_dif.max(),"min:",self.pixels_dif.min())
-            # print("self.pixels",self.pixels.shape,self.pixels.max(),self.pixels.min())
+            # # # w=0.5
+            # # # myVar = w*myVar+(1-w)*1
+            # # print("myVar3",myVar.min(),myVar.mean(),myVar.max())
+            # # print("self.pixels_dif.mean()",self.pixels_dif.shape, "mean:", self.pixels_dif.mean(),"max:",self.pixels_dif.max(),"min:",self.pixels_dif.min())
+            # # print("self.pixels",self.pixels.shape,self.pixels.max(),self.pixels.min())
             # exit(0)
         else : 
             myVar = None
@@ -928,7 +940,7 @@ class Decouple_rigid(nn.Module):
                 l0=torch.log(
                     (y.abs()+eps)/((pred_mean).abs()+eps)
                 ).abs()
-            elif baseType=="myLogSquare":#else:#"myLog"
+            elif baseType=="myLogSquare":#会让损失函数的数值变大
                 y_ = torch.log(y.abs()+eps)
                 pred_mean_ = torch.log(pred_mean.abs()+eps)
                 l0=(y_ - pred_mean_)**2
@@ -939,7 +951,7 @@ class Decouple_rigid(nn.Module):
                 tagUL = baseType0.split("_")[1]
                 if tagUL=="noUL": pred_var=None
             else:#如果没有标注是否使用不确定学习(为了兼容旧版参数列表)
-                if baseType=="myLog": pred_var=None # myLog默认不使用
+                if baseType=="myLog": pred_var=None # myLog默认不使用不确定学习
             if self.use_UncertainLearning and (not pred_var is None):
                 pred_var += self.UncertainLearning["var_dias"]
                 w_reg = self.UncertainLearning["weight_regular"][tag]
@@ -954,39 +966,13 @@ class Decouple_rigid(nn.Module):
         if not lossParam["rm"] is None:
             rm_in, rm_in_var=getData(lossParam["rm"])
             loss_recon_mask = getMyLoss(self.lossFunType["rm"], rm_in, rm_in_var,"rm")
-            # if self.lossFunType["rm"]=="MSE" or self.lossFunType["rm"]=="MSE_UL":
-            #     loss_recon_mask = getMyLoss("MSE", rm_in, rm_in_var,"rm")#loss_recon_mask = getLossMSE(rm_in, rm_in_var,"rm")
-            # elif self.lossFunType["rm"]=="MSE_noUL":
-            #     loss_recon_mask = getMyLoss("MSE", rm_in)#loss_recon_mask = getLossMSE(rm_in)
-            # elif self.lossFunType["rm"]=="myLog_UL":
-            #     loss_recon_mask = getMyLoss("myLog", rm_in, rm_in_var,"rm")
-            # elif self.lossFunType["rm"]=="myLog_noUL" or self.lossFunType["rm"]=="myLog":#myLog
-            #     loss_recon_mask = getMyLoss("myLog", rm_in)
-            # else:
-            #     print("err:!!! Decople_rigid.py: self.lossFunType[rm] !!!")
-            #     exit(0)
             m0 = 1-vesselMask#self.mask[start:end]
             loss_recon_mask = (loss_recon_mask*m0).sum()/(m0.sum()+1e-8)
         # 1.2 前景重构损失
-        # loss_recon_vessel = torch.tensor(0.0) if lossParam["rf"] is None else dist0( #前景重构损失
-        #     "myLog", 
-        #     getData(lossParam["rf"]), 
-        #     ground_truth[start:end] )
         loss_recon_vessel = torch.tensor(0.0) #血管重构损失
         if not lossParam["rv"] is None:
             rv_in, rv_in_var=getData(lossParam["rv"])
             loss_recon_vessel = getMyLoss(self.lossFunType["rv"],rv_in, rv_in_var,"rv")
-            # if self.lossFunType["rv"]=="MSE_UL" or self.lossFunType["rv"]=="MSE":
-            #     loss_recon_vessel = getMyLoss("MSE",rv_in, rv_in_var,"rv")
-            # elif self.lossFunType["rv"]=="MSE_noUL" or self.lossFunType["rv"]=="MSEnoUL":
-            #     loss_recon_vessel = getMyLoss("MSE",rv_in)#loss_recon_vessel = getLossMSE(rv_in)
-            # elif self.lossFunType["rv"]=="myLog_UL":
-            #     loss_recon_vessel = getMyLoss("myLog",rv_in, rv_in_var,"rv")
-            # elif self.lossFunType["rv"]=="myLog_noUL" or self.lossFunType["rv"]=="myLog":#myLog
-            #     loss_recon_vessel = getMyLoss("myLog",rv_in)
-            # else:
-            #     print("err:!!! Decople_rigid.py: self.lossFunType[rv] !!!")
-            #     exit(0)
             m0 = torch.clamp(vesselMask, min=self.lossFunType["rv_eps"]) # m0 = vesselMask + self.lossFunType["rv_eps"]
             loss_recon_vessel = (loss_recon_vessel*m0).sum()/(m0.sum()+1e-8)
         
@@ -1016,24 +1002,6 @@ class Decouple_rigid(nn.Module):
             else:
                 loss_recon_all = getMyLoss(loss_recon_all_type,ra_in, ra_in_var,"ra")#getLossMSE(ra_in, ra_in_var,"ra")
                 loss_recon_all = loss_recon_all.mean()
-
-            # if loss_recon_all_type=="MSE" or loss_recon_all_type=="MSE_UL": #MSE_UL
-            #     # loss_recon_all = ( ground_truth[start:end] - ra_in )**2
-            #     loss_recon_all = getMyLoss("MSE",ra_in, ra_in_var,"ra")#getLossMSE(ra_in, ra_in_var,"ra")
-            #     loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
-            # elif loss_recon_all_type=="MSE_noUL" or loss_recon_all_type=="MSEnoUL":
-            #     loss_recon_all = getMyLoss("MSE",ra_in)#loss_recon_all = getLossMSE(ra_in)
-            #     loss_recon_all = loss_recon_all.mean()#这个对象在训练后期变为了None
-            # elif self.lossFunType["ra"]=="myLog_UL":
-            #     loss_recon_all = getMyLoss("myLog",ra_in)
-            #     loss_recon_all = loss_recon_all.mean() 
-            # elif self.lossFunType["ra"]=="myLog_noUL" or self.lossFunType["ra"]=="myLog": #myLog_
-            #     loss_recon_all = getMyLoss("myLog",ra_in, ra_in_var,"ra")#
-            #     loss_recon_all = loss_recon_all.mean() 
-            # else:
-            #     print("err:!!! Decople_rigid.py: self.lossFunType[ra] !!!")
-            #     exit(0)
-            # loss_recon_all = loss_recon_all.mean()
         
         # 三、平滑损失
         loss_smooth=0 # 刚体整体运动的平滑损失
