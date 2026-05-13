@@ -1,11 +1,24 @@
 '''
     内容：
         测试"var=dif"进行归一化后的效果
-        与P13相比，不确定性的效果会更剧烈
+        与P13相比, 不确定性的效果会更剧烈
     结果：
+        指标大幅下降
+        Our-1P-CATH:
+            Dice:      0.7982
+            Recall:    0.8091
+            Precision: 0.7957
+        Our-1P12-CATH:
+            Dice:      0.7971
+            Recall:    0.8087
+            Precision: 0.7941
+        Our-1P14-CATH:
+            Dice:      0.7909
+            Recall:    0.8006
+            Precision: 0.7918
     分析：
     实验设备: AutoDL_H、DeNVeR.26-3_new
-    Running time: ?? hours
+    Running time: 2.191810418367386 hours
 '''
 config_A26_03_01P14={ # follow: onfig_A26_03_01P13
             "decouple":{ # 解耦

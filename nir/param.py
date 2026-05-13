@@ -58,8 +58,8 @@ from nir.paramPy.config_A26_03_01P9 import config_A26_03_01P9 # MSE_UL刚体(sig
 from nir.paramPy.config_A26_03_01P10 import config_A26_03_01P10 # MSE_UL刚体(square)
 from nir.paramPy.config_A26_03_01P11 import config_A26_03_01P11 # myLogSquare_noUL流体
 from nir.paramPy.config_A26_03_01P12 import config_A26_03_01P12 # 复现01P
-from nir.paramPy.config_A26_03_01P13 import config_A26_03_01P13 # d(gray)/dt 变化快的地方不确定
-from nir.paramPy.config_A26_03_01P14 import config_A26_03_01P14
+from nir.paramPy.config_A26_03_01P13 import config_A26_03_01P13 # 前后帧变化快的地方不确定
+from nir.paramPy.config_A26_03_01P14 import config_A26_03_01P14 # 加强不确定效果
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征

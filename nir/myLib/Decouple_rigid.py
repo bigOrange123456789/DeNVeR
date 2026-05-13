@@ -870,6 +870,10 @@ class Decouple_rigid(nn.Module):
             myVar[myVar<(10**-9)]=10**-9 #避免为负数
             # # myVar = self.pixels_dif[start:end] - self.pixels_dif.mean() + 1
             # myVar = self.pixels_dif
+            # print("self.pixels_dif",self.pixels_dif.mean())
+            # print("self.pixels",self.pixels.mean())
+            # print("1/self.pixels",(1/(self.pixels+10**-9)).mean())
+            # print("1/self.pixels ** 2",((1/(self.pixels+10**-9))**2).mean())
             # print("myVar0",myVar.min(),myVar.mean(),myVar.max())
             # myVar = self.pixels_dif - self.pixels_dif.mean() + 1
             # print("myVar1",myVar.min(),myVar.mean(),myVar.max())
