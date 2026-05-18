@@ -202,6 +202,7 @@ class SineLayer(nn.Module):
         result = self.omega_0 * self.linear(input)
         if self.activationFun == "sin": # sin
             return torch.sin(result) #激活函数 sin
+            # return nn.functional.relu(torch.sin(result)) #激活函数 sin
         elif self.activationFun == "relu": # relu
             return nn.functional.relu(result)
         else:
@@ -235,6 +236,7 @@ class Siren(nn.Module):
         for i in range(hidden_layers):
             self.net.append(SineLayer(hidden_features, hidden_features, 
                                       is_first=False, omega_0=hidden_omega_0))
+            
 
         # 3.输出层
         if outermost_linear:

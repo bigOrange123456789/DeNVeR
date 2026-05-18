@@ -144,7 +144,6 @@ class Decouple_rigid(nn.Module):
         super().__init__()
         self.result = None
         self.softHasSelfGlobal = configSofts["layer"]["useGlobal"]
-        # print("softHasSelfGlobal:",self.softHasSelfGlobal,"用于判断软体层是否有自己的运动")
         self.dynamicVesselMask = dynamicVesselMask
         self.updateMaskConfig = updateMaskConfig
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
@@ -303,6 +302,7 @@ class Decouple_rigid(nn.Module):
             )
         if NUM_fluid>0:
             self.f2 = self.f_fluid_list[0]
+            print("流体神经网络：",self.f2)
 
 
         self.parameters=[

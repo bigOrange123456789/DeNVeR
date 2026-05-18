@@ -499,7 +499,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if True: # #处理全部数据 ####
+    if False: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -527,7 +527,9 @@ def main():
             # "CVAI-2855RAO4_CRA35",
             # "CVAI-1264LAO33_CRA22"
             # "CVAI-1257RAO0_CRA1"
-            "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
+            # "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
+            "CVAI-1207LAO44_CRA29",
+            # "CVAI-1264LAO50_CAU21"
             ]
     ''' 将视频在这里进行解耦 '''
     

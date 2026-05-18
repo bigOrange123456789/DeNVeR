@@ -378,6 +378,17 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             if NUM_rigid>1 and saveTempImg:
                 for i in range(len(layers["r"])):
                     save1(layers["r"][i], tag+".rigid" + str(i))
+        
+        if NUM_soft>0 and NUM_rigid>0 and saveTempImg:
+            rigidSoft =p["o_rigid_all"]*p["o_soft_all"]
+            save1(
+                    rigidSoft, 
+                    tag+".rigidSoft")#有黑点、黑点解决了(是超过数据上限造成的)
+            save1(
+                    orig.cuda() / (rigidSoft.abs() + 10 ** -10), 
+                    tag+".rigidSoft.non1")#有黑点、黑点解决了(是超过数据上限造成的)
+            
+
         if False:
             save1(0.5*orig.cuda()/(p["o_rigid_all"].abs()+10**-10), tag+".rigid_non2")
 

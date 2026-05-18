@@ -6,9 +6,9 @@
     实验设备: AutoDL_H、DeNVeR.26-3_new
     Running time: 2.191810418367386 hours
 '''
-config_A26_03_01P14={ # follow: onfig_A26_03_01P13
+config_A26_03_01P15={ # follow: onfig_A26_03_01P13
             "decouple":{ # 解耦
-                "tag":"A26_03_01P14",
+                "tag":"A26_03_01P15",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -66,29 +66,28 @@ config_A26_03_01P14={ # follow: onfig_A26_03_01P13
                         "use_residual":{
                             "R":False,
                             "S":False,
-                            "L":False,
                             "T":False,
                         },
-                        # 1.整体运动
+                        # 整体运动
                         "useGlobal":False,
-                        'hidden_layers_global':0,#1,#2, 
-                        'hidden_features_global':0,#1,#8*128, 
-                        # 2.局部运动
-                        "useLocal":True,#False, #True,
-                        'hidden_layers_local':2,#1,#2,
-                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
-                        # 3.纹理
-                        "dynamicTex":True,#False, #动态纹理
-                        'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
-                        'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
+                        'hidden_layers_global':0, 
+                        'hidden_features_global':0,
+                        # 局部运动
+                        "useLocal":False,
+                        'hidden_layers_local':0,
+                        'hidden_features_local':0,
+                        # 纹理
+                        "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
+                        "hidden_layers_map": 5,#4, 
+                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
-                            "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                            "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
-                        }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":False,#True, #渐进式遮挡向量
+                        }, 
+                        "use_featureMask":False,#True,
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
-                    },
+                    },              
                     "useSoftMask" : False, #无法生成有意义的MASK
                     "layerMask":{ #无效
                         "hidden_features": 64,#8,#256,#3*256,#7*256, 
@@ -110,28 +109,29 @@ config_A26_03_01P14={ # follow: onfig_A26_03_01P13
                         "use_residual":{
                             "R":False,
                             "S":False,
+                            "L":False,
                             "T":False,
                         },
-                        # 整体运动
+                        # 1.整体运动
                         "useGlobal":False,
-                        'hidden_layers_global':0, 
-                        'hidden_features_global':0,
-                        # 局部运动
-                        "useLocal":False,
-                        'hidden_layers_local':0,
-                        'hidden_features_local':0,
-                        # 纹理
-                        "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
-                        "hidden_layers_map": 4, 
-                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        'hidden_layers_global':0,#1,#2, 
+                        'hidden_features_global':0,#1,#8*128, 
+                        # 2.局部运动
+                        "useLocal":True,#False, #True,
+                        'hidden_layers_local':2,#1,#2,
+                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        # 3.纹理
+                        "dynamicTex":True,#False, #动态纹理
+                        'hidden_layers_map':2,#2,#4, # 1, # 2, # 4, # 32, # 4,
+                        'hidden_features_map': 64,#4*512,#64,#8*512, # 将隐含层特征维度变为1/8
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
-                            "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                            "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
-                        }, 
-                        "use_featureMask":False,#True,
+                        }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
+                        "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
-                    },                    
+                    },                
                     #######################
                     "vesselMaskInference":True,#False,
                     "gradualImageLayers":False, #没啥用的功能
@@ -148,9 +148,9 @@ config_A26_03_01P14={ # follow: onfig_A26_03_01P13
                     # "ra":"R,F", 
                     # "rm":"S", 
                     # "rv":None, 
-                    "ra":"R", 
-                    "rm":"S", 
-                    "rv":"F", 
+                    "ra":"R,S,F", 
+                    "rm":None,#"S", 
+                    "rv":None,#"F", 
                     }, 
                 "lossParam_vessel":{ #没有被使用
                     "ra":"F", 
@@ -158,7 +158,7 @@ config_A26_03_01P14={ # follow: onfig_A26_03_01P13
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
-                    "ra":"MSE_UL",
+                    "ra":"MSE_noUL",
                     "rm":"MSE_noUL", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
                     "rv_eps":0.5,#0,#0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
@@ -183,12 +183,12 @@ config_A26_03_01P14={ # follow: onfig_A26_03_01P13
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
-                "saveTempImg":True,#False,#True,
+                "saveTempImg":False,#True,#False,#True,
             },
-            "name": "A26_03_01P14", #提高模型的拟合能力
+            "name": "A26_03_01P15", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26_03_01P14.rigid",
-            "input_mode": "A26_03_01P14.rigid.non1",
+            "noise_label":"A26_03_01P15_5.rigid",
+            "input_mode": "A26_03_01P15_5.rigid.non1",
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,
