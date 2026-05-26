@@ -137,7 +137,13 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
     init_dynamicFeatureMask = None
-    quickUpdate_dynamicFeatureMask = False
+    quickUpdate_dynamicFeatureMask = {
+        "use":False,
+        "interval":5, #间隔
+        "starting":0,
+        "ending":50, #关闭位置
+        "type":0
+    }
     dynamicVesselMask=False
     singleTrainVessel=False
     reconFlow=False
@@ -228,7 +234,25 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             }
         
         if "quickUpdate_dynamicFeatureMask" in config:
-            quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
+            # quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
+            if isinstance( config["quickUpdate_dynamicFeatureMask"], dict):
+                quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
+            elif config["quickUpdate_dynamicFeatureMask"]==True:
+                quickUpdate_dynamicFeatureMask={
+                    "use":True,
+                    "interval":5, #间隔
+                    "starting":0,
+                    "ending":50, #关闭位置
+                    "type":0
+                }
+            else:
+                quickUpdate_dynamicFeatureMask={
+                    "use":False,
+                    "interval":5, #间隔
+                    "starting":0,
+                    "ending":50, #关闭位置
+                    "type":0
+                }
         if "UncertainLearning" in config:
             UncertainLearning = config["UncertainLearning"]
             if not "var_dias" in UncertainLearning:

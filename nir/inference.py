@@ -528,8 +528,9 @@ def main():
             # "CVAI-1264LAO33_CRA22"
             # "CVAI-1257RAO0_CRA1"
             # "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
-            "CVAI-1207LAO44_CRA29",
-            # "CVAI-1264LAO50_CAU21"
+            # "CVAI-1207LAO44_CRA29",
+            # "CVAI-1264LAO50_CAU21",
+            "CVAI-2862RAO34_CAU6"
             ]
     ''' 将视频在这里进行解耦 '''
     
@@ -542,7 +543,7 @@ def main():
             denoising(c["decouple"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
-                      repeating=False,#True,#False, #True
+                      repeating=True,#False,#True,#False, #True
                       )
     print("视频解耦完成!")
     # exit(0)

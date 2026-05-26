@@ -37,19 +37,19 @@ from nir.paramPy.config_A26_03_01J2 import config_A26_03_01J2 #高迭代数     
 from nir.paramPy.config_A26_03_01J3 import config_A26_03_01J3 #高迭代数+大batch
 from nir.paramPy.config_A26_03_01K import config_A26_03_01K #不确定学习
 from nir.paramPy.config_A26_03_01L import config_A26_03_01L #rv:Log=>MSE
-from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定学习{S、F}
-from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定学习&sigmoid激活 [失败]
-from nir.paramPy.config_A26_03_01O import config_A26_03_01O #不确定学习(便于后续消融分析的版本) [失败]
-from nir.paramPy.config_A26_03_01O1 import config_A26_03_01O1 #不确定学习(只作用于刚体)
-from nir.paramPy.config_A26_03_01O2 import config_A26_03_01O2 #不确定学习(只作用于软体)
-from nir.paramPy.config_A26_03_01O3 import config_A26_03_01O3 #不确定学习(只作用于流体)
-from nir.paramPy.config_A26_03_01O4 import config_A26_03_01O4 #不确定学习(add混合法)
-from nir.paramPy.config_A26_03_01O5 import config_A26_03_01O5 #不确定学习(只作用于流体)(MSE_noUL)
+from nir.paramPy.config_A26_03_01M import config_A26_03_01M #不确定: {S、F}
+from nir.paramPy.config_A26_03_01N import config_A26_03_01N #不确定: &sigmoid激活 [失败]
+from nir.paramPy.config_A26_03_01O import config_A26_03_01O #不确定: (便于后续消融分析的版本) [失败]
+from nir.paramPy.config_A26_03_01O1 import config_A26_03_01O1 #不确定: (只作用于刚体)
+from nir.paramPy.config_A26_03_01O2 import config_A26_03_01O2 #不确定: (只作用于软体)
+from nir.paramPy.config_A26_03_01O3 import config_A26_03_01O3 #不确定: (只作用于流体)
+from nir.paramPy.config_A26_03_01O4 import config_A26_03_01O4 #不确定: (add混合法)
+from nir.paramPy.config_A26_03_01O5 import config_A26_03_01O5 #不确定: (只作用于流体)(MSE_noUL)
 from nir.paramPy.config_A26_03_01P import config_A26_03_01P # 复现J2        # myLastMethod
 from nir.paramPy.config_A26_03_01P1 import config_A26_03_01P1 # 刚体:微弱的不确定性
 # from nir.paramPy.config_A26_03_01P2 import config_A26_03_01P2 # follow P (使用输入数据本身进行归一化)
 # from nir.paramPy.config_A26_03_01P3 import config_A26_03_01P3 # follow P1(使用输入数据本身进行归一化)
-from nir.paramPy.config_A26_03_01P4 import config_A26_03_01P4 # 刚体:微弱的不确定性(就正后)
+from nir.paramPy.config_A26_03_01P4 import config_A26_03_01P4 # 不确定: 刚体:微弱的不确定性(纠正后)
 from nir.paramPy.config_A26_03_01P5 import config_A26_03_01P5 # 减少训练数据
 from nir.paramPy.config_A26_03_01P6 import config_A26_03_01P6 # 全部使用myLog
 from nir.paramPy.config_A26_03_01P7 import config_A26_03_01P7 # myLog_UL刚体
@@ -58,9 +58,8 @@ from nir.paramPy.config_A26_03_01P9 import config_A26_03_01P9 # MSE_UL刚体(sig
 from nir.paramPy.config_A26_03_01P10 import config_A26_03_01P10 # MSE_UL刚体(square)
 from nir.paramPy.config_A26_03_01P11 import config_A26_03_01P11 # myLogSquare_noUL流体
 from nir.paramPy.config_A26_03_01P12 import config_A26_03_01P12 # 复现01P
-from nir.paramPy.config_A26_03_01P13 import config_A26_03_01P13 # 前后帧变化快的地方不确定
-from nir.paramPy.config_A26_03_01P14 import config_A26_03_01P14 # 加强不确定效果
-from nir.paramPy.config_A26_03_01P15 import config_A26_03_01P15
+from nir.paramPy.config_A26_03_01P13 import config_A26_03_01P13 # 不确定: 前后帧变化快的地方不确定
+from nir.paramPy.config_A26_03_01P14 import config_A26_03_01P14 # 不确定: 加强不确定效果
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -76,7 +75,7 @@ from nir.paramPy.config_A26_03_04N import config_A26_03_04N # rv_eps=0
 from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
 from nir.paramPy.config_test import config_test
-c0 = config_test #config_A26_03_01P15
+c0 = config_test
 
 # 目前最重要的是获取论文所需的量化结果
 if True:

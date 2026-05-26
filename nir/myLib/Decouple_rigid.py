@@ -47,6 +47,7 @@ import torch
 import numpy as np
 
 from nir.myLib.GradientMonitor import GradientMonitor
+from nir.myLib.mySave import getPath_csv, create_csv, write_csv
 
 class Decouple_rigid(nn.Module):
     def undateXY(self, xyt, blurriness=4): #用于低分辨率的学习
@@ -117,12 +118,12 @@ class Decouple_rigid(nn.Module):
 
         return True
 
-    def __init__(self, path,inpath_custom=None,videoId=None,hidden_features=128,useSmooth=False,openLocalDeform=False,
-                 weight_smooth=1,weight_concise=0.0001,weight_component=1,
+    def __init__(self, path, inpath_custom=None, videoId=None, hidden_features=128, useSmooth=False, openLocalDeform=False,
+                 weight_smooth=1, weight_concise=0.0001, weight_component=1,
                 #  stillness=False, #废弃
                  stillnessFristLayer=True,
-                 NUM_soft=0,NUM_rigid=2,NUM_fluid=0,
-                 useMask=False,openReconLoss_rigid=False,
+                 NUM_soft=0, NUM_rigid=2, NUM_fluid=0,
+                 useMask=False, openReconLoss_rigid=False,
                  lossType=1,
                  lossFunType=None,
                  maskPath=None,
@@ -302,7 +303,7 @@ class Decouple_rigid(nn.Module):
             )
         if NUM_fluid>0:
             self.f2 = self.f_fluid_list[0]
-            print("流体神经网络：",self.f2)
+            # print("流体神经网络：",self.f2)
 
 
         self.parameters=[
@@ -319,6 +320,26 @@ class Decouple_rigid(nn.Module):
         #     self.parameters = self.parameters + self.f2.parameters
         for i in range(self.NUM_fluid):
             self.parameters = self.parameters + self.f_fluid_list[i].parameters
+
+        self.saveLog=True
+        if self.saveLog:
+            self.csv_loss_path = getPath_csv() + '/' + 'train_loss.csv'
+            csv_head = [
+                "epoch",
+                "recon_all",
+                "recon_mask",
+                "recon_vessel",
+                "concise",
+                "component",
+
+                'k_rigid_motion',# rigid0.kFeatureMask_motion.get(), # 
+                'k_rigid_texture',# rigid0.kFeatureMask_texture.get(),# 
+                'k_soft_motion',# soft0.kFeatureMask_motion.get(), # 
+                'k_soft_texture',# soft0.kFeatureMask_texture.get(),# 
+                'k_fluid_motion',# fluid0.kFeatureMask_motion.get(), # 
+                'k_fluid_texture',# fluid0.kFeatureMask_texture.get(),# 
+                ]
+            create_csv(self.csv_loss_path, csv_head)
         
     def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
         N, C, H, W = self.v.video.size()  # 帧数、通道数、高度、宽度
@@ -903,7 +924,7 @@ class Decouple_rigid(nn.Module):
 
         # 零、辅助数据重构损失
         loss_recon_flow = torch.tensor(0.0) #让每一层都接近目标数据？
-        if self.v.reconFlow:
+        if False:#self.v.reconFlow:
             layers_list=[]
             for l in layers["r"]:
                 layers_list.append(l[:, 1:])
@@ -1050,6 +1071,27 @@ class Decouple_rigid(nn.Module):
 
 
         self.layers = layers
+        if self.saveLog:
+            soft0  = self.f_soft_list[0]
+            fluid0 = self.f_fluid_list[0]
+            rigid0 = self.f_rigid_list[0]
+
+            lossSave=[
+                epochs0,
+                loss_recon_all.item(),
+                loss_recon_mask.item(),
+                loss_recon_vessel.item(),
+                loss_concise.item(),
+                loss_component.item(),
+
+                rigid0.kFeatureMask_motion.get(), # k_rigid_motion
+                rigid0.kFeatureMask_texture.get(),# k_rigid_texture
+                soft0.kFeatureMask_motion.get(), # k_soft_motion
+                soft0.kFeatureMask_texture.get(),# k_soft_texture
+                fluid0.kFeatureMask_motion.get(), # k_fluid_motion
+                fluid0.kFeatureMask_texture.get(),# k_fluid_texture
+            ]
+            write_csv(self.csv_loss_path, lossSave)
         if (step % 100 == 0):# or (step ==1999) :
             # print("loss_concise",loss_concise)
             # if self.NUM_fluid>0:
@@ -1150,13 +1192,13 @@ class Decouple_rigid(nn.Module):
             optim.zero_grad()
             loss.backward()
             optim.step()
-            if self.quickUpdate_dynamicFeatureMask and step<50 and step>0 and not step % 5:
+            if self.quickUpdate_dynamicFeatureMask["use"] and step<self.quickUpdate_dynamicFeatureMask["ending"] and step>self.quickUpdate_dynamicFeatureMask["starting"] and not step % self.quickUpdate_dynamicFeatureMask["interval"]:
                 for l in self.f_soft_list:
-                    l.kFeatureMaskUpdate()
+                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"])
                 for l in self.f_rigid_list:
-                    print("step:",step,"; R_motion:",l.kFeatureMaskUpdate()["pre"])
+                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"]) # print("step:",step,"; R_motion:",l.kFeatureMaskUpdate()["pre"])
                 for l in self.f_fluid_list:
-                    l.kFeatureMaskUpdate()
+                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"])
 
             if not step % 100 and step>0 and self.NUM_fluid==1:
                 gradientMonitor.analyze(step)
