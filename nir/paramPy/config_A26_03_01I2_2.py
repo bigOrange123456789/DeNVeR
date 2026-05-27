@@ -1,31 +1,17 @@
 '''
     内容：
-        《降低刚体运动的总复杂度》
-        改动1
-            # "quickUpdate_dynamicFeatureMask":True,
-            "quickUpdate_dynamicFeatureMask":{
-                    "use": True,#True,
-                    "interval":5,#10,#5, #间隔
-                    "starting":-1,
-                    "ending":50,#100,#9999,#正无穷 #50, #关闭位置
-                    "type":1,#0
-            },
-        改动2
-            # 'hidden_features_global':8*128,#1,
-            'hidden_features_global':64,
-        改动3
-            layer.py: -- return  torch.sigmoid( (2*vec-1)**3 )#输入sigmoid所以要将区间范围由[0,1]变为[-1,1]
+        减少血管MASK更新次数
     目标：
         期望能和config_A26_03_01I2保持不变
     结果：
         ??
     实验设备: 
-        AutoDL_D、DeNVeR.26-3_new
+        AutoDL_P、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
-config_A26_03_01Q={ # follow: config_A26_03_01I2
+config_A26_03_01I2_2={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q",
+                "tag":"A26-03-01I2_2",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -34,20 +20,13 @@ config_A26_03_01Q={ # follow: config_A26_03_01I2
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
                     "startStep":0.5, #True
-                    "intervalStep":0.2, #更新三次
+                    "intervalStep":0.4, #更新2次 #"intervalStep":0.2, #更新三次
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
-                # "quickUpdate_dynamicFeatureMask":True,
-                "quickUpdate_dynamicFeatureMask":{
-                    "use": True,#True,
-                    "interval":5,#10,#5, #间隔
-                    "starting":-1,
-                    "ending":50,#100,#9999,#正无穷 #50, #关闭位置
-                    "type":1,#0
-                },
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -61,8 +40,7 @@ config_A26_03_01Q={ # follow: config_A26_03_01I2
                         # 整体运动
                         "useGlobal":True,#False,
                         'hidden_layers_global':2,#1,
-                        # 'hidden_features_global':8*128,#1,
-                        'hidden_features_global':64,
+                        'hidden_features_global':8*128,#1,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -176,7 +154,7 @@ config_A26_03_01Q={ # follow: config_A26_03_01I2
                     "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
-                    "ra":"F", 
+                    "ra":None, 
                     "rm":None, 
                     "rv":None, 
                     }, 
@@ -192,10 +170,10 @@ config_A26_03_01Q={ # follow: config_A26_03_01I2
                 ########################
                 "de-soft":None,
             },
-            "name": "A26-03-01Q", #提高模型的拟合能力
+            "name": "A26-03-01I2_2", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q.rigid",
-            "input_mode": "A26-03-01Q.rigid.non1",
+            "noise_label":"A26-03-01I2_2.rigid",
+            "input_mode": "A26-03-01I2_2.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
