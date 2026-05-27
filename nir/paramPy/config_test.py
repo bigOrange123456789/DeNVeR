@@ -440,10 +440,10 @@ config_test={ # follow: config_A26_03_01P15
                 "epochs":0.625,#
                 "batch_size_scale":0.125,#1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    # "startStep":0.5*10, #False
-                    # "intervalStep":1.5,
-                    "startStep":0.5, #True
-                    "intervalStep":0.2, #更新三次
+                    "startStep":0.5*10, #False
+                    "intervalStep":1.5,
+                    # "startStep":0.5, #True
+                    # "intervalStep":0.2, #更新三次
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
@@ -455,10 +455,10 @@ config_test={ # follow: config_A26_03_01P15
                 },#1, #遮挡向量的的初始值为1
                 # "quickUpdate_dynamicFeatureMask":True,#False,#True,
                 "quickUpdate_dynamicFeatureMask":{
-                    "use":True,
-                    "interval":5, #间隔
+                    "use":False,#True,
+                    "interval":10,#5, #间隔
                     "starting":-1,
-                    "ending":9999,#正无穷 #50, #关闭位置
+                    "ending":100,#9999,#正无穷 #50, #关闭位置
                     "type":1,#0
                 },
                 # 1 模型本身
@@ -572,8 +572,8 @@ config_test={ # follow: config_A26_03_01P15
                     # "use_maskP":False, #自动学习MASK遮挡图、无效功能
                 }, # 现在的首要问题是无损失地拟合出来视频
                 # 2.损失函数
-                "useSmooth":False, #不进行平滑约束
-                "weight_smooth":0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
+                "useSmooth":8,#True,#False, #不进行平滑约束
+                "weight_smooth":1,#0.1**7,#0.001,#0.1, #1,始终固定 #10,始终固定 #0.1,
                 "weight_concise":0.25,#1,#5,#20,#1,#0.01,#0.00001,
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5

@@ -41,7 +41,45 @@ class VideoFitting(Dataset):
         self.pixels_dif = self.video_dif.permute(2, 3, 0, 1).contiguous().view(-1, self.numChannel)
         self.coords = get_mgrid([self.H, self.W, self.num_frames])
 
-        self.shuffle = torch.randperm(len(self.pixels)) #打乱顺序
+        if True:
+            self.shuffle = torch.randperm(len(self.pixels)) #打乱顺序
+            # print("F:",self.num_frames,"h:", self.H,"w:", self.W,len(self.pixels),self.shuffle.shape)
+        elif False: #无法生成有意义的结果
+            self.shuffle = torch.arange(len(self.pixels)) #不打乱顺序
+        elif False: #几乎没有意义
+            # 为每一帧生成独立的随机排列（帧内打乱）
+            shuffles_per_frame = []
+            for t in range(self.num_frames):
+                # 该帧在全局数组中的起始偏移
+                offset = t * self.H * self.W
+                # 生成该帧内部像素的随机排列，并加上偏移得到全局索引
+                perm = torch.randperm(self.H * self.W) + offset
+                shuffles_per_frame.append(perm)
+            # 拼接所有帧的索引，保持帧的顺序
+            self.shuffle = torch.cat(shuffles_per_frame)
+        elif False:
+            P = self.H * self.W               # 每帧像素总数
+            num_frames = self.num_frames
+            Num = 16*16                         # 等分的份数，需保证 P % Num == 0
+            chunk_size = P // Num             # 每份的像素数
+            # 1. 为每一帧生成独立的随机排列（帧内打乱），得到全局索引
+            frame_perms = []
+            for t in range(num_frames):
+                offset = t * P
+                # 生成该帧内部像素的随机排列，加上偏移量得到全局索引
+                perm = torch.randperm(P) + offset
+                frame_perms.append(perm)
+            # 2. 按“所有帧的第1份 → 所有帧的第2份 → …” 的顺序拼接全局索引
+            shuffle_parts = []
+            for i in range(Num):               # i: 份索引 (0..Num-1)
+                for t in range(num_frames):   # t: 帧索引
+                    start = i * chunk_size
+                    end = (i + 1) * chunk_size
+                    # 从第t帧打乱后的索引中取出第i份
+                    part = frame_perms[t][start:end]
+                    shuffle_parts.append(part)
+            self.shuffle = torch.cat(shuffle_parts)
+
         self.pixels = self.pixels[self.shuffle]
         self.pixels_dif = self.pixels_dif[self.shuffle]
         self.coords = self.coords[self.shuffle]

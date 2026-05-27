@@ -1107,7 +1107,7 @@ class Decouple_rigid(nn.Module):
             #         print('>>> 梯度正常！', total_norm)
             if self.useSmooth:
                 print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f, loss_smooth=%0.4f" % (
-                    step, loss, loss_recon_mask, loss_recon_all, loss_smooth))
+                    step, loss, loss_recon_mask, loss_recon_all, loss_smooth * self.weight_smooth))
             else: # 不用平滑损失
                 # if self.loss_recon_all_type=="MSE": #整体重构损失
                     # print("Step [%04d]: loss=%0.8f, recon_mask=%0.8f, recon_all=%0.8f" % (
