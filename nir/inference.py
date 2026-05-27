@@ -499,7 +499,7 @@ def main():
         #     "mergeMask": False,
         # },
     ]
-    if False: # #处理全部数据 ####
+    if True: # #处理全部数据 ####
         import yaml
         script_path = os.path.abspath(__file__)
         ROOT1 = os.path.dirname(script_path)
@@ -609,8 +609,8 @@ if __name__ == "__main__":
         f.write(msg + "\n")
 
     # memoryOpt()
-    if True:
-    # try:
+    # if True:
+    try:
         import time
         start = time.time()
         main()#测试在训练过程中f1、recall、precise的变化
@@ -618,11 +618,11 @@ if __name__ == "__main__":
         h = (end - start)/(60*60)
         print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
         writeln('Running time: %s hours' % h)
-    # except Exception as e:
-    #     print(f"执行过程中发生错误: {e}")
-    # finally:
-    #     print("GPU 个数为:",torch.cuda.device_count())
-    #     for c in configs: 
-    #         if "decouple" in c: print("name:",c["name"])
-    #     os.system("ls") 
-    #     os.system("/usr/bin/shutdown") # 推荐使用完整路径，确保脚本可靠执行
+    except Exception as e:
+        print(f"执行过程中发生错误: {e}")
+    finally:
+        print("GPU 个数为:",torch.cuda.device_count())
+        for c in configs: 
+            if "decouple" in c: print("name:",c["name"])
+        os.system("ls") 
+        os.system("/usr/bin/shutdown") # 推荐使用完整路径，确保脚本可靠执行
