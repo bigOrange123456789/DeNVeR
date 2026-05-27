@@ -141,6 +141,7 @@ class Decouple_rigid(nn.Module):
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                 reconFlow=False,
                 UncertainLearning={"use":False},
+                motionSuperposition=True
                  ):
         super().__init__()
         self.result = None
@@ -150,6 +151,7 @@ class Decouple_rigid(nn.Module):
         self.use_dynamicFeatureMask = use_dynamicFeatureMask
         self.UncertainLearning=UncertainLearning
         self.use_UncertainLearning=UncertainLearning["use"]
+        self.motionSuperposition=motionSuperposition
 
         self.init_dynamicFeatureMask = init_dynamicFeatureMask
         self.quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask
@@ -537,7 +539,7 @@ class Decouple_rigid(nn.Module):
         loss_conciseS_full = torch.tensor(0.0)
         for i in range(self.NUM_soft):
             o_soft0, p_soft0 = self.f_soft_list[i](
-                xyt if self.softHasSelfGlobal else xyt+h_global, #xyt+h_global, #使用自己的运动还是刚体的运动
+                xyt if (self.softHasSelfGlobal or self.motionSuperposition) else xyt+h_global, #xyt+h_global, #使用自己的运动还是刚体的运动
                 step) #软体运动基于刚体运动
             o_soft0_gray = o_soft0[:, 0:1]
             if self.useSoftMask:#如果使用了软体遮挡

@@ -149,8 +149,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     reconFlow=False
     UncertainLearning={"use":False}
     saveTempImg = False
+    motionSuperposition = True #默认会将刚体层的整体运动叠加到软体层上
     # useMatrix = True
     if not config is None:
+        if "motionSuperposition" in config:
+            motionSuperposition = config["motionSuperposition"]
         if "reconFlow" in config:
             reconFlow = config["reconFlow"]
         if "batch_size_scale" in config:
@@ -347,6 +350,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               },
                               reconFlow=reconFlow,
                               UncertainLearning=UncertainLearning,
+                              motionSuperposition=motionSuperposition,#是否将刚体的整体运动叠加到软体上
                         )
         myMain.train(
             epochs,total_steps,

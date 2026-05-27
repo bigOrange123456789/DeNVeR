@@ -494,6 +494,7 @@ config_test={ # follow: config_A26_03_01P15
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
                 "NUM_soft":1,
+                "motionSuperposition":False, #是否将刚体层的整体运动叠加到软体层上,默认是True
                 "configSofts":{ # 软体
                     "layer":{
                         "use_residual":{
