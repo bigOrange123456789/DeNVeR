@@ -530,7 +530,9 @@ def main():
             # "CVAI-1264LAO50_CAU21" # 去噪算法提升最高的案例
             # "CVAI-1207LAO44_CRA29",
             # "CVAI-1264LAO50_CAU21",
-            "CVAI-2862RAO34_CAU6"
+
+            "CVAI-1207LAO44_CRA29", #静止
+            # "CVAI-2862RAO34_CAU6", #运动
             ]
     ''' 将视频在这里进行解耦 '''
     

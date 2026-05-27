@@ -147,7 +147,11 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     dynamicVesselMask=False
     singleTrainVessel=False
     reconFlow=False
-    UncertainLearning={"use":False}
+    UncertainLearning={
+        "use":False,
+        "var=dif":False,
+        "product_variance_type":"add",
+        }
     saveTempImg = False
     motionSuperposition = True #默认会将刚体层的整体运动叠加到软体层上
     # useMatrix = True
