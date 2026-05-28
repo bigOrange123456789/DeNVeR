@@ -689,7 +689,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import torch
 
 
-def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
+def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,testName=None):
     if arguments==None:
         arguments={
             "de-rigid":"1",
@@ -819,6 +819,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                         inpath, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29 
                         outpath, # log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29
                         inpath_custom=inpath_custom,
+                        testName=testName,
                         config=arguments)  # 去除刚体层
                 elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
                     origVideoPath=os.path.join(
@@ -893,6 +894,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                         inpath, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29 
                         outpath, # log_26/xca_dataset\CVAI-1253\decouple\CVAI-1253LAO0_CAU29
                         inpath_custom=inpath_custom,
+                        testName=testName,
                         config=arguments)  # 去除刚体层
                 elif arguments["de-rigid"]=="2_sim": #单阶段解耦算法
                     origVideoPath=os.path.join(

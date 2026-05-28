@@ -538,8 +538,8 @@ def main():
             # "CVAI-1207LAO44_CRA29",
             # "CVAI-1264LAO50_CAU21",
 
-            "CVAI-1207LAO44_CRA29", #静止
-            # "CVAI-2862RAO34_CAU6", #运动
+            # "CVAI-1207LAO44_CRA29", #静止
+            "CVAI-2862RAO34_CAU6", #运动
             ]
     ''' 将视频在这里进行解耦 '''
     
@@ -551,6 +551,7 @@ def main():
             c["decouple"]["name"]=c["name"]#用于给处理进度文件命名
             processed_videos=denoising(
                       c["decouple"],
+                      testName=c["name"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
                       repeating=True,#False,#True,#False, #True
@@ -642,7 +643,9 @@ if __name__ == "__main__":
     import time
     start = time.time()
     # memoryOpt()
-    # if True:
+    if False:
+        main()
+        exit(0)
     try:    
         main()#测试在训练过程中f1、recall、precise的变化
     except Exception as e:

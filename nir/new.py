@@ -104,7 +104,7 @@ import numbers
 def is_number(obj): # 使用 numbers.Number，并显式排除 bool
     return isinstance(obj, numbers.Number) and not isinstance(obj, bool)
 
-def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custom=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
+def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custom=None,testName=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
     #设置参数
     epochs = None
     total_steps = EpochNum #只用epochs=None的时候才有效
@@ -115,6 +115,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     weight_smooth=1
     weight_concise=0.0001
     weight_component =1
+    weight_softFade = 0
     stillness=False
     NUM_rigid = 2 #刚体层数量
     NUM_soft = 0
@@ -184,6 +185,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             weight_concise = config["weight_concise"]
         if "weight_component" in config:
             weight_component =config["weight_component"]
+        if "weight_softFade" in config:
+            weight_softFade = config["weight_softFade"]
         if "stillness" in config:
             stillness = config["stillness"]
         if "NUM_rigid" in config:
@@ -315,13 +318,14 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     if not flagHadRigid:
         from nir.myLib.Decouple_rigid import Decouple_rigid
         myMain=Decouple_rigid(
-                              pathIn, inpath_custom = inpath_custom, videoId = videoId,
+                              pathIn, inpath_custom = inpath_custom, videoId = videoId, testName=testName,
                               hidden_features=256,
                               useSmooth=useSmooth,
                               openLocalDeform=openLocalDeform,
                               weight_smooth=weight_smooth,
                               weight_concise=weight_concise,
                               weight_component=weight_component,
+                              weight_softFade=weight_softFade,
                               #   stillness=stillness, #废弃
                               stillnessFristLayer=stillnessFristLayer,
                               NUM_rigid=NUM_rigid,

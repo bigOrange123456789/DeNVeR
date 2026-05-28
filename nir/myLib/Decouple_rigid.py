@@ -118,8 +118,8 @@ class Decouple_rigid(nn.Module):
 
         return True
 
-    def __init__(self, path, inpath_custom=None, videoId=None, hidden_features=128, useSmooth=False, openLocalDeform=False,
-                 weight_smooth=1, weight_concise=0.0001, weight_component=1,
+    def __init__(self, path, inpath_custom=None, videoId=None, testName=None, hidden_features=128, useSmooth=False, openLocalDeform=False,
+                 weight_smooth=1, weight_concise=0.0001, weight_component=1, weight_softFade=0,
                 #  stillness=False, #废弃
                  stillnessFristLayer=True,
                  NUM_soft=0, NUM_rigid=2, NUM_fluid=0,
@@ -197,6 +197,7 @@ class Decouple_rigid(nn.Module):
         self.weight_smooth=weight_smooth
         self.weight_concise=weight_concise
         self.weight_component=weight_component
+        self.weight_softFade=weight_softFade
         # self.stillness=stillness #是否静止不动 #废弃
         self.openReconLoss_rigid=openReconLoss_rigid#是否使用刚体自身的重构损失(只优化刚体层、不影响软体层,无MASK)
         self.lossType=lossType
@@ -325,7 +326,8 @@ class Decouple_rigid(nn.Module):
 
         self.saveLog=True
         if self.saveLog:
-            self.csv_loss_path = getPath_csv() + '/' + 'train_loss.csv'
+            self.csv_loss_path = getPath_csv() + '/' + str(testName) + '/' + 'train_loss_'+str(videoId)+'.csv'
+            os.makedirs(getPath_csv() + '/' + str(testName), exist_ok=True)
             csv_head = [
                 "epoch",
                 "recon_all",
@@ -333,14 +335,21 @@ class Decouple_rigid(nn.Module):
                 "recon_vessel",
                 "concise",
                 "component",
-
-                'k_rigid_motion',# rigid0.kFeatureMask_motion.get(), # 
-                'k_rigid_texture',# rigid0.kFeatureMask_texture.get(),# 
-                'k_soft_motion',# soft0.kFeatureMask_motion.get(), # 
-                'k_soft_texture',# soft0.kFeatureMask_texture.get(),# 
-                'k_fluid_motion',# fluid0.kFeatureMask_motion.get(), # 
-                'k_fluid_texture',# fluid0.kFeatureMask_texture.get(),# 
+                # 'k_rigid_motion',# rigid0.kFeatureMask_motion.get(), # 
+                # 'k_rigid_texture',# rigid0.kFeatureMask_texture.get(),# 
+                # 'k_soft_motion',# soft0.kFeatureMask_motion.get(), # 
+                # 'k_soft_texture',# soft0.kFeatureMask_texture.get(),# 
+                # 'k_fluid_motion',# fluid0.kFeatureMask_motion.get(), # 
+                # 'k_fluid_texture',# fluid0.kFeatureMask_texture.get(),# 
                 ]
+            for i in range(self.NUM_rigid):
+                csv_head.append('k_rigid_motion_'+str(i))
+                csv_head.append('k_rigid_texture_'+str(i))
+            for i in range(self.NUM_soft):
+                csv_head.append('k_soft_motion_'+str(i))
+                csv_head.append('k_soft_texture_'+str(i))
+            for i in range(self.NUM_fluid):
+                csv_head.append('k_fluid_texture_'+str(i))
             create_csv(self.csv_loss_path, csv_head)
         
     def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
@@ -1063,10 +1072,20 @@ class Decouple_rigid(nn.Module):
         if loss_binaryMask_all>0:
             loss_binaryMask_all = 1/loss_binaryMask_all
 
+        # 六、软体褪色损失
+        loss_softFade = torch.tensor(0.0)
+        if self.weight_softFade>0:
+            loss_softFade = S.mean()-S.min() #最小值与平均值 #必须是金字塔结构
+            if loss_softFade<0:loss_softFade=loss_softFade*0
+            loss_softFade = loss_softFade**5
+
+
+
         loss = (loss_recon_mask + loss_recon_all + loss_recon_vessel + 
                 loss_smooth * self.weight_smooth + 
                 loss_concise * self.weight_concise + 
                 loss_component * self.weight_component + 
+                loss_softFade * self.weight_softFade +
                 loss_binaryMask_all + 
                 loss_recon_flow)
 
@@ -1074,10 +1093,9 @@ class Decouple_rigid(nn.Module):
 
         self.layers = layers
         if self.saveLog:
-            soft0  = self.f_soft_list[0]
-            fluid0 = self.f_fluid_list[0]
-            rigid0 = self.f_rigid_list[0]
-
+            # soft0  = self.f_soft_list[0]
+            # fluid0 = self.f_fluid_list[0]
+            # rigid0 = self.f_rigid_list[0]
             lossSave=[
                 epochs0,
                 loss_recon_all.item(),
@@ -1085,14 +1103,30 @@ class Decouple_rigid(nn.Module):
                 loss_recon_vessel.item(),
                 loss_concise.item(),
                 loss_component.item(),
-
-                rigid0.kFeatureMask_motion.get(), # k_rigid_motion
-                rigid0.kFeatureMask_texture.get(),# k_rigid_texture
-                soft0.kFeatureMask_motion.get(), # k_soft_motion
-                soft0.kFeatureMask_texture.get(),# k_soft_texture
-                fluid0.kFeatureMask_motion.get(), # k_fluid_motion
-                fluid0.kFeatureMask_texture.get(),# k_fluid_texture
+                # rigid0.kFeatureMask_motion.get(), # k_rigid_motion
+                # rigid0.kFeatureMask_texture.get(),# k_rigid_texture
+                # soft0.kFeatureMask_motion.get(), # k_soft_motion
+                # soft0.kFeatureMask_texture.get(),# k_soft_texture
+                # fluid0.kFeatureMask_texture.get(),# k_fluid_texture
             ]
+            for i in range(self.NUM_rigid):
+                lossSave.append(
+                    self.f_rigid_list[i].kFeatureMask_motion.get()
+                )
+                lossSave.append(
+                    self.f_rigid_list[i].kFeatureMask_texture.get()
+                )
+            for i in range(self.NUM_soft):
+                lossSave.append(
+                    self.f_soft_list[i].kFeatureMask_motion.get()
+                )
+                lossSave.append(
+                    self.f_soft_list[i].kFeatureMask_texture.get()
+                )
+            for i in range(self.NUM_fluid):
+                lossSave.append(
+                    self.f_fluid_list[i].kFeatureMask_texture.get()
+                )
             write_csv(self.csv_loss_path, lossSave)
         if (step % 100 == 0):# or (step ==1999) :
             # print("loss_concise",loss_concise)
@@ -1116,9 +1150,11 @@ class Decouple_rigid(nn.Module):
                     #                     step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_binaryMask_all, p["loss_conciseR"], p["loss_conciseS"]))
                     # print("Step [%04d]: loss=%0.8f, recon_b=%0.8f, recon_vess=%0.8f, recon_all=%0.8f, componet=%0.8f, conciseR=%0.8f, conciseS=%0.8f, loss_conciseF=%0.8f loss_recon_flow=%0.8f" % (
                     #        step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], loss_recon_flow))
-                    print("Step[%04d]: l=%0.6f, recon_b=%0.6f, recon_vess=%0.6f, recon_all=%0.6f, comp=%0.6f, c=%0.6f, cR=%0.6f, cS=%0.6f, cF=%0.6f rflow=%0.6f" % (
+                    print("Step[%04d]: l=%0.6f, recon_b=%0.6f, recon_vess=%0.6f, recon_all=%0.6f, comp=%0.6f, c=%0.6f, sF=%0.6f, cR=%0.6f, cS=%0.6f, cF=%0.6f rflow=%0.6f" % (
                            step, loss, loss_recon_mask, loss_recon_vessel, loss_recon_all, loss_component, 
-                           loss_concise * self.weight_concise, p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], 
+                           loss_concise * self.weight_concise, 
+                           loss_softFade * self.weight_softFade,
+                           p["loss_conciseR"], p["loss_conciseS"], p["loss_conciseF"], 
                            loss_recon_flow))
                     # print("printLog:\n",p["printLog"])
                     if self.use_UncertainLearning:
