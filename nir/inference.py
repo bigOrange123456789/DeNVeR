@@ -345,12 +345,19 @@ class Main:
                         normalization_params = {}
                         for config in configs:
                             if not config.get("precomputed", False):
+                                if "processed_videos" in config and not config["processed_videos"] is None:
+                                    if not (patient_id+"/"+video_id) in config["processed_videos"]:#如果这个视频的解耦没有被完成
+                                        continue#跳过这个视频处理下一个视频
                                 mean, std = self._get_normalization_params(config, patient_id, video_id) #我发现他在使用原视频的均值和方差，而不是去噪视频的均值和方差
                                 normalization_params[config["name"]] = (mean, std)
 
                         video_names = [name for name in os.listdir(patient_gt_path) 
                           if os.path.isdir(os.path.join(patient_gt_path, name))]
                         for video_id in video_names:
+                         if "processed_videos" in configs[0]:
+                                if not configs[0]["processed_videos"] is None:
+                                    if not (patient_id+"/"+video_id) in configs[0]["processed_videos"]:#如果这个视频的解耦没有被完成
+                                        continue#跳过这个视频处理下一个视频
                          if self.usedVideoId is None or video_id in self.usedVideoId:
                             if "CATH" not in video_id:  # 只统计非导管视频  
                                 video_path = os.path.join(patient_gt_path, video_id)
@@ -540,13 +547,37 @@ def main():
     print("一、视频解耦部分")
     print("configs:",configs)
     for c in configs:
-        if "decouple" in c:
+        if  "decouple" in c:
             c["decouple"]["name"]=c["name"]#用于给处理进度文件命名
-            denoising(c["decouple"],
+            processed_videos=denoising(
+                      c["decouple"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
                       repeating=True,#False,#True,#False, #True
                       )
+        else:
+            arguments=c
+            progress_file = os.path.join(ROOT1, "progress_newBatch"+arguments["name"]+".json")
+            if True:
+                import yaml
+                script_path = os.path.abspath(__file__)
+                ROOT1 = os.path.dirname(script_path)
+                file_path = os.path.join(ROOT1, "../",'confs/newConfig.yaml')
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    config0 = yaml.safe_load(file)
+                    progress_file = os.path.join(config0["my"]["filePathRoot"], "progress_newBatch"+arguments["name"]+".json")
+            # 加载进度文件
+            processed_videos = []#set()
+            if os.path.exists(progress_file):
+                try:
+                    with open(progress_file, 'r', encoding='utf-8') as f:
+                        import json
+                        progress_data = json.load(f)
+                        processed_videos = set(progress_data.get("processed_videos", []))
+                        print(f"加载进度文件，已处理 {len(processed_videos)} 个视频")
+                except Exception as e:
+                    processed_videos=None
+        c["processed_videos"]=processed_videos
     print("视频解耦完成!")
     # exit(0)
 
@@ -608,21 +639,21 @@ if __name__ == "__main__":
     def writeln(msg=""):
         f.write(msg + "\n")
 
+    import time
+    start = time.time()
     # memoryOpt()
     # if True:
-    try:
-        import time
-        start = time.time()
+    try:    
         main()#测试在训练过程中f1、recall、precise的变化
-        end = time.time()
-        h = (end - start)/(60*60)
-        print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
-        writeln('Running time: %s hours' % h)
     except Exception as e:
         print(f"执行过程中发生错误: {e}")
     finally:
         print("GPU 个数为:",torch.cuda.device_count())
         for c in configs: 
             if "decouple" in c: print("name:",c["name"])
+        end = time.time()
+        h = (end - start)/(60*60)
+        print('Running time: %s hours' % h) # print('运行时间: %s 秒' % (end - start))
+        writeln('Running time: %s hours' % h)
         os.system("ls") 
         os.system("/usr/bin/shutdown") # 推荐使用完整路径，确保脚本可靠执行

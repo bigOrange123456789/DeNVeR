@@ -4,10 +4,10 @@
     目标：
         期望能和config_A26_03_01I2保持不变
     结果：
-        ??
+        指标大幅下降, 是显卡类型导致的吗? (使用的是RTX 2080 Ti x2) 
     实验设备: 
         AutoDL_P、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 时间未记录 hours 
 '''
 config_A26_03_01I2_2={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

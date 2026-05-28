@@ -18,10 +18,13 @@
     目标：
         期望能和config_A26_03_01I2保持不变
     结果：
-        ??
+        Dice变化情况: 0.795=>0.791
+        虽然略有下降，但是这种下降可以接受
+    分析一下：
+        为啥网格复杂度越小、越能够保留更多信息。
     实验设备: 
         AutoDL_D、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 2*6.497557809352875 hours 
 '''
 config_A26_03_01Q={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

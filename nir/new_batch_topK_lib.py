@@ -714,7 +714,7 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
             config0 = yaml.safe_load(file)
             progress_file = os.path.join(config0["my"]["filePathRoot"], "progress_newBatch"+arguments["name"]+".json")
     # 加载进度文件
-    processed_videos = set()
+    processed_videos = []#set()
     if os.path.exists(progress_file):
         try:
             with open(progress_file, 'r', encoding='utf-8') as f:
@@ -952,4 +952,5 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False):
                     print(f"任务执行异常: {e}")
                 # 定义每个视频的处理函数（在线程中执行）
 
+    return processed_videos
 # from nir.new_batch_topK_lib import Config, ImageLoader, NormalizationCalculator, ModelManager, Evaluator, StatisticalAnalyzer, ResultVisualizer, ResultSaver, denoising

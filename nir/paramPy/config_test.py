@@ -670,7 +670,8 @@ config_test={ # follow: config_A26_03_01I2
                         # 整体运动
                         "useGlobal":True,#False,
                         'hidden_layers_global':2,#1,
-                        'hidden_features_global':64,#8*128,#1,
+                        # 'hidden_features_global':8*128,#1,
+                        'hidden_features_global':64,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -690,7 +691,6 @@ config_test={ # follow: config_A26_03_01I2
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
                 "NUM_soft":1,
-                "motionSuperposition":True, #是否将刚体层的整体运动叠加到软体层上,默认是True
                 "configSofts":{ # 软体
                     "layer":{
                         "use_residual":{
