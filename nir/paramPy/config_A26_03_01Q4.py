@@ -6,12 +6,19 @@
     目标：
         要比A26_03_01I2效果更好
     结果：
-        ?
+        1I2-CATH:
+            Dice:      0.7954
+            Recall:    0.8287
+            Precision: 0.7716
+        1Q4-CATH:
+            Dice:      0.7941
+            Recall:    0.8239
+            Precision: 0.7740
     分析一下：
-        ?
+        增加流体层数无效
     实验设备: 
         AutoDL_O、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 3*4.913464038769404 hours 
 '''
 config_A26_03_01Q4={ # follow: config_A26_03_01I2  
             "decouple":{ # 解耦
