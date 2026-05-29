@@ -1,24 +1,23 @@
 '''
     内容：
-        follow config_A26_03_01J2
-            rv: myLog => MSE
+        遮挡训练中进行二值化
+        改进点1:
+            "rmBinarization":True,#默认为False #在学习背景的时候是否将mask中非零像素完全视为前景
+        改进点2:
+            "rv":myLog=>MSE
+    目标：
+        效果好于A26_03_01Q5
     结果：
-        指标几乎不不变(下降了0.2个点)
-        1J2-CATH:
-            Dice:      0.7968
-            Recall:    0.8073
-            Precision: 0.7950
-        1L-CATH:
-            Dice:      0.7946
-            Recall:    0.8252
-            Precision: 0.7731
-    分析：
-    实验设备: AutoDL_L、DeNVeR.26-3_new
-    Running time: 2*7.2 hours 
+        ?
+    分析一下：
+        ?
+    实验设备: 
+        AutoDL_E、DeNVeR.26-3_new
+    Running time: ? hours 
 '''
-config_A26_03_01L={ # follow: config_A26_03_01J2
+config_A26_03_01Q7={ # follow: config_A26_03_01Q5 
             "decouple":{ # 解耦
-                "tag":"A26-03-01L",
+                "tag":"A26-03-01Q7",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -32,12 +31,8 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
-                "init_dynamicFeatureMask":{
-                    "R":[0,1],#[运动，纹理]
-                    "S":[1,1],
-                    "F":[1,1],
-                },#1, #遮挡向量的的初始值为1
-                "quickUpdate_dynamicFeatureMask":False,#True,
+                "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -84,9 +79,12 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                         'hidden_layers_global':0,#1,#2, 
                         'hidden_features_global':0,#1,#8*128, 
                         # 2.局部运动
-                        "useLocal":True,#False, #True,
-                        'hidden_layers_local':2,#1,#2,
-                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        # "useLocal":True,#False, #True,
+                        # 'hidden_layers_local':2,#1,#2,
+                        # 'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        "useLocal":False,#False, #True,
+                        'hidden_layers_local':0,#1,#2,
+                        'hidden_features_local':0,#1,#8*128, # Mask遮挡
                         # 3.纹理
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
@@ -114,7 +112,8 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                     },
                 },
                 # 1.3 流体模块
-                "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                # "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                "NUM_fluid":1,
                 "configFluids":{ #参数数量
                     "layer":{
                         "use_residual":{
@@ -133,7 +132,8 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
                         "hidden_layers_map": 4, 
-                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        # "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        "hidden_features_map": 64*2,
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -154,32 +154,40 @@ config_A26_03_01L={ # follow: config_A26_03_01J2
                 "weight_component": 1,#分量约束（子衰减量小于总衰减量=>子衰减结果大于总衰减结果）
                 "interval":0.1,#将计算平滑损失的步长由1改为0.5
                 "lossType":2,
+                # "lossParam":{ 
+                #     "ra":"R", 
+                #     "rm":"S", #背景 #很奇怪、软体层为啥能看到血管
+                #     "rv":"F", #前景
+                #     }, 
                 "lossParam":{ 
                     "ra":"R", 
                     "rm":"S", 
                     "rv":"F", 
                     }, 
-                "lossParam_vessel":{ 
-                    "ra":"F", 
+                "lossParam_vessel":{ #"singleTrainVessel"=False,所以这里不会被执行
+                    "ra":None,#"F", 
                     "rm":None, 
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
-                    "rv":"MSE",#"myLog",#"MSE", #更模糊一些 #myLog对于很暗的地方非常敏感
-                    "rv_eps":0.5,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv":"MSE", #"myLog",#更模糊一些
+                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
+                    "rmBinarization":True,#默认为False #在学习背景的时候是否将mask中非零像素完全视为前景
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
+                "saveTempImg":False,
             },
-            "name": "A26-03-01L", #提高模型的拟合能力
+            "name": "A26-03-01Q7", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01L.rigid",
-            "input_mode": "A26-03-01L.rigid.non1",
+            "noise_label":"A26-03-01Q7.rigid",
+            "input_mode": "A26-03-01Q7.rigid.non1",
+            # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
             "mergeMask": False,

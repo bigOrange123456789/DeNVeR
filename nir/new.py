@@ -209,6 +209,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             lossParam_vessel = config["lossParam_vessel"]
         if "lossFunType" in config:
             lossFunType = config["lossFunType"]
+        if not "rmBinarization" in lossFunType:
+            lossFunType["rmBinarization"]=False
         # if "useMatrix" in config:
         #     useMatrix = config["useMatrix"]
         if "interval" in config:

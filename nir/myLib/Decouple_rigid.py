@@ -1005,6 +1005,9 @@ class Decouple_rigid(nn.Module):
             rm_in, rm_in_var=getData(lossParam["rm"])
             loss_recon_mask = getMyLoss(self.lossFunType["rm"], rm_in, rm_in_var,"rm")
             m0 = 1-vesselMask#self.mask[start:end]
+            if "rmBinarization" in self.lossFunType and self.lossFunType["rmBinarization"]:
+                m0= m0.clone()
+                m0[m0<1]=0
             loss_recon_mask = (loss_recon_mask*m0).sum()/(m0.sum()+1e-8)
         # 1.2 前景重构损失
         loss_recon_vessel = torch.tensor(0.0) #血管重构损失
