@@ -1,37 +1,21 @@
 '''
     内容：
-        去除detach
-        改进点1:
-            "lossParam":{ 
-                "ra":"R", 
-                "rm":"S", 
-                "rv":"F", 
-                }, 
-            "lossParam":{ 
-                "ra":"R,S,F", 
-                "rm":None, 
-                "rv":None, 
-                }, 
+        修改损失函数类型[myLog=>MSE]
+        改进点：
+            "rv":"myLog"=>"MSE"
     目标：
-        上苍保佑,希望这次测试指标会显著下降(显著小于A26_03_01Q5)
+        ?
     结果：
-        1Q5-CATH:
-            Dice:      0.7952
-            Recall:    0.8305
-            Precision: 0.7695
-        1Q8-CATH:
-            Dice:      0.7809
-            Recall:    0.8463
-            Precision: 0.7323
+        ?
     分析一下：
         ?
     实验设备: 
-        AutoDL_E、DeNVeR.26-3_new
-    Running time: 4*3.23929557217492 hours
+        AutoDL_?、DeNVeR.26-3_new
+    Running time: ?? hours 
 '''
-config_A26_03_01Q8={ # follow: config_A26_03_01Q5 
+config_A26_03_01Q9={ # follow: config_A26_03_01Q6 
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q8",
+                "tag":"A26-03-01Q9",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -173,28 +157,24 @@ config_A26_03_01Q8={ # follow: config_A26_03_01Q5
                 #     "rm":"S", #背景 #很奇怪、软体层为啥能看到血管
                 #     "rv":"F", #前景
                 #     }, 
-                # "lossParam":{ 
-                #     "ra":"R", 
-                #     "rm":"S", 
-                #     "rv":"F", 
-                #     }, 
                 "lossParam":{ 
-                    "ra":"R,S,F", 
-                    "rm":None, 
-                    "rv":None, 
+                    "ra":"R", 
+                    "rm":"S", 
+                    "rv":"F", 
                     }, 
-                "lossParam_vessel":{ #"singleTrainVessel"=False,所以这里不会被执行
-                    "ra":None,#"F", 
+                "lossParam_vessel":{ 
+                    "ra":"F", 
                     "rm":None, 
                     "rv":None, 
                     }, 
                 "lossFunType":{ #无法只拟合血管 #"MSE", "myLog", "atten_d"
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
-                    "rv":"myLog",#更模糊一些
-                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    # "rv":"myLog",#"MSE", #更模糊一些
+                    "rv":"MSE", #更模糊一些
+                    # "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":1.0,
                     "vesselMask_eps":1,#0.1,#0.25,
-                    "rmBinarization":False,#True,#默认为False #在学习背景的时候是否将mask中非零像素完全视为前景
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
@@ -202,10 +182,10 @@ config_A26_03_01Q8={ # follow: config_A26_03_01Q5
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01Q8", #提高模型的拟合能力
+            "name": "A26-03-01Q9", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q8.rigid",
-            "input_mode": "A26-03-01Q8.rigid.non1",
+            "noise_label":"A26-03-01Q9.rigid",
+            "input_mode": "A26-03-01Q9.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
