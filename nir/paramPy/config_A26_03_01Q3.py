@@ -1,24 +1,19 @@
 '''
     内容：
-        《流体只关注血管》
-        改动1
-            rv_eps": 0.5 => 0.1
-        改动2
-            关闭刚体的局部运动
+        指标的下降趋势不可阻挡，所以复现最佳方案进行测试
     目标：
-        与config_A26_03_01Q尽量相似
+        ?
     结果：
-        78.8
-        指标进一步下降、而且下降得有点不可接受
+        ?
     分析一下：
         ?
     实验设备: 
-        AutoDL_E、DeNVeR.26-3_new
-    Running time: 5*2.465657545791732 hours
+        AutoDL_?、DeNVeR.26-3_new
+    Running time: ?? hours 
 '''
-config_A26_03_01Q1={ # follow: config_A26_03_01Q
+config_A26_03_01Q3={ # follow: config_A26_03_01I2  
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q1",
+                "tag":"A26-03-01Q3",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -33,14 +28,7 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":True,#False,#True,
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
-                # "quickUpdate_dynamicFeatureMask":True,
-                "quickUpdate_dynamicFeatureMask":{
-                    "use": True,#True,
-                    "interval":5,#10,#5, #间隔
-                    "starting":-1,
-                    "ending":50,#100,#9999,#正无穷 #50, #关闭位置
-                    "type":1,#0
-                },
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -54,8 +42,7 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                         # 整体运动
                         "useGlobal":True,#False,
                         'hidden_layers_global':2,#1,
-                        # 'hidden_features_global':8*128,#1,
-                        'hidden_features_global':64,
+                        'hidden_features_global':8*128,#1,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -88,12 +75,9 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                         'hidden_layers_global':0,#1,#2, 
                         'hidden_features_global':0,#1,#8*128, 
                         # 2.局部运动
-                        # "useLocal":True,#False, #True,
-                        # 'hidden_layers_local':2,#1,#2,
-                        # 'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
-                        "useLocal":False,#False, #True,
-                        'hidden_layers_local':0,#1,#2,
-                        'hidden_features_local':0,#1,#8*128, # Mask遮挡
+                        "useLocal":True,#False, #True,
+                        'hidden_layers_local':2,#1,#2,
+                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
                         # 3.纹理
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
@@ -103,7 +87,7 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":True, #渐进式遮挡向量
+                        "use_featureMask":False,#True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -180,7 +164,7 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些
-                    "rv_eps":0.1,#0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
@@ -189,10 +173,10 @@ config_A26_03_01Q1={ # follow: config_A26_03_01Q
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01Q1", #提高模型的拟合能力
+            "name": "A26-03-01Q3", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q1.rigid",
-            "input_mode": "A26-03-01Q1.rigid.non1",
+            "noise_label":"A26-03-01Q3.rigid",
+            "input_mode": "A26-03-01Q3.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
