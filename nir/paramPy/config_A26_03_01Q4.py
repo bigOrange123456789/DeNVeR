@@ -1,8 +1,8 @@
 '''
     内容：
-        增加流体尺寸
+        增加流体层数
         改进点：
-            "hidden_features_map": 64 => 64*2
+            "NUM_fluid": 1=>2
     目标：
         要比A26_03_01I2效果更好
     结果：
@@ -10,12 +10,12 @@
     分析一下：
         ?
     实验设备: 
-        AutoDL_H、DeNVeR.26-3_new
+        AutoDL_O、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
-config_A26_03_01Q3={ # follow: config_A26_03_01I2  
+config_A26_03_01Q4={ # follow: config_A26_03_01I2  
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q3",
+                "tag":"A26-03-01Q4",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -107,7 +107,8 @@ config_A26_03_01Q3={ # follow: config_A26_03_01I2
                     },
                 },
                 # 1.3 流体模块
-                "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                # "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                "NUM_fluid":2,
                 "configFluids":{ #参数数量
                     "layer":{
                         "use_residual":{
@@ -176,10 +177,10 @@ config_A26_03_01Q3={ # follow: config_A26_03_01I2
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01Q3", #提高模型的拟合能力
+            "name": "A26-03-01Q4", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q3.rigid",
-            "input_mode": "A26-03-01Q3.rigid.non1",
+            "noise_label":"A26-03-01Q4.rigid",
+            "input_mode": "A26-03-01Q4.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
