@@ -1,26 +1,22 @@
 '''
     内容：
-        指标的下降趋势不可阻挡，所以复现最佳方案进行测试
+        流体训练不使用MASK
+        改进点：
+            "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+            "rv_eps":1.0,
     目标：
-        要和A26_03_01I2效果相同
+        ?
     结果：
-        1I2-CATH:
-            Dice:      0.7954
-            Recall:    0.8287
-            Precision: 0.7716
-        1Q2-CATH:
-            Dice:      0.7935
-            Recall:    0.8289
-            Precision: 0.7689
+        ?
     分析一下：
-        正常浮动值0.19%
+        ?
     实验设备: 
-        AutoDL_E、DeNVeR.26-3_new
-    Running time: 5*2.8958412534660765 hours
+        AutoDL_H、DeNVeR.26-3_new
+    Running time: ? hours 
 '''
-config_A26_03_01Q2={ # follow: config_A26_03_01I2  
+config_A26_03_01Q6={ # follow: config_A26_03_01Q5 
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q2",
+                "tag":"A26-03-01Q6",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -82,9 +78,12 @@ config_A26_03_01Q2={ # follow: config_A26_03_01I2
                         'hidden_layers_global':0,#1,#2, 
                         'hidden_features_global':0,#1,#8*128, 
                         # 2.局部运动
-                        "useLocal":True,#False, #True,
-                        'hidden_layers_local':2,#1,#2,
-                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        # "useLocal":True,#False, #True,
+                        # 'hidden_layers_local':2,#1,#2,
+                        # 'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
+                        "useLocal":False,#False, #True,
+                        'hidden_layers_local':0,#1,#2,
+                        'hidden_features_local':0,#1,#8*128, # Mask遮挡
                         # 3.纹理
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
@@ -112,7 +111,8 @@ config_A26_03_01Q2={ # follow: config_A26_03_01I2
                     },
                 },
                 # 1.3 流体模块
-                "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                # "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
+                "NUM_fluid":1,
                 "configFluids":{ #参数数量
                     "layer":{
                         "use_residual":{
@@ -131,7 +131,8 @@ config_A26_03_01Q2={ # follow: config_A26_03_01I2
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
                         "hidden_layers_map": 4, 
-                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        # "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        "hidden_features_map": 64*2,
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -171,7 +172,8 @@ config_A26_03_01Q2={ # follow: config_A26_03_01I2
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些
-                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    # "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
+                    "rv_eps":1.0,
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
@@ -180,10 +182,10 @@ config_A26_03_01Q2={ # follow: config_A26_03_01I2
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01Q2", #提高模型的拟合能力
+            "name": "A26-03-01Q6", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q2.rigid",
-            "input_mode": "A26-03-01Q2.rigid.non1",
+            "noise_label":"A26-03-01Q6.rigid",
+            "input_mode": "A26-03-01Q6.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

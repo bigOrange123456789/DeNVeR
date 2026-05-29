@@ -13,12 +13,19 @@
     目标：
         ?
     结果：
-        ?
+        1I2-CATH:
+            Dice:      0.7954
+            Recall:    0.8287
+            Precision: 0.7716
+        1Q5-CATH:
+            Dice:      0.7952
+            Recall:    0.8305
+            Precision: 0.7695
     分析一下：
-        ?
+        软体运动对最终结果是无影响的
     实验设备: 
         AutoDL_R、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 10*1.0956684003273647 hours
 '''
 config_A26_03_01Q5={ # follow: config_A26_03_01I2  
             "decouple":{ # 解耦

@@ -6,12 +6,19 @@
     目标：
         要比A26_03_01I2效果更好
     结果：
-        ?
+        1I2-CATH:
+            Dice:      0.7954
+            Recall:    0.8287
+            Precision: 0.7716
+        1Q3-CATH:
+            Dice:      0.7948
+            Recall:    0.8301
+            Precision: 0.7695
     分析一下：
-        ?
+        对结果几乎没有影响
     实验设备: 
         AutoDL_H、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 6*2.4893865688641865 hours
 '''
 config_A26_03_01Q3={ # follow: config_A26_03_01I2  
             "decouple":{ # 解耦
