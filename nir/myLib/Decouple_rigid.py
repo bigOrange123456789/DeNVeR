@@ -559,8 +559,10 @@ class Decouple_rigid(nn.Module):
             o_soft_list.append(o_soft0)
             if self.use_UncertainLearning:
                 mean_var.append([o_soft0, p_soft0["var"],"S"])
-            if self.use_dynamicFeatureMask:
+            if self.use_dynamicFeatureMask: #用于复杂度的自适应调整
                 l_m, l_t = self.f_soft_list[i].getFeatureLen()
+                if self.f_soft_list[i].useGlobal==False and self.f_soft_list[i].useLocal==False:#如果没有整体运动也没有局部运动
+                    l_m = 0 # 将运动神经网络视为不存在
                 k_m = l_m * self.f_soft_list[i].kFeatureMask_motion()
                 k_t = l_t * self.f_soft_list[i].kFeatureMask_texture()
                 loss_conciseS = loss_conciseS + (k_m**2) + (k_t**2)
