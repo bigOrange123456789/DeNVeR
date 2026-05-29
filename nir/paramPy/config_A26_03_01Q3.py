@@ -1,6 +1,8 @@
 '''
     内容：
-        指标的下降趋势不可阻挡，所以复现最佳方案进行测试
+        增加流体尺寸
+        改进点：
+            "hidden_features_map": 64 => 64*2
     目标：
         ?
     结果：
@@ -124,7 +126,8 @@ config_A26_03_01Q3={ # follow: config_A26_03_01I2
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
                         "hidden_layers_map": 4, 
-                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        # "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
+                        "hidden_features_map": 64*2,
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
