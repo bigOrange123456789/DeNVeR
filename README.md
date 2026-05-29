@@ -47,5 +47,6 @@ config_A26_03_01Q6   *79.4 #流体训练不使用MASK
 config_A26_03_01Q7   *78.3 #软体训练二值化遮挡
 config_A26_03_01Q8   *78.1 #去除detach
 config_A26_03_01Q9   ***** #myLog=>MSE
+config_A26_03_01Q10  ***** #ra:"R,S"
 ```
 
