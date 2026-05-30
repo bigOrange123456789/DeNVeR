@@ -6,12 +6,20 @@
     目标：
         ?
     结果：
-        ?
+        指标显著下降
+        1Q6-CATH:
+            Dice:      0.7945
+            Recall:    0.8321
+            Precision: 0.7673
+        1Q9-CATH:
+            Dice:      0.7819
+            Recall:    0.8459
+            Precision: 0.7343
     分析一下：
-        ?
+        损失函数类型对结果影响巨大
     实验设备: 
-        AutoDL_?、DeNVeR.26-3_new
-    Running time: ?? hours 
+        AutoDL_D、DeNVeR.26-3_new
+    Running time: 6*2.251877438161108 hours
 '''
 config_A26_03_01Q9={ # follow: config_A26_03_01Q6 
             "decouple":{ # 解耦

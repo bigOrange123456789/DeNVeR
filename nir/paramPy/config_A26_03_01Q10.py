@@ -15,9 +15,9 @@
     结果：
         ?
     分析一下：
-        对结果没有影响
+        ?
     实验设备: 
-        localhost、DeNVeR.26-3_new
+        AutoDL_H、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
 config_A26_03_01Q10={ # follow: config_A26_03_01Q6
