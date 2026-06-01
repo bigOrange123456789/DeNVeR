@@ -46,7 +46,8 @@ config_A26_03_01Q5   *79.5 #关闭软体运动网络
 config_A26_03_01Q6   *79.4 #流体训练不使用MASK
 config_A26_03_01Q7   *78.3 #软体训练二值化遮挡
 config_A26_03_01Q8   *78.1 #去除detach
-config_A26_03_01Q9   ***** #myLog=>MSE
-config_A26_03_01Q10  ***** #ra:"R,S"
+config_A26_03_01Q9   *78.1 #myLog=>MSE
+config_A26_03_01Q10  *79.4 #ra:"R,S"
+config_A26_03_01Q11  ***** #关闭'动态MASK'
 ```
 

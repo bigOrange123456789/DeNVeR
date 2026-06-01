@@ -1,44 +1,35 @@
 '''
     内容：
-        ra:"R,S"
+        关闭'动态MASK'
         改进点：
-            "lossParam":{ 
-                    # "ra":"R", 
-                    # "rm":"S", 
-                    # "rv":"F", 
-                    "ra":"R,S", 
-                    "rm":None, 
-                    "rv":"F", 
-                    }, 
+            "dynamicVesselMask":{#有较长的时间开销
+                    # "startStep":0.5, #True
+                    # "intervalStep":0.2, #更新三次
+                    "startStep":0.5*10, #False
+                    "intervalStep":1.5,
+                },
     目标：
-        --
+        指标不变(我认为动态MASK对Q10已经没有影响)
     结果：
-        1Q6-CATH:
-            Dice:      0.7945
-            Recall:    0.8321
-            Precision: 0.7673
-        1Q10-CATH:
-            Dice:      0.7943
-            Recall:    0.8330
-            Precision: 0.7665
+        ?
     分析一下：
-        对结果没有影响
+        ?
     实验设备: 
-        AutoDL_H、DeNVeR.26-3_new
-    Running time: 7*1.9837520362271204 hours
+        AutoDL_O、DeNVeR.26-3_new
+    Running time: ?? hours 
 '''
-config_A26_03_01Q10={ # follow: config_A26_03_01Q6
+config_A26_03_01Q11={ # follow: config_A26_03_01Q10
             "decouple":{ # 解耦
-                "tag":"A26-03-01Q10",
+                "tag":"A26-03-01Q11",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
                 "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    # "startStep":0.5*10, #False
-                    # "intervalStep":1.5,
-                    "startStep":0.5, #True
-                    "intervalStep":0.2, #更新三次
+                    # "startStep":0.5, #True
+                    # "intervalStep":0.2, #更新三次
+                    "startStep":0.5*10, #False
+                    "intervalStep":1.5,
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
@@ -198,10 +189,10 @@ config_A26_03_01Q10={ # follow: config_A26_03_01Q6
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01Q10", #提高模型的拟合能力
+            "name": "A26-03-01Q11", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01Q10.rigid",
-            "input_mode": "A26-03-01Q10.rigid.non1",
+            "noise_label":"A26-03-01Q11.rigid",
+            "input_mode": "A26-03-01Q11.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
