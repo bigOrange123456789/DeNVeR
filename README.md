@@ -50,5 +50,6 @@ config_A26_03_01Q9   *78.1 #myLog=>MSE
 config_A26_03_01Q10  *79.4 #ra:"R,S"
 config_A26_03_01Q11  ***** #关闭'动态MASK'
 config_A26_03_01R    ***** #降低刚体运动的总复杂度(新)
+config_A26_03_01R1   ***** #软体消融
 ```
 
