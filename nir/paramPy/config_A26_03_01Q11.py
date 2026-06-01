@@ -11,12 +11,19 @@
     目标：
         指标不变(我认为动态MASK对Q10已经没有影响)
     结果：
-        ?
+        1Q10-CATH:
+            Dice:      0.7943
+            Recall:    0.8330
+            Precision: 0.7665
+        1Q11-CATH:
+            Dice:      0.7955
+            Recall:    0.8334
+            Precision: 0.7675
     分析一下：
-        ?
+        达到目标
     实验设备: 
         AutoDL_O、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 5*1.9468320420715544 hours
 '''
 config_A26_03_01Q11={ # follow: config_A26_03_01Q10
             "decouple":{ # 解耦

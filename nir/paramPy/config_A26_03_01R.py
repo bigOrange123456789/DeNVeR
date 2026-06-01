@@ -9,12 +9,19 @@
     目标：
         ?
     结果：
-        ?
+        1Q11-CATH:
+            Dice:      0.7955
+            Recall:    0.8334
+            Precision: 0.7675
+        1R-CATH:
+            Dice:      0.7887
+            Recall:    0.8403
+            Precision: 0.7505
     分析一下：
-        ?
+        我对这个结果不太满意（指标下降的有点多啊）
     实验设备: 
         AutoDL_D、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 3*2.9337685379717087 hours
 '''
 config_A26_03_01R={ # follow: config_A26_03_01Q11
             "decouple":{ # 解耦
