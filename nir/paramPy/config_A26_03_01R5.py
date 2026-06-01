@@ -1,32 +1,26 @@
 '''
     内容：
-        刚体运动复杂度加4倍
-        改进点：
-            configRigids:
-                layer:
-                    #'hidden_features_global':8*128,
-                    #'hidden_features_global':64,
-                    'hidden_features_global':4*64,
+        关闭软体
     目标：
         ?
     结果：
-        1Q11-CATH:
-            Dice:      0.7955
-            Recall:    0.8334
-            Precision: 0.7675
         1R2-CATH:
             Dice:      0.7916
             Recall:    0.8392
             Precision: 0.7559
+        1R5-CATH:
+            Dice:      0.7874
+            Recall:    0.8486
+            Precision: 0.7407
     分析一下：
-        现在的指标可以被接受
+        ?
     实验设备: 
-        AutoDL_P、DeNVeR.26-3_new
-    Running time: 8 * 2.0471842592954634 hours
+        AutoDL_D、DeNVeR.26-3_new
+    Running time: 4*2.1230175342824724 hours
 '''
-config_A26_03_01R2={ # follow: config_A26_03_01R
+config_A26_03_01R5={ # follow: config_A26_03_01R2
             "decouple":{ # 解耦
-                "tag":"A26-03-01R2",
+                "tag":"A26-03-01R5",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -76,7 +70,7 @@ config_A26_03_01R2={ # follow: config_A26_03_01R
                 "openLocalDeform":False, #True,
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
-                "NUM_soft":1,
+                "NUM_soft":0,
                 "configSofts":{ # 软体
                     "layer":{
                         "use_residual":{
@@ -197,10 +191,10 @@ config_A26_03_01R2={ # follow: config_A26_03_01R
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01R2", #提高模型的拟合能力
+            "name": "A26-03-01R5", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01R2.rigid",
-            "input_mode": "A26-03-01R2.rigid.non1",
+            "noise_label":"A26-03-01R5.rigid",
+            "input_mode": "A26-03-01R5.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

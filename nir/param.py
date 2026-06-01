@@ -76,6 +76,11 @@ from nir.paramPy.config_A26_03_01Q11 import config_A26_03_01Q11 #关闭'动态MA
 from nir.paramPy.config_A26_03_01R import config_A26_03_01R #降低刚体运动的总复杂度(新)
 from nir.paramPy.config_A26_03_01R1 import config_A26_03_01R1 #软体消融
 from nir.paramPy.config_A26_03_01R2 import config_A26_03_01R2 #刚体运动复杂度加4倍
+from nir.paramPy.config_A26_03_01R3 import config_A26_03_01R3 #关闭“快收敛”
+from nir.paramPy.config_A26_03_01R4 import config_A26_03_01R4 #关闭“自适应调整”
+from nir.paramPy.config_A26_03_01R5 import config_A26_03_01R5 #关闭软体
+from nir.paramPy.config_A26_03_01R6 import config_A26_03_01R6 #关闭流体
+from nir.paramPy.config_A26_03_01R7 import config_A26_03_01R7 #关闭刚体运动
 
 # “特征向量遮挡”模块的消融测试
 from nir.paramPy.config_A26_03_02 import config_A26_03_02 #去除渐进式特征
@@ -91,7 +96,7 @@ from nir.paramPy.config_A26_03_02G import config_A26_03_02G #去除自适应特�
 # from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
 from nir.paramPy.config_test import config_test
-c0 = config_A26_03_01R2
+c0 = config_A26_03_01R4
 
 # 目前最重要的是获取论文所需的量化结果
 if True:

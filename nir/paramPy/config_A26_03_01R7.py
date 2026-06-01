@@ -1,32 +1,26 @@
 '''
     内容：
-        刚体运动复杂度加4倍
-        改进点：
-            configRigids:
-                layer:
-                    #'hidden_features_global':8*128,
-                    #'hidden_features_global':64,
-                    'hidden_features_global':4*64,
+        关闭刚体运动
     目标：
         ?
     结果：
-        1Q11-CATH:
-            Dice:      0.7955
-            Recall:    0.8334
-            Precision: 0.7675
         1R2-CATH:
             Dice:      0.7916
             Recall:    0.8392
             Precision: 0.7559
+        1R7-CATH:
+            Dice:      0.7904
+            Recall:    0.8406
+            Precision: 0.7526
     分析一下：
-        现在的指标可以被接受
+        ?
     实验设备: 
-        AutoDL_P、DeNVeR.26-3_new
-    Running time: 8 * 2.0471842592954634 hours
+        AutoDL_O、DeNVeR.26-3_new
+    Running time: 4*2.223811121119393 hours
 '''
-config_A26_03_01R2={ # follow: config_A26_03_01R
+config_A26_03_01R7={ # follow: config_A26_03_01R2
             "decouple":{ # 解耦
-                "tag":"A26-03-01R2",
+                "tag":"A26-03-01R7",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -53,11 +47,11 @@ config_A26_03_01R2={ # follow: config_A26_03_01R
                             "T":False,
                         },
                         # 整体运动
-                        "useGlobal":True,#False,
-                        'hidden_layers_global':2,#1,
+                        "useGlobal":False,#True,#False,
+                        'hidden_layers_global':0,#2,#1,
                         # 'hidden_features_global':8*128,#1,
                         # 'hidden_features_global':64,
-                        'hidden_features_global':4*64,
+                        'hidden_features_global':0,#4*64,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -197,10 +191,10 @@ config_A26_03_01R2={ # follow: config_A26_03_01R
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01R2", #提高模型的拟合能力
+            "name": "A26-03-01R7", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01R2.rigid",
-            "input_mode": "A26-03-01R2.rigid.non1",
+            "noise_label":"A26-03-01R7.rigid",
+            "input_mode": "A26-03-01R7.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

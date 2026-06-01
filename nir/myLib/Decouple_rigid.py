@@ -342,14 +342,15 @@ class Decouple_rigid(nn.Module):
                 # 'k_fluid_motion',# fluid0.kFeatureMask_motion.get(), # 
                 # 'k_fluid_texture',# fluid0.kFeatureMask_texture.get(),# 
                 ]
-            for i in range(self.NUM_rigid):
-                csv_head.append('k_rigid_motion_'+str(i))
-                csv_head.append('k_rigid_texture_'+str(i))
-            for i in range(self.NUM_soft):
-                csv_head.append('k_soft_motion_'+str(i))
-                csv_head.append('k_soft_texture_'+str(i))
-            for i in range(self.NUM_fluid):
-                csv_head.append('k_fluid_texture_'+str(i))
+            if self.use_dynamicFeatureMask:
+                for i in range(self.NUM_rigid):
+                    csv_head.append('k_rigid_motion_'+str(i))
+                    csv_head.append('k_rigid_texture_'+str(i))
+                for i in range(self.NUM_soft):
+                    csv_head.append('k_soft_motion_'+str(i))
+                    csv_head.append('k_soft_texture_'+str(i))
+                for i in range(self.NUM_fluid):
+                    csv_head.append('k_fluid_texture_'+str(i))
             create_csv(self.csv_loss_path, csv_head)
         
     def getMoveDis(self, i):#获取第i层刚体的整体位移的积分
@@ -1045,11 +1046,11 @@ class Decouple_rigid(nn.Module):
                 loss_recon_all = loss_recon_all.mean()
         
         # 三、平滑损失
-        loss_smooth=0 # 刚体整体运动的平滑损失
+        loss_smooth=torch.tensor(0.0) # 刚体整体运动的平滑损失
         if self.useSmooth:
             loss_smooth = p["loss_smooth"] # 权重为 1
 
-        loss_concise=0
+        loss_concise=torch.tensor(0.0)
         if self.use_dynamicFeatureMask:
             loss_concise = p["loss_concise"]
 
@@ -1114,24 +1115,25 @@ class Decouple_rigid(nn.Module):
                 # soft0.kFeatureMask_texture.get(),# k_soft_texture
                 # fluid0.kFeatureMask_texture.get(),# k_fluid_texture
             ]
-            for i in range(self.NUM_rigid):
-                lossSave.append(
-                    self.f_rigid_list[i].kFeatureMask_motion.get()
-                )
-                lossSave.append(
-                    self.f_rigid_list[i].kFeatureMask_texture.get()
-                )
-            for i in range(self.NUM_soft):
-                lossSave.append(
-                    self.f_soft_list[i].kFeatureMask_motion.get()
-                )
-                lossSave.append(
-                    self.f_soft_list[i].kFeatureMask_texture.get()
-                )
-            for i in range(self.NUM_fluid):
-                lossSave.append(
-                    self.f_fluid_list[i].kFeatureMask_texture.get()
-                )
+            if self.use_dynamicFeatureMask:
+                for i in range(self.NUM_rigid):
+                    lossSave.append(
+                        self.f_rigid_list[i].kFeatureMask_motion.get()
+                    )
+                    lossSave.append(
+                        self.f_rigid_list[i].kFeatureMask_texture.get()
+                    )
+                for i in range(self.NUM_soft):
+                    lossSave.append(
+                        self.f_soft_list[i].kFeatureMask_motion.get()
+                    )
+                    lossSave.append(
+                        self.f_soft_list[i].kFeatureMask_texture.get()
+                    )
+                for i in range(self.NUM_fluid):
+                    lossSave.append(
+                        self.f_fluid_list[i].kFeatureMask_texture.get()
+                    )
             write_csv(self.csv_loss_path, lossSave)
         if (step % 100 == 0):# or (step ==1999) :
             # print("loss_concise",loss_concise)
