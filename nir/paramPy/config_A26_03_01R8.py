@@ -1,26 +1,34 @@
 '''
     内容：
-        关闭“自适应调整”
+        刚体运动复杂度加8倍
+        改进点：
+            configRigids:
+                layer:
+                    #'hidden_features_global':8*128,
+                    #'hidden_features_global':64,
+                    #'hidden_features_global':4*64,
+                    'hidden_features_global':8*64,
     目标：
         ?
     结果：
-        1R2-CATH:
-            Dice:      0.7916
-            Recall:    0.8392
-            Precision: 0.7559
-        1R4-CATH:
-            Dice:      0.7936
-            Recall:    0.8089
-            Precision: 0.7878
+        1R-CATH:
+            Dice:      0.7887
+            Recall:    0.8403
+            Precision: 0.7505
+        1R8-CATH:
+            Dice:      0.7940
+            Recall:    0.8361
+            Precision: 0.7631
     分析一下：
-        彻底证实了“自适应调整”起到了负面作用
+        指标可以
+        
     实验设备: 
-        AutoDL_P、DeNVeR.26-3_new
-    Running time: 8*2.099210995965534 hours hours
+        AutoDL_D、DeNVeR.26-3_new
+    Running time: 7*1.3986328324344424 hours
 '''
-config_A26_03_01R4={ # follow: config_A26_03_01R2
+config_A26_03_01R8={ # follow: config_A26_03_01R
             "decouple":{ # 解耦
-                "tag":"A26-03-01R4",
+                "tag":"A26-03-01R8",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
@@ -33,9 +41,9 @@ config_A26_03_01R4={ # follow: config_A26_03_01R2
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
-                "use_dynamicFeatureMask":False,#True,#False,#True,
+                "use_dynamicFeatureMask":True,#False,#True,
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
-                "quickUpdate_dynamicFeatureMask":False,#True,
+                "quickUpdate_dynamicFeatureMask":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -51,7 +59,8 @@ config_A26_03_01R4={ # follow: config_A26_03_01R2
                         'hidden_layers_global':2,#1,
                         # 'hidden_features_global':8*128,#1,
                         # 'hidden_features_global':64,
-                        'hidden_features_global':4*64,
+                        # 'hidden_features_global':4*64,
+                        'hidden_features_global':8*64,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -191,10 +200,10 @@ config_A26_03_01R4={ # follow: config_A26_03_01R2
                 "de-soft":None,
                 "saveTempImg":False,
             },
-            "name": "A26-03-01R4", #提高模型的拟合能力
+            "name": "A26-03-01R8", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01R4.rigid",
-            "input_mode": "A26-03-01R4.rigid.non1",
+            "noise_label":"A26-03-01R8.rigid",
+            "input_mode": "A26-03-01R8.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,
