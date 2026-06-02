@@ -138,6 +138,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     adaptiveFrameNumMode = 0 
     use_dynamicFeatureMask = False
     init_dynamicFeatureMask = None
+    getFeatureMask={
+                    "type":"sigmoid"#"relu"
+                }
     quickUpdate_dynamicFeatureMask = {
         "use":False,
         "interval":5, #间隔
@@ -232,6 +235,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         
         if "init_dynamicFeatureMask" in config:
             init_dynamicFeatureMask = config["init_dynamicFeatureMask"]
+        
         if init_dynamicFeatureMask is None:
             init_dynamicFeatureMask={
                 "R":[0,1],#[运动，纹理]
@@ -244,6 +248,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 "S":[init_dynamicFeatureMask,1],
                 "F":[1,1],
             }
+        
+        if "getFeatureMask" in config:
+            getFeatureMask = config["getFeatureMask"]
         
         if "quickUpdate_dynamicFeatureMask" in config:
             # quickUpdate_dynamicFeatureMask = config["quickUpdate_dynamicFeatureMask"]
@@ -347,6 +354,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               adaptiveFrameNumMode=adaptiveFrameNumMode,
                               use_dynamicFeatureMask=use_dynamicFeatureMask,
                               init_dynamicFeatureMask=init_dynamicFeatureMask,
+                              getFeatureMask=getFeatureMask,
                               quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask,
                               dynamicVesselMask=dynamicVesselMask,
                               updateMaskConfig={#更新所需信息 #dynamicVesselMask不为False的时候才启用

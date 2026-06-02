@@ -136,6 +136,7 @@ class Decouple_rigid(nn.Module):
                 adaptiveFrameNumMode=0,
                 use_dynamicFeatureMask=False, # 使用自适应特征向量遮挡后,不要同时在一个图层使用整体运动和局部运动
                 init_dynamicFeatureMask={"R":[0,1],"S":[1,1],"F":[1,1]},
+                getFeatureMask=None,
                 quickUpdate_dynamicFeatureMask=False,
                 dynamicVesselMask=False,
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
@@ -228,6 +229,7 @@ class Decouple_rigid(nn.Module):
                 config=configSofts["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
                 init_dynamicFeatureMask=init_dynamicFeatureMask["S"],
+                getFeatureMask=getFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 out_features = out_features,# pixels.shape[1],
                 UncertainLearning=UncertainLearning
@@ -269,6 +271,7 @@ class Decouple_rigid(nn.Module):
                 config=configRigids["layer"][i] if (type(configRigids["layer"]) is list) else configRigids["layer"],
                 use_dynamicFeatureMask=use_dynamicFeatureMask,
                 init_dynamicFeatureMask=init_dynamicFeatureMask["R"],
+                getFeatureMask=getFeatureMask,
                 deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                 # useMatrix=True,
                 useSmooth=self.useSmooth,
@@ -299,6 +302,7 @@ class Decouple_rigid(nn.Module):
                     config=configFluids["layer"],#configFluids,
                     use_dynamicFeatureMask=use_dynamicFeatureMask,#False,
                     init_dynamicFeatureMask=init_dynamicFeatureMask["F"],
+                    getFeatureMask=getFeatureMask,
                     deformationSize=3*(2/(self.v.video.size()[2] - 1)),
                     out_features = out_features,# pixels.shape[1],
                     UncertainLearning=UncertainLearning
