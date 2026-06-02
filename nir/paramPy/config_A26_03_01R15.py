@@ -7,12 +7,19 @@
     目标：
         ?
     结果：
-        ?
+        1R13-CATH:
+            Dice:      0.7836
+            Recall:    0.8143
+            Precision: 0.7724
+        1R15-CATH:
+            Dice:      0.7900
+            Recall:    0.8171
+            Precision: 0.7750
     分析一下：
         ?
     实验设备: 
-        AutoDL_?、DeNVeR.26-3_new
-    Running time: ? hours
+        AutoDL_P、DeNVeR.26-3_new
+    Running time: 8*2.179765118426747 hours
 '''
 config_A26_03_01R15={ # follow: config_A26_03_01R13
             "decouple":{ # 解耦

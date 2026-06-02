@@ -147,8 +147,11 @@ class NormalizationCalculator:
         images = []
         for frame_id in frame_ids:
             img = self.image_loader.load_image(tag, patient_id, video_id, frame_id)
-            images.append(img)
-        
+            if not img is None: 
+                images.append(img)
+
+        if len(images)==0: return 0,1
+        # print("images",images)
         all_images = torch.cat(images, dim=0)
         
         if use_quantile:

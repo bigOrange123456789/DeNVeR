@@ -11,8 +11,6 @@ import cv2
 import numpy as np
 from pathlib import Path      
 
-
-# import shutil
 from nir.paramPy.config_fluid00 import config_fluid00
 from nir.paramPy.config_rigid11 import config_rigid11 #双刚体
 from nir.paramPy.config_rigid12 import config_rigid12 #单刚体
@@ -31,9 +29,9 @@ from nir.paramPy.config_A26_03_01H import config_A26_03_01H #自适应遮挡的�
 from nir.paramPy.config_A26_03_01I import config_A26_03_01I #自适应遮挡的初值为1+快收敛(指标和G相似)
 from nir.paramPy.config_A26_03_01I2 import config_A26_03_01I2 #高迭代数         # myLastMethod
 from nir.paramPy.config_A26_03_01I2_2 import config_A26_03_01I2_2 #减少血管MASK更新次数
-from nir.paramPy.config_A26_03_01I2_3 import config_A26_03_01I2_3
-from nir.paramPy.config_A26_03_01I2_4 import config_A26_03_01I2_4
-from nir.paramPy.config_A26_03_01I2_5 import config_A26_03_01I2_5
+from nir.paramPy.config_A26_03_01I2_3 import config_A26_03_01I2_3 #1I2的消融(快更新)
+from nir.paramPy.config_A26_03_01I2_4 import config_A26_03_01I2_4 #1I2的消融(流体)
+from nir.paramPy.config_A26_03_01I2_5 import config_A26_03_01I2_5 #1I2的消融(软体)
 from nir.paramPy.config_A26_03_01I3 import config_A26_03_01I3 #超高迭代数
 # from nir.paramPy.config_A26_03_01I4 import config_A26_03_01I4 #高迭代数 + 不确定学习 
 from nir.paramPy.config_A26_03_01J import config_A26_03_01J #自适应中加强软体运动
@@ -94,7 +92,7 @@ from nir.paramPy.config_A26_03_01R10 import config_A26_03_01R10 #关闭“自适
 from nir.paramPy.config_A26_03_01R11 import config_A26_03_01R11 #关闭软体
 from nir.paramPy.config_A26_03_01R12 import config_A26_03_01R12 #关闭流体
 
-### ??? ###
+### 失败 ###
 from nir.paramPy.config_A26_03_01R13 import config_A26_03_01R13 #刚体运动复杂度加16倍
 from nir.paramPy.config_A26_03_01R14 import config_A26_03_01R14 #关闭“快收敛”
 from nir.paramPy.config_A26_03_01R15 import config_A26_03_01R15 #关闭软体
@@ -114,7 +112,7 @@ from nir.paramPy.config_A26_03_02G import config_A26_03_02G #去除自适应特�
 # from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
 from nir.paramPy.config_test import config_test
-c0 = config_A26_03_01I2_4
+c0 = config_A26_03_01R15
 
 # 目前最重要的是获取论文所需的量化结果
 if True:

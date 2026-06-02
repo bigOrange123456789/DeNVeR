@@ -7,10 +7,13 @@
     目标：
         ?
     结果：
-        ?
+        1I2_4-CATH:
+            Dice:      0.7886
+            Recall:    0.8471
+            Precision: 0.7438
     实验设备: 
         AutoDL_E、DeNVeR.26-3_new
-    Running time: ? hours 
+    Running time: 2*6.628403806421492 hours
 '''
 config_A26_03_01I2_4={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

@@ -554,7 +554,7 @@ def main():
                       testName=c["name"],
                       usedVideoId=usedVideoId,
                       dataset_path_gt=config.dataset_path_gt,
-                      repeating=True,#False,#True,#False, #True
+                      repeating=False,#True,#False,#True,#False, #True
                       )
         else:
             arguments=c
