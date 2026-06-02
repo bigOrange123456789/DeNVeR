@@ -8,7 +8,10 @@
     结果：
         ?
     分析一下：
-        ?
+        1R11-CATH:
+            Dice:      0.7866
+            Recall:    0.8498
+            Precision: 0.7382
     实验设备: 
         AutoDL_P、DeNVeR.26-3_new
     Running time: ? hours

@@ -1,37 +1,29 @@
 '''
     内容：
-        关闭流体
-        改进点：
-            "NUM_fluid":0, #1,
+        软体消融
+        改动：
+            # "NUM_soft":1,
+            "NUM_soft":0,
     目标：
         ?
     结果：
-        1R8-CATH:
-            Dice:      0.7940
-            Recall:    0.8361
-            Precision: 0.7631
-        1R12-CATH:
-            Dice:      0.7860
-            Recall:    0.8503
-            Precision: 0.7366
-    分析一下：
         ?
     实验设备: 
-        AutoDL_E、DeNVeR.26-3_new
-    Running time: ? hours
+        AutoDL_D、DeNVeR.26-3_new
+    Running time: ? hours 
 '''
-config_A26_03_01R12={ # follow: config_A26_03_01R8
+config_A26_03_01I2_5={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦
-                "tag":"A26-03-01R12",
+                "tag":"A26-03-01I2_5",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
                 "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
-                    # "startStep":0.5, #True
-                    # "intervalStep":0.2, #更新三次
-                    "startStep":0.5*10, #False
-                    "intervalStep":1.5,
+                    # "startStep":0.5*10, #False
+                    # "intervalStep":1.5,
+                    "startStep":0.5, #True
+                    "intervalStep":0.2, #更新三次
                 },
                 # "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
@@ -51,10 +43,7 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                         # 整体运动
                         "useGlobal":True,#False,
                         'hidden_layers_global':2,#1,
-                        # 'hidden_features_global':8*128,#1,
-                        # 'hidden_features_global':64,
-                        # 'hidden_features_global':4*64,
-                        'hidden_features_global':8*64,
+                        'hidden_features_global':8*128,#1,
                         "globalMotionMode":2,#[6矩阵,4移动旋转放缩,3,2移动]
                         "use_rot":False, #"globalMotionMode"为3的时候才有效
                         "use_sca":False,
@@ -73,7 +62,8 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                 "openLocalDeform":False, #True,
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
                 # 1.2 软体模块
-                "NUM_soft":1,
+                # "NUM_soft":1,
+                "NUM_soft":0,
                 "configSofts":{ # 软体
                     "layer":{
                         "use_residual":{
@@ -87,12 +77,9 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                         'hidden_layers_global':0,#1,#2, 
                         'hidden_features_global':0,#1,#8*128, 
                         # 2.局部运动
-                        # "useLocal":True,#False, #True,
-                        # 'hidden_layers_local':2,#1,#2,
-                        # 'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
-                        "useLocal":False,#False, #True,
-                        'hidden_layers_local':0,#1,#2,
-                        'hidden_features_local':0,#1,#8*128, # Mask遮挡
+                        "useLocal":True,#False, #True,
+                        'hidden_layers_local':2,#1,#2,
+                        'hidden_features_local':8*128,#1,#8*128, # Mask遮挡
                         # 3.纹理
                         "dynamicTex":True,#False, #动态纹理
                         'hidden_layers_map':4,#2,#4, # 1, # 2, # 4, # 32, # 4,
@@ -102,7 +89,7 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                             "num_freqs_time":100, #4, #1 #后面要通过这里测试时序编码能否提升效果
                             "APE":False, #没有启用渐进式位置编码、启用不是改为True
                         }, # 频率是2的n次方，过大容易超出浮点数上限出现None。 # sin(2¹·π·x)  
-                        "use_featureMask":False,#True, #渐进式遮挡向量
+                        "use_featureMask":True, #渐进式遮挡向量
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },
                     "useSoftMask" : False, #无法生成有意义的MASK
@@ -120,8 +107,7 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                     },
                 },
                 # 1.3 流体模块
-                # "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
-                "NUM_fluid":0,#1,
+                "NUM_fluid":1, # 0.00019 -> 0.00016、0.00015
                 "configFluids":{ #参数数量
                     "layer":{
                         "use_residual":{
@@ -140,8 +126,7 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
                         "hidden_layers_map": 4, 
-                        # "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
-                        "hidden_features_map": 64*2,
+                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
                         "posEnc":{ # 有显著作用
                             "num_freqs_pos":10, #3
                             "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
@@ -168,11 +153,8 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                 #     "rv":"F", #前景
                 #     }, 
                 "lossParam":{ 
-                    # "ra":"R", 
-                    # "rm":"S", 
-                    # "rv":"F", 
-                    "ra":"R,S", 
-                    "rm":None, 
+                    "ra":"R", 
+                    "rm":"S", 
                     "rv":"F", 
                     }, 
                 "lossParam_vessel":{ 
@@ -184,20 +166,18 @@ config_A26_03_01R12={ # follow: config_A26_03_01R8
                     "ra":"MSE",
                     "rm":"MSE", #背景更清晰一些
                     "rv":"myLog",#"MSE", #更模糊一些
-                    # "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
-                    "rv_eps":1.0,
+                    "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
                 "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
-                "saveTempImg":False,
             },
-            "name": "A26-03-01R12", #提高模型的拟合能力
+            "name": "A26-03-01I2_5", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-01R12.rigid",
-            "input_mode": "A26-03-01R12.rigid.non1",
+            "noise_label":"A26-03-01I2_5.rigid",
+            "input_mode": "A26-03-01I2_5.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": True,#False,

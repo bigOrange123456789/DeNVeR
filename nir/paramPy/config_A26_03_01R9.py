@@ -6,12 +6,15 @@
     目标：
         ?
     结果：
-        ?
+        1R9-CATH:
+            Dice:      0.7932
+            Recall:    0.8106
+            Precision: 0.7847
     分析一下：
         ?
     实验设备: 
         AutoDL_D、DeNVeR.26-3_new
-    Running time: ? hours
+    Running time: 6*1.6703210175699659 hours
 '''
 config_A26_03_01R9={ # follow: config_A26_03_01R8
             "decouple":{ # 解耦
