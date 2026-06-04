@@ -4,10 +4,23 @@
     目标：
         ?
     结果：
-        ?
+        1I2-CATH:
+            Dice:        0.7954 ± 0.0897
+            Recall:      0.8287 ± 0.1059
+            Precision:   0.7716 ± 0.0960
+            IoU:         0.6675 ± 0.0974
+            Accuracy:    0.9643 ± 0.0149
+            Specificity: 0.9767 ± 0.0111
+        1I2_7-CATH:
+            Dice:        0.7940 ± 0.0936
+            Recall:      0.8294 ± 0.1065
+            Precision:   0.7694 ± 0.1029
+            IoU:         0.6662 ± 0.1019
+            Accuracy:    0.9641 ± 0.0151
+            Specificity: 0.9764 ± 0.0118
     实验设备: 
-        AutoDL_?、DeNVeR.26-3_new
-    Running time: ? hours 
+        AutoDL_O、DeNVeR.26-3_new
+    Running time: 5*3.047083037628068 hours
 '''
 config_A26_03_01I2_7={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

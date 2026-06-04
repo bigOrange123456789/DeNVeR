@@ -4,10 +4,18 @@
     目标：
         ?
     结果：
-        ?
+        1I2_8-CATH:
+            Dice:        0.7337 ± 0.1043
+            Recall:      0.6952 ± 0.1238
+            Precision:   0.7948 ± 0.1088
+            IoU:         0.5882 ± 0.1091
+            Accuracy:    0.9578 ± 0.0164
+            Specificity: 0.9820 ± 0.0116
+            clDice: 0.7048 ± 0.1104
+            NSD:    0.8499 ± 0.0840
     实验设备: 
         AutoDL_S、DeNVeR.26-3_new
-    Running time: ? hours 
+    Running time: 4* 2.8919575681289036 hours 
 '''
 config_A26_03_01I2_8={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

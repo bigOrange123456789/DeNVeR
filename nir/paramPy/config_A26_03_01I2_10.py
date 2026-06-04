@@ -11,10 +11,10 @@
     目标：
         ?
     结果：
-        ?
+        8*2.3446596412526235 hours
     实验设备: 
         AutoDL_P、DeNVeR.26-3_new
-    Running time: ? hours 
+    Running time: (111/108)*8*2.3446596412526235 hours
 '''
 config_A26_03_01I2_10={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦
