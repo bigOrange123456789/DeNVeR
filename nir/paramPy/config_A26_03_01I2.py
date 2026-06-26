@@ -5,7 +5,7 @@
         期望能显著高于《自适应快开始A26_03_01I》
         期望能和《高迭代数A26_03_01J2》指标不相上下(这样就可以最为新的myLastMethod)
     结果：
-        目标达成，勉强能够作为新的myLastMethod
+        目标达成, 勉强能够作为新的myLastMethod
         比之前的旧的myLastMethod《高迭代数A26_03_01J2》只下降了0.2%
     实验设备: 
         AutoDL_D、DeNVeR.26-3_new

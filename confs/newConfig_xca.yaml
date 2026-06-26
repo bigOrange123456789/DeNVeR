@@ -4,13 +4,13 @@ my:
     subPath:
         nirIn : "nir_image"
         outputs : "outputs"
-    datasetPath_rigid.in:  "../DeNVeR_in/cadica_dataset"
+    datasetPath_rigid.in:  "../DeNVeR_in/xca_dataset"
     datasetPath_rigid.in_custom:  "../DeNVeR_in/custom_videos"
-    datasetPath_rigid.out:  "log_27/cadica_dataset"
-    datasetPath_soft.in:  "log_27/cadica_dataset"
-    datasetPath_soft.out:  "log_27/cadica_dataset"
-    datasetPath_gt:  "../DeNVeR_in/cadica_dataset"
-    datasetPath:  "../DeNVeR_in/cadica_dataset"
+    datasetPath_rigid.out:  "log_27/xca_dataset"
+    datasetPath_soft.in:  "log_27/xca_dataset"
+    datasetPath_soft.out:  "log_27/xca_dataset"
+    datasetPath_gt:  "../DeNVeR_in/xca_dataset"
+    datasetPath:  "../DeNVeR_in/xca_dataset"
     raftConfig: "../DeNVeR_in/models_config"
     TestFlag: False
     useFreeCOS: True

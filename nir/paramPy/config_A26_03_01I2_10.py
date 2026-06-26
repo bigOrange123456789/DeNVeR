@@ -1,6 +1,6 @@
 '''
     内容：
-        1I2的消融(静态先验) 
+        1I2的消融(先验不更新) 
         改动点:
             "dynamicVesselMask":{#有较长的时间开销
                     "startStep":0.5*10, #False

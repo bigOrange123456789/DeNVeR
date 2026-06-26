@@ -333,13 +333,14 @@ class Main:
                 video_names = [name for name in os.listdir(patient_gt_path) 
                             if os.path.isdir(os.path.join(patient_gt_path, name))]
                 
-                for video_id in video_names:
+                for video_id in video_names:#逐个视频进行处理
                  if self.usedVideoId is None or video_id in self.usedVideoId:
-                    if "CATH" not in video_id:  # 只处理非导管视频
+                    if "CATH" not in video_id:  # 只处理非导管视频 
                         if onlyInferGT:#***只收集有标注图片的预测结果***
                             patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "ground_truth")
                         else: #推理全部
                             patient_gt_path = os.path.join(self.config.dataset_path_gt, patient_id, "images")
+                        # print("onlyInferGT:",onlyInferGT,"patient_gt_path:",patient_gt_path)
 
                         # 计算归一化参数（如果需要）
                         normalization_params = {}
@@ -349,19 +350,21 @@ class Main:
                                     if not (patient_id+"/"+video_id) in config["processed_videos"]:#如果这个视频的解耦没有被完成
                                         continue#跳过这个视频处理下一个视频
                                 mean, std = self._get_normalization_params(config, patient_id, video_id) #我发现他在使用原视频的均值和方差，而不是去噪视频的均值和方差
-                                normalization_params[config["name"]] = (mean, std)
+                                normalization_params[config["name"]] = (mean, std) #计算这个视频的均值标准差
 
-                        video_names = [name for name in os.listdir(patient_gt_path) 
-                          if os.path.isdir(os.path.join(patient_gt_path, name))]
-                        for video_id in video_names:
-                         if "processed_videos" in configs[0]:
+                        # video_names = [name for name in os.listdir(patient_gt_path) 
+                        #   if os.path.isdir(os.path.join(patient_gt_path, name))]
+                        # for video_id in video_names:
+                        if False:#如果这个视频的解耦没有被完成就跳过
+                            if "processed_videos" in configs[0]:
                                 if not configs[0]["processed_videos"] is None:
                                     if not (patient_id+"/"+video_id) in configs[0]["processed_videos"]:#如果这个视频的解耦没有被完成
                                         continue#跳过这个视频处理下一个视频
-                         if self.usedVideoId is None or video_id in self.usedVideoId:
-                            if "CATH" not in video_id:  # 只统计非导管视频  
+                        if True:
+                        # if self.usedVideoId is None or video_id in self.usedVideoId:
+                            # if "CATH" not in video_id:  # 只统计非导管视频  
                                 video_path = os.path.join(patient_gt_path, video_id)
-                                for frame_id in os.listdir(video_path):
+                                for frame_id in os.listdir(video_path): #逐帧推理
                                     self._process_single_image_predictions(
                                         patient_id, video_id, frame_id, configs, model, threshold, 
                                         block_cath, normalization_params

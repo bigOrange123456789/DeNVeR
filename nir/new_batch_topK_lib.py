@@ -870,13 +870,10 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,te
                 # 将 GPU 放回队列，供后续任务使用
                 gpu_queue.put(gpu_id)
         
-        def process_videoOld(patientID, videoId):
-                nonlocal CountI
+        def process_videoOld(patientID, videoId, CountIOld,gpu_id):
+                # nonlocal CountI
                 # 从队列中获取一个可用的 GPU
-                gpu_id = gpu_queue.get()
-
                 # 设置当前线程使用的 GPU
-                torch.cuda.set_device(gpu_id)
                 print(f"[GPU {gpu_id}] 开始处理 {patientID}/{videoId}")
                 
                 import time
@@ -922,8 +919,8 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,te
                 # print(f"软体去除运行时间：{((time.time()-time0)/60):.2f} 分钟")
                     
                 # 处理成功，更新进度
-                with progress_lock:
-                    CountI += 1
+                if True:#with progress_lock:
+                    # CountIOld = CountIOld + 1
                     video_key = f"{patientID}/{videoId}"
                     if isinstance(processed_videos, list):
                         processed_videos.append(video_key)
@@ -935,13 +932,17 @@ def denoising(arguments,usedVideoId=None,dataset_path_gt=None,repeating=False,te
                         json.dump(progress_data, f, ensure_ascii=False, indent=2)   
 
                 # print(f"{CountI}/{CountSum} {videoId} - 已完成")
-                print(f"[GPU {gpu_id}] {CountI}/{CountSum} {videoId} 完成，耗时 {((time.time()-time0)/60):.2f} 分钟")
+                print(f"[GPU {gpu_id}] {CountIOld}/{CountSum} {videoId} 完成，耗时 {((time.time()-time0)/60):.2f} 分钟")
 
 
         
         if gpu_count==1:
+            CountIOld =1 
+            gpu_id = gpu_queue.get()
+            torch.cuda.set_device(gpu_id)
             for patientID, videoId in all_videos:
-                process_videoOld(patientID, videoId)
+                process_videoOld(patientID, videoId,CountIOld,gpu_id)
+                CountIOld = CountIOld+1
         else: # 使用线程池执行所有任务
          with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []

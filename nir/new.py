@@ -104,6 +104,7 @@ import numbers
 def is_number(obj): # 使用 numbers.Number，并显式排除 bool
     return isinstance(obj, numbers.Number) and not isinstance(obj, bool)
 
+####################!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!***********************************!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!####################
 def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custom=None,testName=None): #单独的刚体解耦 #大部分时间浪费在推理分析和数据存储上了
     #设置参数
     epochs = None
@@ -370,6 +371,12 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               UncertainLearning=UncertainLearning,
                               motionSuperposition=motionSuperposition,#是否将刚体的整体运动叠加到软体上
                         )
+        if False:
+            orig = myMain.v.video.clone()
+            orig = orig.permute(0, 2, 3, 1).detach().numpy()
+            orig = (orig * 255).astype(np.uint8)
+            save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
+            return
         myMain.train(
             epochs,total_steps,
             lossParam=lossParam,
@@ -391,7 +398,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         orig = myMain.v.video.clone()
         orig = orig.permute(0, 2, 3, 1).detach().numpy()
         orig = (orig * 255).astype(np.uint8)
-        # if True: #这里是输入的视频不是用于分割的视频
+        # if True: #这里是输入的视频不是用于分割的视频        
         if not os.path.exists(os.path.join(outpath, 'orig')) and saveTempImg:#如果原始数据还没有复制过来
             save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
 
