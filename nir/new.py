@@ -376,7 +376,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             orig = orig.permute(0, 2, 3, 1).detach().numpy()
             orig = (orig * 255).astype(np.uint8)
             save2img(orig[:, :, :, 0], os.path.join(outpath, 'orig'))
-            return
+            # return
         myMain.train(
             epochs,total_steps,
             lossParam=lossParam,

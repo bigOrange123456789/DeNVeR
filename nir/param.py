@@ -119,7 +119,7 @@ from nir.paramPy.config_A26_03_02G import config_A26_03_02G #去除自适应特�
 # from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
 from nir.paramPy.config_test import config_test
-c0 = config_test #config_A26_03_01I2
+c0 = config_test #config_A26_03_01I2 #config_A26_03_01I2
 
 # 目前最重要的是获取论文所需的量化结果
 if True:

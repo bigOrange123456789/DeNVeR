@@ -346,11 +346,13 @@ class Main:
                         normalization_params = {}
                         for config in configs:
                             if not config.get("precomputed", False):
-                                if "processed_videos" in config and not config["processed_videos"] is None:
-                                    if not (patient_id+"/"+video_id) in config["processed_videos"]:#如果这个视频的解耦没有被完成
-                                        continue#跳过这个视频处理下一个视频
+                                if False:
+                                    if "processed_videos" in config and not config["processed_videos"] is None:
+                                        if not (patient_id+"/"+video_id) in config["processed_videos"]:#如果这个视频的解耦没有被完成
+                                            continue#跳过这个视频处理下一个视频
                                 mean, std = self._get_normalization_params(config, patient_id, video_id) #我发现他在使用原视频的均值和方差，而不是去噪视频的均值和方差
                                 normalization_params[config["name"]] = (mean, std) #计算这个视频的均值标准差
+                        # print("normalization_params",normalization_params)
 
                         # video_names = [name for name in os.listdir(patient_gt_path) 
                         #   if os.path.isdir(os.path.join(patient_gt_path, name))]
@@ -415,6 +417,10 @@ class Main:
             img = self._get_input_image(config, patient_id, video_id, frame_id)
             
             # 归一化处理（如果需要）
+            # print('not config.get("precomputed", False)',not config.get("precomputed", False))
+            # print('config_name in normalization_params',config_name in normalization_params)
+            # print('not config.get("precomputed", False) and config_name in normalization_params',not config.get("precomputed", False) and config_name in normalization_params)
+            # exit(0)
             if not config.get("precomputed", False) and config_name in normalization_params:
                 mean, std = normalization_params[config_name]
                 img_norm = self._normalize_image(config, img, mean, std)

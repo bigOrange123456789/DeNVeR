@@ -632,6 +632,7 @@ config_test_old2={ # follow: config_A26_03_01P15
             "inferenceAll": True,#False,
             "mergeMask": False,
         }
+
 config_test={ 
             "name": "SSCVS", #提高模型的拟合能力
             "precomputed": False,
