@@ -30,7 +30,7 @@
         ??
     实验设备: 
         AutoDL_S、RTX 3090 * 5卡、DeNVeR.26-3_new
-    Running time: ?? hours 
+    Running time: 2.5258048834403355 hours
 '''
 config_A26_03_NIR={ # follow config_A26_03_01I2
             "decouple":{ # 解耦
@@ -199,13 +199,22 @@ config_A26_03_NIR={ # follow config_A26_03_01I2
                 "de-soft":None,
                 "saveTempImg":True,
             },
+            # "name": "A26-03-NIR", #提高模型的拟合能力
+            # "precomputed": False,
+            # "noise_label":"A26-03-NIR.rigid",
+            # # "input_mode": "A26-03-NIR.rigid.non1",
+            # "input_mode": "A26-03-NIR.fluid",
+            # # "norm_method": norm_calculator.calculate_mean_variance,
+            # "binarize": True,
+            # "inferenceAll": True,#False,
+            # "mergeMask": False,
+            ###################################################
             "name": "A26-03-NIR", #提高模型的拟合能力
             "precomputed": False,
             "noise_label":"A26-03-NIR.rigid",
-            # "input_mode": "A26-03-NIR.rigid.non1",
-            "input_mode": "A26-03-NIR.fluid",
+            "input_mode": "A26-03-NIR.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": True,#False,
+            "inferenceAll": False,
             "mergeMask": False,
         }
