@@ -159,6 +159,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         }
     saveTempImg = False
     motionSuperposition = True #默认会将刚体层的整体运动叠加到软体层上
+    useDIP = False
     # useMatrix = True
     if not config is None:
         if "motionSuperposition" in config:
@@ -293,6 +294,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 UncertainLearning["var=dif(norm)"] = False
         if "saveTempImg" in config:
             saveTempImg = config["saveTempImg"]
+        if "useDIP" in config:
+            useDIP = config["useDIP"]
     # print("168-configFluids",configFluids)
     # print(weight_smooth,config["weight_smooth"])
     # print("config",config)
@@ -370,6 +373,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               reconFlow=reconFlow,
                               UncertainLearning=UncertainLearning,
                               motionSuperposition=motionSuperposition,#是否将刚体的整体运动叠加到软体上
+                              useDIP=useDIP,
                         )
         if False:
             orig = myMain.v.video.clone()
@@ -425,9 +429,18 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             if saveTempImg:
                 save1(p["o_rigid_all"], tag+".rigid")#看一下刚体层的效果
             if not p["o_rigid_all"]==None and len(p["o_rigid_all"])>0: 
-                save1(#真正影响下一个阶段的输出
-                    orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
-                    tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
+                if useDIP: # 加减解耦
+                    save1(#真正影响下一个阶段的输出
+                        (orig.cuda() - p["o_rigid_all"].abs()).clamp(min=0), 
+                        tag+".rigid.non1"
+                    )#有黑点、黑点解决了(是超过数据上限造成的)
+                    save1(#真正影响下一个阶段的输出
+                        (orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10)).clamp(max=1), 
+                        tag+".rigid.non1_div")#有黑点、黑点解决了(是超过数据上限造成的)
+                else: # 乘除解耦
+                    save1(#真正影响下一个阶段的输出
+                        orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
+                        tag+".rigid.non1")#有黑点、黑点解决了(是超过数据上限造成的)
             if NUM_rigid>1 and saveTempImg:
                 for i in range(len(layers["r"])):
                     save1(layers["r"][i], tag+".rigid" + str(i))

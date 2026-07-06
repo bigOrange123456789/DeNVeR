@@ -118,7 +118,8 @@ class Decouple_rigid(nn.Module):
 
         return True
 
-    def __init__(self, path, inpath_custom=None, videoId=None, testName=None, hidden_features=128, useSmooth=False, openLocalDeform=False,
+    def __init__(self, path, inpath_custom=None, videoId=None, testName=None, hidden_features=128, useSmooth=False, openLocalDeform=False, 
+                 useDIP=False,
                  weight_smooth=1, weight_concise=0.0001, weight_component=1, weight_softFade=0,
                 #  stillness=False, #废弃
                  stillnessFristLayer=True,
@@ -157,6 +158,8 @@ class Decouple_rigid(nn.Module):
         self.init_dynamicFeatureMask = init_dynamicFeatureMask
         self.quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask
         self.maskPath = maskPath
+        self.useDIP=useDIP
+
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
             path_custom = inpath_custom,
@@ -637,6 +640,8 @@ class Decouple_rigid(nn.Module):
                     print('>>> 没有梯度爆炸！', total_norm)
 
         o = o_rigid_all * o_soft_all * o_fluid_all
+        if self.useDIP:
+            o = (1-vesselMask) * o_rigid_all + vesselMask * o_fluid_all
         # print("o_rigid_all",o_rigid_all.shape)
         # print("o_soft_all", o_soft_all.shape)
         # print("o_fluid_all", o_fluid_all.shape)
@@ -964,7 +969,11 @@ class Decouple_rigid(nn.Module):
             R2=R if len(s0.split("R")) else R_clone
             S2=S if len(s0.split("S")) else S_clone
             F2=F if len(s0.split("F")) else F_clone
-            return R2*S2*F2, self._product_variance(p['mean_var'],s0)
+            if self.useDIP and len(s0.split("R")) and len(s0.split("S")):
+                MERGE = (1-vesselMask) * R2 + vesselMask * F2
+            else:
+                MERGE = R2*S2*F2
+            return MERGE, self._product_variance(p['mean_var'],s0)
         # def getLossMSE(pred_mean, pred_var=None, tag=None):
         #     y = ground_truth[start:end]
         #     l0 = (y - pred_mean)**2

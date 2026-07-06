@@ -1,14 +1,12 @@
 '''
     内容：
         follow config_A26_03_01I2
-        复现NIR的方法: 《Neural Image Representations for Multi-Image Fusion and Layer Separation》
+        复现Double-DIP的方法: 《“Double-DIP” :Unsupervised Image Decomposition via Coupled Deep-Image-Priors》
         修改点（与我们方法的区别）：
             (1)只有前景层（流体）、背景层（刚体）
                 "NUM_soft":1 => "NUM_soft":0,
             (2)没有分割引导
-                2.1 先验不更新
-                    "dynamicVesselMask":False,
-                2.2 无先验:
+                2.1 无先验分区损失:
                     "lossParam":{ 
                         # "ra":"R", 
                         # "rm":"S", 
@@ -17,44 +15,55 @@
                         "rm":None, 
                         "rv":None, 
                         }, 
-            (3)不是基于去噪进行分割、而是基于前景层进行分割(×，这个改动取消了)
+                2.2 先验不更新（这里关闭与否都可以）
+                    "dynamicVesselMask":False,
+            (3)不是基于去噪进行分割、而是基于前景层进行分割
                 "saveTempImg":True, #存储各种中间数据
                 # "input_mode": "A26-03-NIR.rigid.non1",
-                "input_mode": "A26-03-NIR.fluid",(×，这个改动取消了)
+                "input_mode": "A26-03-NIR.fluid",
             (4)不能自适应调整网络宽度
                 "use_dynamicFeatureMask":False,#False,#True,
                 "quickUpdate_dynamicFeatureMask":False,
+            #######################################################
+            (5)通过加减的方法分层、并且基于MASK组装图层
+                "useDIP":True,
+            (6)刚体使用单一神经网络
+                "hidden_layers_map": 4 => 2, 
+                "hidden_features_map": 64 => 8*512,
+                "posEnc":False
+                configRigids: "layer-old" => "layer"
     目标：
         显然这个方法的效果会远远差于我们的方法(还需要记录一下推理时间)
     结果：
         ??
     实验设备: 
-        AutoDL_S、RTX 3090 * 5卡、DeNVeR.26-3_new
-    Running time: 5*2.5258048834403355*(107/104) hours (已处理: 7, 待处理: 104)
+        AutoDL_H、RTX 3090 * 4卡、DeNVeR.26-3_new
+    Running time: 4*3.519179948435889 hours
 '''
-config_A26_03_NIR={ # follow config_A26_03_01I2
+config_A26_03_DIP={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦
-                "tag":"A26-03-NIR",
+                "tag":"A26-03-DIP",
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
                 "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 # "dynamicVesselMask":{#有较长的时间开销
-                #     "startStep":0.5*10, #False
-                #     "intervalStep":1.5,
-                #     # "startStep":0.5, #True
-                #     # "intervalStep":0.2, #更新三次
+                #     # "startStep":0.5*10, #False
+                #     # "intervalStep":1.5,
+                #     "startStep":0.5, #True
+                #     "intervalStep":0.2, #更新三次
                 # },
                 "dynamicVesselMask":False,
                 "singleTrainVessel":False,#True, #是否单独增加在血管区域的训练次数
                 "use_dynamicFeatureMask":False,#True,#False,#True,
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
                 "quickUpdate_dynamicFeatureMask":False,#True,
+                "useDIP":True,
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
                 "configRigids":{ # 整个刚体层模块的参数
-                    "layer":{
+                    "layer-old":{
                         "use_residual":{
                             "R":False,
                             "S":False,
@@ -78,6 +87,33 @@ config_A26_03_NIR={ # follow config_A26_03_01I2
                         "posEnc":False,
                         "use_featureMask":False,
                     },
+                    "layer":{
+                        "use_residual":{
+                            "R":False,
+                            "S":False,
+                            "T":False,
+                        },
+                        # 整体运动
+                        "useGlobal":False,
+                        'hidden_layers_global':0, 
+                        'hidden_features_global':0,
+                        # 局部运动
+                        "useLocal":False,
+                        'hidden_layers_local':0,
+                        'hidden_features_local':0,
+                        # 纹理
+                        "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
+                        "hidden_layers_map": 2,#4, 
+                        "hidden_features_map": 8*512,#64,#8,#256,#3*256,#7*256, 
+                        # "posEnc":{ # 有显著作用
+                        #     "num_freqs_pos":10, #3
+                        #     "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                        #     "APE":False, #没有启用渐进式位置编码、启用不是改为True
+                        # }, 
+                        "posEnc":False,
+                        "use_featureMask":False,#True,
+                        "fm_total_steps":800/2000, #use_featureMask=true的时候启用
+                    },      
                 }, 
                 "openLocalDeform":False, #True,
                 "stillnessFristLayer":True,#False,#True,#:False, #True,#False,#并无意义，要和stillness保持一致
@@ -144,13 +180,14 @@ config_A26_03_NIR={ # follow config_A26_03_01I2
                         'hidden_features_local':0,
                         # 纹理
                         "dynamicTex":True,#动态纹理 #用于兼容layer2类接口
-                        "hidden_layers_map": 4, 
-                        "hidden_features_map": 64,#8,#256,#3*256,#7*256, 
-                        "posEnc":{ # 有显著作用
-                            "num_freqs_pos":10, #3
-                            "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
-                            "APE":False, #没有启用渐进式位置编码、启用不是改为True
-                        }, 
+                        "hidden_layers_map": 2,#4, 
+                        "hidden_features_map": 8*512,#64,#8,#256,#3*256,#7*256, 
+                        # "posEnc":{ # 有显著作用
+                        #     "num_freqs_pos":10, #3
+                        #     "num_freqs_time":100,#*2,#5, #4, #1 #后面要通过这里测试时序编码能否提升效果
+                        #     "APE":False, #没有启用渐进式位置编码、启用不是改为True
+                        # }, 
+                        "posEnc":False,
                         "use_featureMask":False,#True,
                         "fm_total_steps":800/2000, #use_featureMask=true的时候启用
                     },                    
@@ -171,13 +208,8 @@ config_A26_03_NIR={ # follow config_A26_03_01I2
                 #     "rm":"S", #背景 #很奇怪、软体层为啥能看到血管
                 #     "rv":"F", #前景
                 #     }, 
-                # "lossParam":{ 
-                #     "ra":"R", 
-                #     "rm":"S", 
-                #     "rv":"F", 
-                #     }, 
                 "lossParam":{ 
-                    "ra":"R,F", 
+                    "ra":"R,S", 
                     "rm":None, 
                     "rv":None, 
                     }, 
@@ -197,24 +229,14 @@ config_A26_03_NIR={ # follow config_A26_03_01I2
                 "useMask":True, #只有lossType==1的时候才有效
                 ########################
                 "de-soft":None,
-                "saveTempImg":True,
+                "saveTempImg":True, #存储各种中间数据
             },
-            # "name": "A26-03-NIR", #提高模型的拟合能力
-            # "precomputed": False,
-            # "noise_label":"A26-03-NIR.rigid",
-            # # "input_mode": "A26-03-NIR.rigid.non1",
-            # "input_mode": "A26-03-NIR.fluid",
-            # # "norm_method": norm_calculator.calculate_mean_variance,
-            # "binarize": True,
-            # "inferenceAll": True,#False,
-            # "mergeMask": False,
-            ###################################################
-            "name": "A26-03-NIR", #提高模型的拟合能力
+            "name": "A26-03-DIP", #提高模型的拟合能力
             "precomputed": False,
-            "noise_label":"A26-03-NIR.rigid",
-            "input_mode": "A26-03-NIR.rigid.non1_div",
+            "noise_label":"A26-03-DIP.rigid",
+            "input_mode": "A26-03-DIP.rigid.non1",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
-            "inferenceAll": False,
+            "inferenceAll": False,#True,#False,
             "mergeMask": False,
         }

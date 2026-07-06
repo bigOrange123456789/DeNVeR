@@ -39,6 +39,7 @@ from nir.paramPy.config_A26_03_01I2_9 import config_A26_03_01I2_9 #1I2的消融(
 from nir.paramPy.config_A26_03_01I2_10 import config_A26_03_01I2_10 #1I2的消融(先验不更新) 
 from nir.paramPy.config_A26_03_01I2_11 import config_A26_03_01I2_11 #1I2的消融(logMSE)
 from nir.paramPy.config_A26_03_NIR import config_A26_03_NIR
+from nir.paramPy.config_A26_03_DIP import config_A26_03_DIP
 
 from nir.paramPy.config_A26_03_01I3 import config_A26_03_01I3 #超高迭代数
 # from nir.paramPy.config_A26_03_01I4 import config_A26_03_01I4 #高迭代数 + 不确定学习 
@@ -120,7 +121,7 @@ from nir.paramPy.config_A26_03_02G import config_A26_03_02G #去除自适应特�
 # from nir.paramPy.config_A26_03_04N1 import config_A26_03_04N1 # rv_eps=0.5
 
 from nir.paramPy.config_test import config_test
-c0 = config_A26_03_NIR #config_A26_03_01I2 #config_A26_03_01I2
+c0 = config_A26_03_DIP #config_A26_03_01I2 #config_A26_03_01I2
 
 # 目前最重要的是获取论文所需的量化结果
 if True:
