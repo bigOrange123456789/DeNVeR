@@ -59,6 +59,8 @@ config_A26_03_DIP={ # follow: config_A26_03_01I2
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
                 "quickUpdate_dynamicFeatureMask":False,#True,
                 "useDIP":True,
+                "maskPath_pathIn":"log_27/outputs/A26-03-01I2.all",#出现了一个神秘的BUG,现在只能使用"maskPath_pathIn2"
+                "maskPath_pathIn2":"log_27/outputs/A26-03-01I2.all",#使用预先计算好的MASK作为引导，如果为None则推理生成MASK
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -225,8 +227,8 @@ config_A26_03_DIP={ # follow: config_A26_03_01I2
                     "rv_eps":0.5,#0.1,#该参数的效果还没有被测试 #训练不足
                     "vesselMask_eps":1,#0.1,#0.25,
                 }, 
-                "maskPath_pathIn":None,#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
-                "useMask":True, #只有lossType==1的时候才有效
+                "maskPath_pathIn":"",#"A20-10-best1.rigid.non1", # 当"rm"==None的时候,没有用处 #是否使用预先计算好的MASK
+                "useMask":True, #是否需要使用MASK，现在使用的技术路线下这里必须始终为True
                 ########################
                 "de-soft":None,
                 "saveTempImg":True, #存储各种中间数据

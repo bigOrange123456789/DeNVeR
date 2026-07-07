@@ -18,7 +18,7 @@ from nir.util import get_mgrid, jacobian
 from nir.util import Dataset,ToTensor
 
 # from nir.myLib.Decouple import Decouple
-from nir.myLib.mySave import check,save2img,save0
+from nir.myLib.mySave import check,save2img,save0,copy2file
 
 # maskPath="./nir/data/mask/filter"
 
@@ -308,13 +308,28 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     #     # check(os.path.join(outpath, "mask_nir0"),videoId,"nir.0")
     #分割原始数据中的血管
     Segment_model = None
-    if "maskPath_pathIn" in config and not config["maskPath_pathIn"] is None: #使用之前计算好的MASK
-        pathIn2=os.path.join(outpath, config["maskPath_pathIn"])
-        maskPath=os.path.join(outpath, tag+".orig_mask2")
-        print("useMask and not os.path.exists(maskPath)",useMask and not os.path.exists(maskPath))
+    if "maskPath_pathIn2" in config and not config["maskPath_pathIn2"] is None: #使用之前计算好的MASK
+        maskPathSrc= os.path.join(config["maskPath_pathIn2"],videoId) #os.path.join(outpath, config["maskPath_pathIn"])
+        maskPath=os.path.join(outpath, tag+".orig_mask")
         if useMask :
-            if True: # not os.path.exists(maskPath): #为了每次训练的结果相同，MASK每次训练都会重新生成
-                Segment_model=mainFreeCOS_sim(paramPath,pathIn2,maskPath)
+            if os.path.exists(maskPathSrc) is None:
+                print("maskPath is None!!!!!")
+                exit(0)
+            else:
+                copy2file( maskPathSrc, maskPath) #从数据集中获取需要的数据复制到目标路径下
+                print("pathIn:",pathIn, "\nmaskPath:",maskPath)
+                '''
+                    pathIn: A26-03-01I2 
+                    maskPath: os.path.join(outpath, tag+".orig_mask")
+                    maskPath: os.path.join("log_27\xca_dataset\CVAI-1207\decouple\CVAI-1207LAO44_CRA29", "A26_03_01P5.orig_mask")
+                    maskPath: log_27\xca_dataset\CVAI-1207\decouple\CVAI-1207LAO44_CRA29\A26_03_01P5.orig_mask
+                    复制文件里面的全部图片:
+                        A26-03-01I2\CVAI-1207LAO44_CRA29 => log_27\xca_dataset\CVAI-1207\decouple\CVAI-1207LAO44_CRA29\A26_03_01P5.orig_mask
+                    比如：
+                        A26-03-01I2\CVAI-1207LAO44_CRA29\00031.png
+                        A26-03-01I2\CVAI-1207LAO44_CRA29\00036.png
+                '''
+                # exit(0)
             # print("Test123")
         # print("pathIn2",pathIn2)
         # exit(0)

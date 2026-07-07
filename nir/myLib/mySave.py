@@ -99,4 +99,37 @@ def getPath_csv():
         print(f"创建文件夹 '{folder_path}' 时出错: {error}")
     return folder_path
 
+################################# 
+import shutil
 
+def copy2file(inPATH, outPATH):
+    """
+    将 inPATH 文件夹中的所有 PNG 文件复制到 outPATH 文件夹中。
+    
+    参数:
+        inPATH  (str): 源文件夹路径。
+        outPATH (str): 目标文件夹路径（若不存在会自动创建）。
+    """
+    # 检查源文件夹是否存在
+    if not os.path.isdir(inPATH):
+        print(f"错误: 源文件夹 '{inPATH}' 不存在。")
+        return
+
+    # 如果目标文件夹不存在，则创建它
+    os.makedirs(outPATH, exist_ok=True)
+
+    # 遍历源文件夹中的所有文件和子目录名
+    copied_count = 0
+    for item in os.listdir(inPATH):
+        item_path = os.path.join(inPATH, item)
+        # 只处理文件，且扩展名为 .png（忽略大小写，可根据需要修改）
+        if os.path.isfile(item_path) and item.lower().endswith('.png'):
+            dest_path = os.path.join(outPATH, item)
+            try:
+                shutil.copy2(item_path, dest_path)  # 复制并保留元数据
+                copied_count += 1
+                # print(f"已复制: {item} -> {dest_path}")
+            except Exception as e:
+                print(f"复制 {item} 时出错: {e}")
+
+    print(f"复制完成，共复制 {copied_count} 个 PNG 文件。")
