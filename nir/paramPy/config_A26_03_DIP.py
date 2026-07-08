@@ -39,6 +39,11 @@
     实验设备: 
         AutoDL_H、RTX 3090 * 4卡、DeNVeR.26-3_new
     Running time: 4*3.519179948435889 hours
+
+
+    第二次实验：
+        处理40段视频: 6*1.1657451962762408 hours
+        处理71段视频: 6*1.520100975367758 hours
 '''
 config_A26_03_DIP={ # follow: config_A26_03_01I2
             "decouple":{ # 解耦

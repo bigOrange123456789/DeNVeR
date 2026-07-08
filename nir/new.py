@@ -316,7 +316,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 print("maskPath is None!!!!!")
                 exit(0)
             else:
-                copy2file( maskPathSrc, maskPath) #从数据集中获取需要的数据复制到目标路径下
+                maskPath=maskPathSrc#copy2file( maskPathSrc, maskPath) #从数据集中获取需要的数据复制到目标路径下
                 print("pathIn:",pathIn, "\nmaskPath:",maskPath)
                 '''
                     pathIn: A26-03-01I2 

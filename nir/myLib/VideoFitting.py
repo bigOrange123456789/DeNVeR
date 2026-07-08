@@ -141,9 +141,14 @@ class VideoFitting(Dataset):
         # print("path:",path)
         for i in range(len(frames)):
             img = Image.open(os.path.join(path, frames[i]))
+            # img = img.convert('L') #将输入图像转换为灰度图(暂时不考虑彩色图的情况，后续处理彩色图可以考虑将RGB三个通道拆分为不同的图像进行处理)
             img = self.transform(img)
-            # if i==0:print("img",img.shape)
+            img = img[[0]] #将输入图像转换为灰度图(暂时不考虑彩色图的情况，后续处理彩色图可以考虑将RGB三个通道拆分为不同的图像进行处理)
+            # if i==0:print("img",img.shape,img[[0]].shape)
+            # print(i,"img",img.shape)
             video.append(img)
+        # print("len(video):",len(video))
+        # print("type(video[0]):",type(video[0]))
         return torch.stack(video, 0)
 
     def __len__(self):
