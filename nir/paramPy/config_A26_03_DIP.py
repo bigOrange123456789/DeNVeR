@@ -42,6 +42,8 @@
 
 
     第二次实验：
+        "maskPath_pathIn":"log_27/outputs/A26-03-01I2.all",#出现了一个神秘的BUG,现在只能使用"maskPath_pathIn2"
+        "maskPath_pathIn2":"log_27/outputs/A26-03-01I2.all",#使用预先计算好的MASK作为引导，如果为None则推理生成MASK
         处理40段视频: 6*1.1657451962762408 hours
         处理71段视频: 6*1.520100975367758 hours
 '''
@@ -64,8 +66,9 @@ config_A26_03_DIP={ # follow: config_A26_03_01I2
                 "init_dynamicFeatureMask":1, #遮挡向量的的初始值为1
                 "quickUpdate_dynamicFeatureMask":False,#True,
                 "useDIP":True,
-                "maskPath_pathIn":"log_27/outputs/A26-03-01I2.all",#出现了一个神秘的BUG,现在只能使用"maskPath_pathIn2"
-                "maskPath_pathIn2":"log_27/outputs/A26-03-01I2.all",#使用预先计算好的MASK作为引导，如果为None则推理生成MASK
+                "maskPath_pathIn":None,
+                # "maskPath_pathIn":"log_27/outputs/A26-03-01I2.all",#出现了一个神秘的BUG,现在只能使用"maskPath_pathIn2"
+                # "maskPath_pathIn2":"log_27/outputs/A26-03-01I2.all",#使用预先计算好的MASK作为引导，如果为None则推理生成MASK
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
@@ -241,7 +244,7 @@ config_A26_03_DIP={ # follow: config_A26_03_01I2
             "name": "A26-03-DIP", #提高模型的拟合能力
             "precomputed": False,
             "noise_label":"A26-03-DIP.rigid",
-            "input_mode": "A26-03-DIP.rigid.non1",
+            "input_mode": "A26-03-DIP.rigid.non1_div",
             # "norm_method": norm_calculator.calculate_mean_variance,
             "binarize": True,
             "inferenceAll": False,#True,#False,
