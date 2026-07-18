@@ -346,14 +346,71 @@ def getConnRegion(images_np):
 
 
 
-import argparse
+# import argparse
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--pathParam")
+#     parser.add_argument("--pathIn")
+#     parser.add_argument("--pathOut")
+#     args = parser.parse_args()
+#     mainFreeCOS(args.pathParam,args.pathIn,args.pathOut)
+import os
+import shutil
+def organize_pngs(input_dir, output_dir):
+    """
+    将 input_dir 下的所有 PNG 文件按文件名前 9 个字符分组，
+    复制到 output_dir 下的对应子文件夹中。
+    """
+    # 确保输出文件夹存在
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 支持的图片扩展名（不区分大小写）
+    png_extensions = ('.png', '.PNG')
+
+    # 遍历输入文件夹下的所有文件
+    for filename in os.listdir(input_dir):
+        # 只处理 PNG 文件
+        if not filename.endswith(png_extensions):
+            continue
+
+        file_path = os.path.join(input_dir, filename)
+        # 只处理文件（忽略子文件夹）
+        if not os.path.isfile(file_path):
+            continue
+
+        # 分离文件名和扩展名，取主文件名
+        stem, ext = os.path.splitext(filename)
+
+        # 如果主文件名长度不足 9，跳过并给出警告
+        if len(stem) < 9:
+            print(f"警告：文件名 '{filename}' 的主名长度不足 9 个字符，已跳过。")
+            continue
+
+        # 取前 9 个字符作为子文件夹名
+        subfolder_name = stem.split(".")[1]#[:9]
+        subfolder_path = os.path.join(output_dir, subfolder_name)
+
+        # 创建子文件夹（如果已存在则忽略）
+        os.makedirs(subfolder_path, exist_ok=True)
+
+        # 目标文件路径
+        filename2=stem.split(".")[2]+".png"
+        dest_path = os.path.join(subfolder_path, filename2)
+
+        # 复制文件（保留元数据）
+        shutil.copy2(file_path, dest_path)
+        print(f"已复制: {filename} -> {subfolder_name}/")
+
+    print("处理完成。")
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--pathParam")
-    parser.add_argument("--pathIn")
-    parser.add_argument("--pathOut")
-    args = parser.parse_args()
-    mainFreeCOS(args.pathParam,args.pathIn,args.pathOut)
+    pathParam="../DeNVeR_in/models_config/freecos_Seg.pt"
+    pathIn="free_cos/myData/xcad_ds.old"
+    pathOut="free_cos/myData/A26-03-ds"
+    mainFreeCOS_sim(pathParam,pathIn,pathOut)
+
+    pathOut2="free_cos/myData/A26-03-ds"
+    organize_pngs(pathOut, pathOut2)
+
 
 '''
     export PATH="~/anaconda3/bin:$PATH"
