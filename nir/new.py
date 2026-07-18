@@ -161,6 +161,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     motionSuperposition = True #默认会将刚体层的整体运动叠加到软体层上
     useDIP = False
     SN_J = False #是否使用多level联合训练
+    SN_D = False #是否使用多level自适应训练
+    SN_D_config = None
     # useMatrix = True
     if not config is None:
         if "motionSuperposition" in config:
@@ -241,6 +243,10 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         
         if "SN_J"  in config:
             SN_J = config["SN_J"]
+        if "SN_D" in config:
+            SN_D = config["SN_D"]
+            if "SN_D_config" in config:
+                SN_D_config=config["SN_D_config"]
         
         if init_dynamicFeatureMask is None:
             init_dynamicFeatureMask={
@@ -394,6 +400,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               motionSuperposition=motionSuperposition,#是否将刚体的整体运动叠加到软体上
                               useDIP=useDIP,
                               SN_J=SN_J,
+                              SN_D=SN_D,
+                              SN_D_config=SN_D_config,
                         )
         if False:
             orig = myMain.v.video.clone()

@@ -144,7 +144,9 @@ class Decouple_rigid(nn.Module):
                 reconFlow=False,
                 UncertainLearning={"use":False},
                 motionSuperposition=True,
-                SN_J=False,#使用使用多level的联合训练
+                SN_J=False,#是否使用多level的联合训练
+                SN_D=False,#是否使用多level的自适应训练
+                SN_D_config=None,
                  ):
         super().__init__()
         self.result = None
@@ -161,6 +163,8 @@ class Decouple_rigid(nn.Module):
         self.maskPath = maskPath
         self.useDIP=useDIP
         self.SN_J=SN_J
+        self.SN_D=SN_D
+        self.SN_D_config=SN_D_config
 
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
@@ -1191,7 +1195,7 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
-    def setLevel(self, level):
+    def getNetAll(self): #获取所有子图层对应的神经网络
         netAll = []
         for i in range(self.NUM_rigid):
             netAll.append(self.f_rigid_list[i])
@@ -1199,7 +1203,10 @@ class Decouple_rigid(nn.Module):
             netAll.append(self.f_soft_list[i])
         for i in range(self.NUM_fluid):
             netAll.append(self.f_fluid_list[i])
-        for net0 in netAll:
+        return netAll
+    
+    def setLevel(self, level):
+        for net0 in self.getNetAll():
             net0.kFeatureMask_motion.set(level)
             net0.kFeatureMask_texture.set(level)
 
@@ -1279,12 +1286,16 @@ class Decouple_rigid(nn.Module):
             loss.backward()
             optim.step()
             if self.quickUpdate_dynamicFeatureMask["use"] and step<self.quickUpdate_dynamicFeatureMask["ending"] and step>self.quickUpdate_dynamicFeatureMask["starting"] and not step % self.quickUpdate_dynamicFeatureMask["interval"]:
-                for l in self.f_soft_list:
-                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"])
-                for l in self.f_rigid_list:
-                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"]) # print("step:",step,"; R_motion:",l.kFeatureMaskUpdate()["pre"])
-                for l in self.f_fluid_list:
-                    l.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"])
+                for net in self.getNetAll():
+                    net.kFeatureMaskUpdate(self.quickUpdate_dynamicFeatureMask["type"])
+            if self.SN_D:
+                if step<self.SN_D_config["ending"] and step>self.SN_D_config["starting"] and not step % self.SN_D_config["interval"]:
+                    for net in self.getNetAll():
+                        net.kFeatureMaskUpdate2Level(self.SN_D)
+                elif step>=self.SN_D_config["ending"]:
+                    self.weight_concise = 0
+                
+
 
             if not step % 100 and step>0 and self.NUM_fluid==1:
                 gradientMonitor.analyze(step)
