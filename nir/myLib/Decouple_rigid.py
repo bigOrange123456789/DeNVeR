@@ -143,7 +143,8 @@ class Decouple_rigid(nn.Module):
                 updateMaskConfig=None, #dynamicVesselMask不为False的时候才启用
                 reconFlow=False,
                 UncertainLearning={"use":False},
-                motionSuperposition=True
+                motionSuperposition=True,
+                SN_J=False,#使用使用多level的联合训练
                  ):
         super().__init__()
         self.result = None
@@ -159,6 +160,7 @@ class Decouple_rigid(nn.Module):
         self.quickUpdate_dynamicFeatureMask=quickUpdate_dynamicFeatureMask
         self.maskPath = maskPath
         self.useDIP=useDIP
+        self.SN_J=SN_J
 
         self.v = VideoFitting(
             path, # ../DeNVeR_in/xca_dataset\CVAI-1253\images\CVAI-1253LAO0_CAU29
@@ -1189,6 +1191,18 @@ class Decouple_rigid(nn.Module):
 
         return loss
 
+    def setLevel(self, level):
+        netAll = []
+        for i in range(self.NUM_rigid):
+            netAll.append(self.f_rigid_list[i])
+        for i in range(self.NUM_soft):
+            netAll.append(self.f_soft_list[i])
+        for i in range(self.NUM_fluid):
+            netAll.append(self.f_fluid_list[i])
+        for net0 in netAll:
+            net0.kFeatureMask_motion.set(level)
+            net0.kFeatureMask_texture.set(level)
+
     def train(self,
               epochs,total_steps,
               lossParam=None, 
@@ -1237,16 +1251,30 @@ class Decouple_rigid(nn.Module):
                 start_vessel=None
                 end_vessel=None
             
-            loss = self.loss(xyt, 
-                             step,step*batch_size/len(model_input),
-                             start,end,self.openLocalDeform,
-                             lossParam=lossParam,
-                             lossParam_vessel=lossParam_vessel,
-                             xyt_vessel=xyt_vessel,
-                             start_vessel=start_vessel,
-                             end_vessel=end_vessel
-                             )
-
+            if not self.SN_J: #如果不使用多level联合训练
+                loss = self.loss(xyt, 
+                                step,step*batch_size/len(model_input),
+                                start,end,self.openLocalDeform,
+                                lossParam=lossParam,
+                                lossParam_vessel=lossParam_vessel,
+                                xyt_vessel=xyt_vessel,
+                                start_vessel=start_vessel,
+                                end_vessel=end_vessel
+                                )
+            else: #如果使用多level联合训练
+                loss = 0
+                for level in self.SN_J:
+                    self.setLevel(level)
+                    loss = loss + self.loss(xyt, 
+                                step,step*batch_size/len(model_input),
+                                start,end,self.openLocalDeform,
+                                lossParam=lossParam,
+                                lossParam_vessel=lossParam_vessel,
+                                xyt_vessel=xyt_vessel,
+                                start_vessel=start_vessel,
+                                end_vessel=end_vessel
+                                )
+                self.setLevel(self.SN_J[0])
             optim.zero_grad()
             loss.backward()
             optim.step()
@@ -1292,7 +1320,9 @@ class Decouple_rigid(nn.Module):
         #     optim.step()
 
     def getVideo(self, stage):
-        print("逐帧推理")
+        import time
+        start = time.time()
+        print("开始逐帧推理")
         ####################################开始使用MASK####################################
         def get_video_tensor(path):
             """
@@ -1449,6 +1479,9 @@ class Decouple_rigid(nn.Module):
                     p["o_soft_all"][0].shape: torch.Size([128, 128, 1])
                 '''
                 return video_pre, layers, p
+        end = time.time()
+        minute = (end - start)/(60)
+        print("完成逐帧推理:",'Inference time: %s minute' % minute)
 
     def getVideo_row(self, stage):
         print("逐行推理")

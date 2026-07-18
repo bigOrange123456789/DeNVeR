@@ -160,6 +160,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
     saveTempImg = False
     motionSuperposition = True #默认会将刚体层的整体运动叠加到软体层上
     useDIP = False
+    SN_J = False #是否使用多level联合训练
     # useMatrix = True
     if not config is None:
         if "motionSuperposition" in config:
@@ -237,6 +238,9 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         
         if "init_dynamicFeatureMask" in config:
             init_dynamicFeatureMask = config["init_dynamicFeatureMask"]
+        
+        if "SN_J"  in config:
+            SN_J = config["SN_J"]
         
         if init_dynamicFeatureMask is None:
             init_dynamicFeatureMask={
@@ -389,6 +393,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                               UncertainLearning=UncertainLearning,
                               motionSuperposition=motionSuperposition,#是否将刚体的整体运动叠加到软体上
                               useDIP=useDIP,
+                              SN_J=SN_J,
                         )
         if False:
             orig = myMain.v.video.clone()
@@ -425,6 +430,8 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
         # N, C, H, W = orig.size()  # 帧数、通道数、高度、宽度
         orig = orig.permute(0, 2, 3, 1).detach()#.numpy()
 
+        if SN_J:
+            myMain.setLevel(SN_J[0])
         video_pre, layers, p = myMain.getVideo(1)#使用局部形变
 
         # soft结果 
@@ -506,6 +513,18 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
             save1(video_pre, tag+".recon")
             save1(orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non")
             save1(0.5*orig.cuda()/(video_pre.abs()+10**-10), tag+".recon_non2")
+
+        if SN_J:
+            # for level in SN_J:
+            for i in range(len(SN_J)-1):
+                level = SN_J[i+1] # 0号level刚刚已经分析过了
+                print("level")
+                myMain.setLevel(level)
+                video_pre, layers, p = myMain.getVideo(1)#使用局部形变
+                save1(p["o_rigid_all"], tag+".rigid"+".level"+str(i+1))#看一下刚体层的效果
+                save1(#真正影响下一个阶段的输出
+                        orig.cuda() / (p["o_rigid_all"+".level"+str(i+1)].abs() + 10 ** -10), 
+                        tag+".rigid.non1"+".level"+str(i+1))#有黑点、黑点解决了(是超过数据上限造成的)
 
 
 

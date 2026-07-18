@@ -11,12 +11,15 @@
             新增参数：
                 # "SN_J":False,#多level联合训练
                 "SN_J":[1.00,0.50,0.25],#多level联合训练
+            缩小batch:
+                # "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":0.5*1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
     目标：
         ??
     结果：
         ??
     实验设备: 
-        AutoDL_H (RTX 3090(24GB) * 5)、DeNVeR.26-3_new
+        AutoDL_D (RTX 3090(24GB) * 5)、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
 config_A26_03_SN_J={ # follow: config_A26_03_01I2
@@ -25,7 +28,8 @@ config_A26_03_SN_J={ # follow: config_A26_03_01I2
                 "de-rigid":"1_sim",#去噪框架
                 #"total_steps":2000,#1000,#"epoch":1000,#2000,#2000,#6000,#4000,#2000, #只兼容了startDecouple1 #recon_all=0.00011
                 "epochs":0.625,#
-                "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                # "batch_size_scale":1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
+                "batch_size_scale":0.5*1/8,#0.3,#0.35,#0.3,#0.5,#1/8,
                 "dynamicVesselMask":{#有较长的时间开销
                     # "startStep":0.5*10, #False
                     # "intervalStep":1.5,
@@ -38,7 +42,7 @@ config_A26_03_SN_J={ # follow: config_A26_03_01I2
                 "init_dynamicFeatureMask":1.00, #遮挡向量的的初始值为1
                 "quickUpdate_dynamicFeatureMask":False,#True,
                 # "SN_J":False,#多level联合训练
-                "SN_J":[1.00,0.50,0.25],#多level联合训练
+                "SN_J":[1.00,0.50,0.25],#多level联合训练 #第一个位置必须是1.00
                 # 1 模型本身
                 # 1.1 刚体模块
                 "NUM_rigid":1,#只有一个运动的刚体
