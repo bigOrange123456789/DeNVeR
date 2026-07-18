@@ -531,7 +531,7 @@ def startDecouple1_sim(videoId,paramPath,pathIn,outpath,config=None,inpath_custo
                 video_pre, layers, p = myMain.getVideo(1)#使用局部形变
                 save1(p["o_rigid_all"], tag+".rigid"+".level"+str(i+1))#看一下刚体层的效果
                 save1(#真正影响下一个阶段的输出
-                        orig.cuda() / (p["o_rigid_all"+".level"+str(i+1)].abs() + 10 ** -10), 
+                        orig.cuda() / (p["o_rigid_all"].abs() + 10 ** -10), 
                         tag+".rigid.non1"+".level"+str(i+1))#有黑点、黑点解决了(是超过数据上限造成的)
 
 
