@@ -17,7 +17,7 @@
     结果：
         ??
     实验设备: 
-        AutoDL_E (RTX 3090(24GB) * 4)、DeNVeR.26-3_new
+        AutoDL_E (RTX 3090(24GB) * 5)、DeNVeR.26-3_new
     Running time: ?? hours 
 '''
 config_A26_03_SN_D={ # follow: config_A26_03_01I2
